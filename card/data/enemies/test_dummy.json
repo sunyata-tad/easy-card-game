@@ -1,0 +1,15 @@
+{
+	"id": "test_dummy",
+	"name": "测试木偶",
+	"max_hp": 10,
+	"ai_type": "basic",
+	"actions": [
+		{
+			"type": "attack",
+			"damage": 1,
+			"intent_text": "攻击",
+			"intent_icon": "sword"
+		}
+	],
+	"description": "用于测试的木偶，造成1点伤害"
+}

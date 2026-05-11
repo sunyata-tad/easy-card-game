@@ -1,0 +1,84 @@
+[gd_scene format=3 uid="uid://char_creation_001"]
+
+[ext_resource type="Script" path="res://scripts/character_creation_screen.gd" id="1_creation"]
+
+[node name="CharacterCreationScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_creation")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.1, 0.1, 0.15, 1)
+
+[node name="TitleLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -100.0
+offset_top = 30.0
+offset_right = 100.0
+offset_bottom = 60.0
+theme_override_colors/font_color = Color(0.4, 1, 0.4, 1)
+theme_override_font_sizes/font_size = 28
+horizontal_alignment = 1
+text = "角色创建"
+
+[node name="StepIndicator" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 80.0
+offset_right = 200.0
+offset_bottom = 110.0
+
+[node name="ContentArea" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.15
+anchor_right = 1.0
+anchor_bottom = 0.85
+offset_top = 20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ButtonContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -60.0
+offset_right = 200.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 0
+alignment = 1
+theme_override_constants/separation = 20
+
+[node name="CancelButton" type="Button" parent="ButtonContainer"]
+layout_mode = 2
+text = "取消"
+
+[node name="PrevButton" type="Button" parent="ButtonContainer"]
+layout_mode = 2
+text = "上一步"
+
+[node name="NextButton" type="Button" parent="ButtonContainer"]
+layout_mode = 2
+text = "下一步"
