@@ -27,13 +27,29 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -104.0
-offset_top = -34.5
+offset_top = -70.0
 offset_right = 104.0
-offset_bottom = 34.5
+offset_bottom = -0.0
 grow_horizontal = 2
 grow_vertical = 2
 button_mask = 7
 text = "开始游戏"
+
+[node name="Button_continue" type="Button" parent="." unique_id=1407195714]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -104.0
+offset_top = 10.0
+offset_right = 104.0
+offset_bottom = 80.0
+grow_horizontal = 2
+grow_vertical = 2
+button_mask = 7
+text = "继续游戏"
 
 [node name="Button_exit" type="Button" parent="." unique_id=1465354633]
 layout_mode = 1
@@ -51,4 +67,5 @@ button_mask = 7
 text = "退出游戏"
 
 [connection signal="pressed" from="Button_start" to="." method="_on_button_start_pressed"]
+[connection signal="pressed" from="Button_continue" to="." method="_on_button_continue_pressed"]
 [connection signal="pressed" from="Button_exit" to="." method="_on_button_exit_pressed"]

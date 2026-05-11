@@ -15,6 +15,13 @@ run/main_scene="uid://bqn0b431n2ass"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+GameManager="*res://scripts/game_manager.gd"
+GameData="*res://scripts/game_data.gd"
+SaveManager="*res://scripts/save_manager.gd"
+CharacterManager="*res://scripts/character_manager.gd"
+
 [dotnet]
 
 project/assembly_name="card"

@@ -1,0 +1,32 @@
+{
+	"id": "defend",
+	"name": "防御",
+	"type": "skill",
+	"description": "获得敏捷×1点护甲",
+	"rarity": "basic",
+	"target_type": "self",
+	"tags": ["Skill", "Defend", "Basic"],
+	"treated_as": [],
+	"effects": [
+		{
+			"effect_type": "block",
+			"value": 0,
+			"scaling_key": "block",
+			"base_stat": "dexterity",
+			"multiplier": 1.0
+		}
+	],
+	"upgrade": {
+		"name": "防御+",
+		"description": "获得敏捷×1.5点护甲",
+		"effects": [
+			{
+				"effect_type": "block",
+				"value": 0,
+				"scaling_key": "block",
+				"base_stat": "dexterity",
+				"multiplier": 1.5
+			}
+		]
+	}
+}

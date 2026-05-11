@@ -1,18 +1,98 @@
 extends Control
 
+var _confirmation_dialog: ConfirmationDialog = null
 
-# Called when the node enters the scene tree for the first time.
-func _ready() -> void:
-	pass 
+func _ready():
+	_setup_buttons()
+	_update_continue_button()
 
+func _setup_buttons():
+	var start_button = get_node_or_null("Button_start")
+	var continue_button = get_node_or_null("Button_continue")
+	var exit_button = get_node_or_null("Button_exit")
+	
+	if start_button:
+		if not start_button.pressed.is_connected(_on_start_pressed):
+			start_button.pressed.connect(_on_start_pressed)
+	
+	if continue_button:
+		if not continue_button.pressed.is_connected(_on_continue_pressed):
+			continue_button.pressed.connect(_on_continue_pressed)
+	
+	if exit_button:
+		if not exit_button.pressed.is_connected(_on_exit_pressed):
+			exit_button.pressed.connect(_on_exit_pressed)
 
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta: float) -> void:
+func _update_continue_button():
+	var continue_button = get_node_or_null("Button_continue")
+	if continue_button:
+		var has_save = SaveManager.has_save()
+		continue_button.visible = has_save
+		continue_button.disabled = not has_save
+
+func _on_start_pressed() -> void:
+	if SaveManager.has_save():
+		_show_new_game_confirmation()
+	else:
+		_start_new_game()
+
+func _show_new_game_confirmation():
+	if _confirmation_dialog == null:
+		_confirmation_dialog = ConfirmationDialog.new()
+		_confirmation_dialog.dialog_text = "检测到已有存档！\n\n开始新游戏将覆盖旧存档。"
+		_confirmation_dialog.title = "提示"
+		_confirmation_dialog.confirmed.connect(_start_new_game)
+		add_child(_confirmation_dialog)
+	
+	_confirmation_dialog.popup_centered()
+
+func _start_new_game():
+	SaveManager.delete_save()
+	GameData.initialize_new_run()
+	GameManager.go_to_character_select()
+
+func _on_cancel_new_game():
 	pass
 
+func _on_continue_pressed() -> void:
+	if not SaveManager.has_save():
+		push_warning("No save file found")
+		return
+	
+	var save_data = SaveManager.load_game()
+	if save_data.is_empty():
+		push_error("Failed to load save")
+		return
+	
+	SaveManager.apply_game_data(save_data)
+	
+	var progress = int(save_data.get("progress", SaveManager.GameProgress.IN_BATTLE))
+	print("继续游戏，存档进度: %d (IN_REWARD=%d)" % [progress, SaveManager.GameProgress.IN_REWARD])
+	
+	match progress:
+		SaveManager.GameProgress.IN_BATTLE:
+			var enemy = GameData.get_random_enemy_for_battle()
+			if enemy:
+				GameManager.start_battle([enemy])
+		SaveManager.GameProgress.IN_REWARD:
+			var additional = save_data.get("additional", {})
+			var battle_stats = additional.get("battle_stats", {})
+			GameManager.change_scene(GameManager.GameScene.REWARD, {"stats": battle_stats})
+		SaveManager.GameProgress.GAME_OVER:
+			GameManager.go_to_game_over(GameData.get_battle_stats())
+		_:
+			var enemy = GameData.get_random_enemy_for_battle()
+			if enemy:
+				GameManager.start_battle([enemy])
+
+func _on_exit_pressed() -> void:
+	get_tree().quit()
 
 func _on_button_start_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	_on_start_pressed()
+
+func _on_button_continue_pressed() -> void:
+	_on_continue_pressed()
 
 func _on_button_exit_pressed() -> void:
-	get_tree().quit()
+	_on_exit_pressed()

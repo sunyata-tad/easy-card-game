@@ -1,0 +1,153 @@
+extends Control
+
+var battle_controller: BattleController
+var battle_stats: Dictionary = {
+	"damage_dealt": 0,
+	"cards_played": 0
+}
+var character_stats: Dictionary = {}
+var is_initialized: bool = false
+
+func _ready():
+	_setup_exit_button()
+
+func _setup_exit_button():
+	var exit_button = get_node_or_null("ExitButton")
+	if exit_button:
+		exit_button.pressed.connect(_on_exit_pressed)
+
+func receive_data(data: Dictionary) -> void:
+	character_stats = data.get("character_stats", {})
+	
+	if not is_initialized:
+		is_initialized = true
+		_initialize_battle()
+
+func _initialize_battle():
+	battle_controller = BattleController.new()
+	battle_controller.battle_ended.connect(_on_battle_ended)
+	battle_controller.turn_changed.connect(_on_turn_changed)
+	
+	var enemies_data: Array = []
+	var deck_data: Array = []
+	
+	if GameData:
+		var enemy = GameData.get_random_enemy_for_battle()
+		if enemy:
+			enemies_data = [enemy]
+		deck_data = GameData.get_deck()
+	
+	battle_controller.setup_battle(self, deck_data, enemies_data, character_stats)
+	battle_controller.start_battle()
+
+func _on_exit_pressed():
+	_show_exit_confirmation()
+
+func _show_exit_confirmation():
+	var confirmation = AcceptDialog.new()
+	confirmation.dialog_text = "确定要退出吗？\n当前进度将会保存。"
+	confirmation.add_button("保存并退出", true, "save_exit")
+	confirmation.add_cancel_button("取消")
+	add_child(confirmation)
+	
+	confirmation.custom_action.connect(_on_exit_dialog_action)
+	confirmation.confirmed.connect(_on_exit_confirmed)
+	confirmation.popup_centered()
+
+func _on_exit_dialog_action(action: String):
+	if action == "save_exit":
+		_save_and_exit()
+
+func _on_exit_confirmed():
+	_save_and_exit()
+
+func _save_and_exit():
+	SaveManager.save_before_battle_exit()
+	GameManager.go_to_main_menu()
+
+func _on_battle_ended(victory: bool):
+	battle_stats.victory = victory
+	
+	if victory:
+		await get_tree().create_timer(0.5).timeout
+		if GameData:
+			GameData.record_battle_won()
+			SaveManager.save_game(SaveManager.GameProgress.IN_REWARD, {"battle_stats": battle_stats})
+			GameManager.end_battle(true, battle_stats)
+		else:
+			_show_victory_screen()
+	else:
+		await get_tree().create_timer(0.5).timeout
+		if GameData:
+			var stats = GameData.get_battle_stats()
+			stats.victory = false
+			SaveManager.save_game_over()
+			GameManager.end_battle(false, stats)
+		else:
+			_show_defeat_screen()
+
+func _on_turn_changed(is_player_turn: bool):
+	if is_player_turn:
+		print("玩家回合")
+	else:
+		print("敌人回合")
+
+func _show_victory_screen():
+	var victory_label = Label.new()
+	victory_label.text = "战斗胜利!"
+	victory_label.add_theme_font_size_override("font_size", 48)
+	victory_label.add_theme_color_override("font_color", Color.GREEN)
+	victory_label.set_anchors_preset(Control.PRESET_CENTER)
+	victory_label.position = Vector2(-100, -24)
+	add_child(victory_label)
+	
+	var continue_button = Button.new()
+	continue_button.text = "继续"
+	continue_button.add_theme_font_size_override("font_size", 24)
+	continue_button.set_anchors_preset(Control.PRESET_CENTER)
+	continue_button.position = Vector2(-40, 30)
+	continue_button.pressed.connect(_on_continue_pressed)
+	add_child(continue_button)
+
+func _show_defeat_screen():
+	var defeat_label = Label.new()
+	defeat_label.text = "战斗失败..."
+	defeat_label.add_theme_font_size_override("font_size", 48)
+	defeat_label.add_theme_color_override("font_color", Color.RED)
+	defeat_label.set_anchors_preset(Control.PRESET_CENTER)
+	defeat_label.position = Vector2(-120, -24)
+	add_child(defeat_label)
+	
+	var retry_button = Button.new()
+	retry_button.text = "重试"
+	retry_button.add_theme_font_size_override("font_size", 24)
+	retry_button.set_anchors_preset(Control.PRESET_CENTER)
+	retry_button.position = Vector2(-40, 30)
+	retry_button.pressed.connect(_on_retry_pressed)
+	add_child(retry_button)
+
+func _on_continue_pressed():
+	if GameData:
+		SaveManager.save_at_reward_screen()
+		GameManager.end_battle(true, battle_stats)
+
+func _on_retry_pressed():
+	if GameData:
+		SaveManager.delete_save()
+		GameData.initialize_new_run()
+		GameManager.go_to_main_menu()
+
+func start_new_battle(enemies: Array = []):
+	if battle_controller:
+		battle_controller.setup_battle(self, [], enemies)
+		battle_controller.start_battle()
+
+func record_damage_dealt(amount: int):
+	battle_stats.damage_dealt += amount
+	if GameData:
+		GameData.record_damage_dealt(amount)
+
+func record_card_played():
+	battle_stats.cards_played += 1
+	if GameData:
+		GameData.record_card_played()
