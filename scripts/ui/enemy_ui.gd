@@ -133,14 +133,18 @@ func _on_mouse_exited():
 		_animate_hover(false)
 
 func _animate_hover(hover: bool):
-	var target_scale = Vector2(1.1, 1.1) if hover else original_scale
+	var target_scale = Vector2(1.08, 1.08) if hover else original_scale
+	var target_modulate = Color(1.1, 1.1, 1.0, 1.0) if hover else NORMAL_COLOR
+	
 	var tween = create_tween()
-	tween.tween_property(self, "scale", target_scale, 0.15)
+	tween.set_parallel(true)
+	tween.tween_property(self, "scale", target_scale, 0.1)
+	tween.tween_property(self, "modulate", target_modulate, 0.1)
 
 func _animate_damage():
 	var tween = create_tween()
-	tween.tween_property(self, "modulate", Color.RED, 0.1)
-	tween.tween_property(self, "modulate", NORMAL_COLOR, 0.2)
+	tween.tween_property(self, "modulate", Color(1.5, 0.3, 0.3, 1.0), 0.05)
+	tween.tween_property(self, "modulate", NORMAL_COLOR, 0.15)
 
 func _animate_death():
 	var tween = create_tween()
@@ -161,6 +165,14 @@ func set_selected(selected: bool):
 		modulate = SELECTED_COLOR
 	else:
 		modulate = NORMAL_COLOR
+
+func set_highlight_for_target(valid: bool):
+	if valid:
+		modulate = Color(1.2, 1.0, 0.8, 1.0)
+		z_index = 10
+	else:
+		modulate = NORMAL_COLOR
+		z_index = 0
 
 func show_damage_number(amount: int):
 	if amount <= 0:

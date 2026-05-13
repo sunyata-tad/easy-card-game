@@ -120,13 +120,15 @@ func _on_mouse_exited():
 	card_unhovered.emit(card_data)
 
 func _animate_hover(hover: bool):
-	var target_scale = Vector2(1.15, 1.15) if hover else original_scale
-	var target_y = original_position.y - 20 if hover else original_position.y
+	var target_scale = Vector2(1.12, 1.12) if hover else original_scale
+	var target_y = original_position.y - 15 if hover else original_position.y
+	var target_modulate = Color(1.15, 1.15, 1.0, 1.0) if hover else Color.WHITE
 	
 	var tween = create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(self, "scale", target_scale, 0.15)
-	tween.tween_property(self, "position:y", target_y, 0.15)
+	tween.tween_property(self, "scale", target_scale, 0.1)
+	tween.tween_property(self, "position:y", target_y, 0.1)
+	tween.tween_property(self, "modulate", target_modulate, 0.1)
 
 func _gui_input(event: InputEvent):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -153,9 +155,31 @@ func set_selected(selected: bool):
 func play_discard_animation(target_pos: Vector2):
 	var tween = create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(self, "position", target_pos, 0.3)
-	tween.tween_property(self, "modulate:a", 0.0, 0.3)
+	tween.tween_property(self, "position", target_pos, 0.25)
+	tween.tween_property(self, "modulate:a", 0.0, 0.25)
 	tween.tween_callback(queue_free)
+
+func play_play_animation(target_pos: Vector2, callback: Callable = Callable()):
+	var start_pos = position
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(self, "position", target_pos, 0.15)
+	tween.tween_property(self, "scale", Vector2(0.8, 0.8), 0.15)
+	tween.tween_property(self, "modulate:a", 0.0, 0.15)
+	tween.chain()
+	if callback.is_valid():
+		tween.tween_callback(callback)
+	tween.tween_callback(queue_free)
+
+func play_draw_animation(start_pos: Vector2):
+	position = start_pos
+	modulate.a = 0.0
+	scale = Vector2(0.7, 0.7)
+	
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(self, "modulate:a", 1.0, 0.12)
+	tween.tween_property(self, "scale", original_scale, 0.12)
 
 func reset_position():
 	position = original_position

@@ -310,3 +310,41 @@ func _show_player_stats_popup() -> void:
 	popup.popup_centered()
 	popup.confirmed.connect(popup.queue_free)
 	popup.close_requested.connect(popup.queue_free)
+
+func highlight_valid_targets(card: CardData) -> void:
+	clear_target_highlights()
+	
+	if card == null:
+		return
+	
+	var target_type = card.target_type
+	
+	if target_type == "single_enemy":
+		for enemy_node in current_enemy_nodes.values():
+			if enemy_node.has_method("set_highlight_for_target"):
+				enemy_node.set_highlight_for_target(true)
+	elif target_type == "all_enemies":
+		for enemy_node in current_enemy_nodes.values():
+			if enemy_node.has_method("set_highlight_for_target"):
+				enemy_node.set_highlight_for_target(true)
+
+func clear_target_highlights() -> void:
+	for enemy_node in current_enemy_nodes.values():
+		if enemy_node.has_method("set_highlight_for_target"):
+			enemy_node.set_highlight_for_target(false)
+	
+	if player_area and player_area.has_method("set_highlight_for_target"):
+		player_area.set_highlight_for_target(false)
+
+func play_card_animation(card: CardData, card_node: Control, target = null) -> void:
+	if card_node == null:
+		return
+	
+	var target_pos = Vector2(400, 300)
+	
+	if target and current_enemy_nodes.has(target):
+		var enemy_node = current_enemy_nodes[target]
+		target_pos = enemy_node.position + enemy_node.size / 2
+	
+	if card_node.has_method("play_play_animation"):
+		card_node.play_play_animation(target_pos)
