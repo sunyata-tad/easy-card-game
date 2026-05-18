@@ -51,7 +51,7 @@ func _connect_signals() -> void:
 	player_manager.block_changed.connect(_on_player_block_changed)
 	player_manager.player_died.connect(_on_player_died)
 
-func setup_battle(root_node: Control, initial_deck: Array = [], enemies: Array = [], character_stats: Dictionary = {}) -> void:
+func setup_battle(root_node: Control, initial_deck: Array = [], enemies: Array = []) -> void:
 	ui_controller = UIController.new(root_node)
 	ui_controller.player_manager = player_manager
 	_connect_ui_signals()
@@ -61,13 +61,17 @@ func setup_battle(root_node: Control, initial_deck: Array = [], enemies: Array =
 	
 	card_system.initialize_deck(initial_deck)
 	
-	if character_stats.has("max_hp"):
-		player_manager.max_hp = character_stats.max_hp
-		player_manager.current_hp = character_stats.max_hp
-	if character_stats.has("strength"):
-		player_manager.strength = character_stats.strength
-	if character_stats.has("dexterity"):
-		player_manager.dexterity = character_stats.dexterity
+	var max_hp = GameData.player_max_hp
+	var current_hp = GameData.player_current_hp
+	var strength = GameData.player_strength
+	var dexterity = GameData.player_dexterity
+	
+	player_manager.max_hp = max_hp
+	player_manager.current_hp = current_hp
+	player_manager.strength = strength
+	player_manager.dexterity = dexterity
+	
+	print("战斗初始化: HP=%d/%d, 力量=%d, 敏捷=%d" % [current_hp, max_hp, strength, dexterity])
 	
 	for enemy_data in enemies:
 		enemy_system.add_enemy(enemy_data)
@@ -85,6 +89,9 @@ func start_battle() -> void:
 
 func _connect_ui_signals() -> void:
 	ui_controller.card_clicked.connect(_on_ui_card_clicked)
+	ui_controller.card_released.connect(_on_ui_card_released)
+	ui_controller.card_cancelled.connect(_on_ui_card_cancelled)
+	ui_controller.card_dropped.connect(_on_ui_card_dropped)
 	ui_controller.enemy_selected.connect(_on_ui_enemy_selected)
 	ui_controller.end_turn_clicked.connect(_on_ui_end_turn_clicked)
 
@@ -148,10 +155,20 @@ func _on_turn_end_phase() -> void:
 		state_machine.change_state(StateMachine.BattleState.DRAW_PHASE)
 
 func _on_victory() -> void:
+	sync_player_stats_to_gamedata()
 	battle_ended.emit(true)
 
 func _on_defeat() -> void:
+	sync_player_stats_to_gamedata()
 	battle_ended.emit(false)
+
+func sync_player_stats_to_gamedata() -> void:
+	if GameData:
+		GameData.player_current_hp = player_manager.current_hp
+		GameData.player_max_hp = player_manager.max_hp
+		GameData.player_strength = player_manager.strength
+		GameData.player_dexterity = player_manager.dexterity
+		print("同步角色属性到GameData: HP=%d/%d, 力量=%d, 敏捷=%d" % [GameData.player_current_hp, GameData.player_max_hp, GameData.player_strength, GameData.player_dexterity])
 
 func _process_turn_end_effects() -> void:
 	player_manager.reset_block()
@@ -258,6 +275,8 @@ func end_player_turn() -> void:
 	if not state_machine.is_player_turn():
 		return
 	
+	sync_player_stats_to_gamedata()
+	
 	ui_controller.show_state_message("回合结束", 0.5)
 	card_system.discard_hand()
 	state_machine.change_state(StateMachine.BattleState.ENEMY_TURN)
@@ -282,8 +301,10 @@ func _on_all_enemies_defeated() -> void:
 	if state_machine.is_battle_active():
 		state_machine.change_state(StateMachine.BattleState.VICTORY)
 
-func _on_player_hp_changed(_current: int, _maximum: int) -> void:
+func _on_player_hp_changed(current: int, _maximum: int) -> void:
 	_update_player_ui()
+	if GameData:
+		GameData.player_current_hp = current
 
 func _on_player_block_changed(_amount: int) -> void:
 	_update_player_ui()
@@ -304,19 +325,73 @@ func _on_ui_card_clicked(card: CardData, card_node: Control) -> void:
 	if card == null:
 		return
 	
-	if card.target_type == "single_enemy":
+	if card.target_type == "single_enemy" or card.target_type == "single_ally":
 		pending_card = card
 		pending_card_node = card_node
-	elif card.target_type == "self":
-		play_card(card)
+		ui_controller.highlight_valid_targets(card)
+
+func _on_ui_card_released(card: CardData, card_node: Control) -> void:
+	if card == null:
+		return
+	
+	if card.target_type == "single_enemy" or card.target_type == "single_ally":
+		return
+	
+	if card.target_type == "self":
+		play_card_with_animation(card, null, card_node)
 	else:
-		play_card(card)
+		play_card_with_animation(card, null, card_node)
+
+func _on_ui_card_cancelled(card: CardData) -> void:
+	if pending_card == card:
+		pending_card = null
+		pending_card_node = null
+	
+	ui_controller.clear_target_highlights()
+	ui_controller.show_state_message("已取消", 0.4)
+
+func _on_ui_card_dropped(card: CardData, target) -> void:
+	if card == null:
+		return
+	
+	var card_node = ui_controller.current_hand_cards.get(card)
+	
+	if target == null:
+		if card_node and card_node.has_method("reset_position"):
+			card_node.reset_position()
+		ui_controller.show_state_message("请选择有效目标", 0.5)
+		return
+	
+	if card.target_type == "single_enemy" and target is EnemyUnit:
+		play_card_with_animation(card, target, card_node)
+	elif card.target_type == "single_ally" and target is PlayerManager:
+		play_card_with_animation(card, target, card_node)
+	else:
+		if card_node and card_node.has_method("reset_position"):
+			card_node.reset_position()
+		ui_controller.show_state_message("目标无效", 0.5)
+
+func play_card_with_animation(card: CardData, target, card_node: Control) -> void:
+	if card_node:
+		if target:
+			ui_controller.play_card_animation(card, card_node, target)
+		else:
+			var target_pos = Vector2(400, 200)
+			if card_node.has_method("play_play_animation"):
+				card_node.play_play_animation(target_pos)
+		await get_tree().create_timer(0.15).timeout
+	
+	play_card(card, target)
 
 func _on_ui_enemy_selected(enemy: EnemyUnit) -> void:
 	if pending_card != null:
-		play_card(pending_card, enemy)
+		var card_node = pending_card_node
+		if card_node and card_node.has_method("cancel_target_mode"):
+			card_node.cancel_target_mode()
+		play_card_with_animation(pending_card, enemy, card_node)
 		pending_card = null
 		pending_card_node = null
+		ui_controller.clear_target_highlights()
 
 func _on_ui_end_turn_clicked() -> void:
 	end_player_turn()

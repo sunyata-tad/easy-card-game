@@ -151,19 +151,21 @@ func _on_character_selected(character: CharacterData):
 		if card:
 			deck.append(card.duplicate())
 	
-	GameData.player_deck = deck
-	GameData.player_max_hp = character.get_max_hp()
-	GameData.player_current_hp = GameData.player_max_hp
+	var max_hp = character.get_max_hp()
+	var strength = character.get_strength()
+	var dexterity = character.get_dexterity()
 	
-	var character_stats = {
-		"max_hp": character.get_max_hp(),
-		"strength": character.get_strength(),
-		"dexterity": character.get_dexterity()
-	}
+	GameData.player_deck = deck
+	GameData.player_max_hp = max_hp
+	GameData.player_current_hp = max_hp
+	GameData.player_strength = strength
+	GameData.player_dexterity = dexterity
+	
+	print("选择角色: HP=%d, 力量=%d, 敏捷=%d" % [max_hp, strength, dexterity])
 	
 	var enemy = GameData.get_random_enemy_for_battle()
 	if enemy:
-		GameManager.start_battle([enemy], character_stats)
+		GameManager.start_battle([enemy])
 
 func _on_create_new_character():
 	GameManager.go_to_character_creation()

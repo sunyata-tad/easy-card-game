@@ -68,8 +68,8 @@ func go_to_character_select() -> void:
 func go_to_character_creation() -> void:
 	change_scene(GameScene.CHARACTER_CREATION)
 
-func start_battle(enemies: Array = [], character_stats: Dictionary = {}) -> void:
-	var data = {"enemies": enemies, "character_stats": character_stats}
+func start_battle(enemies: Array = []) -> void:
+	var data = {"enemies": enemies}
 	change_scene(GameScene.BATTLE, data)
 	battle_started.emit()
 

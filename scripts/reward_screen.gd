@@ -1,13 +1,7 @@
 extends Control
 
-var battle_stats: Dictionary = {}
-
 @onready var title_label: Label = $TitleLabel
-@onready var stats_label: Label = $StatsLabel
 @onready var reward_container: VBoxContainer = $ScrollContainer/RewardContainer
-
-func receive_data(data: Dictionary) -> void:
-	battle_stats = data.get("stats", {})
 
 func _ready():
 	_setup_exit_button()
@@ -20,18 +14,12 @@ func _setup_exit_button():
 		exit_button.pressed.connect(_on_exit_pressed)
 
 func _on_exit_pressed():
-	SaveManager.save_game(SaveManager.GameProgress.IN_REWARD, {"battle_stats": battle_stats})
+	SaveManager.save_game(SaveManager.GameProgress.IN_REWARD)
 	GameManager.go_to_main_menu()
 
 func _setup_ui():
 	if title_label:
 		title_label.text = "战斗胜利!"
-	
-	if stats_label:
-		var stats_text = "本回合统计:\n"
-		stats_text += "造成伤害: %d\n" % battle_stats.get("damage_dealt", 0)
-		stats_text += "使用卡牌: %d" % battle_stats.get("cards_played", 0)
-		stats_label.text = stats_text
 
 func _show_default_rewards():
 	if reward_container == null:
@@ -233,17 +221,8 @@ func _continue_to_next_battle():
 	GameData.record_battle_won()
 	SaveManager.save_at_reward_screen()
 	
-	var character_stats: Dictionary = {}
-	if CharacterManager.has_current_character():
-		var char = CharacterManager.get_current_character()
-		character_stats = {
-			"max_hp": char.get_max_hp(),
-			"strength": char.get_strength(),
-			"dexterity": char.get_dexterity()
-		}
-	
 	var enemy = GameData.get_random_enemy_for_battle()
 	if enemy:
-		GameManager.start_battle([enemy], character_stats)
+		GameManager.start_battle([enemy])
 	else:
 		GameManager.go_to_game_over(GameData.get_battle_stats())

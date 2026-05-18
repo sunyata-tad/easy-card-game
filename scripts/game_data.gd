@@ -3,6 +3,8 @@ extends Node
 var player_deck: Array = []
 var player_max_hp: int = 80
 var player_current_hp: int = 80
+var player_strength: int = 0
+var player_dexterity: int = 0
 var gold: int = 0
 var battles_won: int = 0
 var total_damage_dealt: int = 0
@@ -14,6 +16,7 @@ var enemy_database: EnemyDatabase
 signal deck_changed(deck: Array)
 signal hp_changed(current: int, maximum: int)
 signal gold_changed(amount: int)
+signal stats_changed(strength: int, dexterity: int)
 
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -24,6 +27,8 @@ func initialize_new_run() -> void:
 	player_deck = card_database.load_starter_deck()
 	player_max_hp = 80
 	player_current_hp = player_max_hp
+	player_strength = 0
+	player_dexterity = 0
 	gold = 0
 	battles_won = 0
 	total_damage_dealt = 0
@@ -31,6 +36,7 @@ func initialize_new_run() -> void:
 	
 	deck_changed.emit(player_deck)
 	hp_changed.emit(player_current_hp, player_max_hp)
+	stats_changed.emit(player_strength, player_dexterity)
 
 func get_deck() -> Array:
 	return player_deck.duplicate()
@@ -83,6 +89,22 @@ func increase_max_hp(amount: int) -> void:
 	player_max_hp += amount
 	player_current_hp += amount
 	hp_changed.emit(player_current_hp, player_max_hp)
+
+func increase_strength(amount: int) -> void:
+	player_strength += amount
+	stats_changed.emit(player_strength, player_dexterity)
+
+func increase_dexterity(amount: int) -> void:
+	player_dexterity += amount
+	stats_changed.emit(player_strength, player_dexterity)
+
+func set_player_stats(max_hp: int, current_hp: int, strength: int, dexterity: int) -> void:
+	player_max_hp = max_hp
+	player_current_hp = current_hp
+	player_strength = strength
+	player_dexterity = dexterity
+	hp_changed.emit(player_current_hp, player_max_hp)
+	stats_changed.emit(player_strength, player_dexterity)
 
 func add_gold(amount: int) -> void:
 	gold += amount

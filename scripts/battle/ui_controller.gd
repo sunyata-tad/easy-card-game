@@ -11,14 +11,23 @@ var end_turn_button: Button
 var deck_info_node: Node
 var state_display_label: Label = null
 
+var drag_arrow: DragArrow = null
+var is_dragging: bool = false
+var dragging_card: CardData = null
+var drag_card_node: Control = null
+var last_hand: Array = []
+
 var current_hand_cards: Dictionary = {}
 var current_enemy_nodes: Dictionary = {}
 var selected_card: CardData = null
 var selected_target = null
 
 signal card_clicked(card: CardData, card_node: Control)
+signal card_released(card: CardData, card_node: Control)
+signal card_cancelled(card: CardData)
 signal card_drag_started(card: CardData)
 signal card_dropped(card: CardData, target)
+signal target_mode_requested(card: CardData)
 signal enemy_selected(enemy: EnemyUnit)
 signal end_turn_clicked()
 
@@ -28,6 +37,7 @@ func _init(root: Control):
 	_setup_signals()
 	_load_card_scene()
 	_setup_state_display()
+	_setup_drag_arrow()
 
 func _setup_state_display() -> void:
 	state_display_label = Label.new()
@@ -40,6 +50,11 @@ func _setup_state_display() -> void:
 	state_display_label.position = Vector2(-100, -150)
 	state_display_label.visible = false
 	root_node.add_child(state_display_label)
+
+func _setup_drag_arrow() -> void:
+	drag_arrow = DragArrow.new()
+	drag_arrow.name = "DragArrow"
+	root_node.add_child(drag_arrow)
 
 func show_state_message(message: String, duration: float = 1.0) -> void:
 	if state_display_label == null:
@@ -72,22 +87,75 @@ func _load_card_scene() -> void:
 	card_scene = load("res://scenes/Card.tscn")
 
 func update_hand_display(hand: Array) -> void:
-	_clear_hand()
+	last_hand = hand.duplicate()
+	var hand_size = hand.size()
+	if hand_size == 0:
+		_clear_hand()
+		return
 	
-	var card_width: int = 140
-	var card_spacing: int = 10
-	var container_width: float = hand_container.get_parent().size.x - hand_container.position.x - 50 if hand_container.get_parent() else 800.0
-	var total_width: int = hand.size() * card_width + maxi(0, hand.size() - 1) * card_spacing
-	var start_x: int = maxi(10, int((container_width - total_width) / 2))
+	var container_width: float = 800.0
+	if hand_container and hand_container.get_parent():
+		container_width = hand_container.get_parent().size.x - hand_container.position.x - 50
 	
-	for i in range(hand.size()):
+	var new_positions = {}
+	var new_rotations = {}
+	
+	for i in range(hand_size):
 		var card = hand[i]
-		var card_node = _create_card_node(card)
-		if card_node:
-			card_node.position = Vector2(start_x + i * (card_width + card_spacing), 10)
-			hand_container.add_child(card_node)
-			current_hand_cards[card] = card_node
-			_setup_card_interaction(card_node, card)
+		var card_data = HandLayoutPresets.get_card_position(i, hand_size, container_width)
+		new_positions[card] = card_data.position
+		new_rotations[card] = card_data.rotation
+	
+	for card in current_hand_cards.keys():
+		if not hand.has(card):
+			var node = current_hand_cards[card]
+			node.queue_free()
+			current_hand_cards.erase(card)
+	
+	for i in range(hand_size):
+		var card = hand[i]
+		var card_node: Control
+		
+		if current_hand_cards.has(card):
+			card_node = current_hand_cards[card]
+		else:
+			card_node = _create_card_node(card)
+			if card_node:
+				hand_container.add_child(card_node)
+				current_hand_cards[card] = card_node
+				_setup_card_interaction(card_node, card)
+		
+		if card_node and new_positions.has(card):
+			var target_pos = new_positions[card]
+			var target_rotation = new_rotations[card]
+			
+			var should_animate = true
+			if card_node.has_method("is_in_target_mode") and card_node.is_in_target_mode():
+				should_animate = false
+			if card_node.has_method("is_dragging_card") and card_node.is_dragging_card():
+				should_animate = false
+			
+			if should_animate:
+				_animate_card_to_position(card_node, target_pos, target_rotation)
+			
+			if card_node.has_method("set_original_position"):
+				card_node.call("set_original_position", target_pos)
+
+func _animate_card_to_position(card_node: Control, target_pos: Vector2, target_rotation: float) -> void:
+	var current_pos = card_node.position
+	var current_rotation = card_node.rotation_degrees
+	
+	if current_pos.distance_to(target_pos) < 1.0 and abs(current_rotation - target_rotation) < 0.5:
+		card_node.position = target_pos
+		card_node.rotation_degrees = target_rotation
+		return
+	
+	var tween = root_node.create_tween()
+	tween.set_parallel(true)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(card_node, "position", target_pos, 0.25)
+	tween.tween_property(card_node, "rotation_degrees", target_rotation, 0.25)
 
 func _clear_hand() -> void:
 	for card_node in current_hand_cards.values():
@@ -125,6 +193,18 @@ func _get_type_text(type: String) -> String:
 		_: return ""
 
 func _setup_card_interaction(card_node: Control, card: CardData) -> void:
+	if card_node.has_signal("drag_started"):
+		card_node.drag_started.connect(_on_card_drag_started.bind(card_node))
+		card_node.drag_updated.connect(_on_card_drag_updated)
+		card_node.drag_ended.connect(_on_card_drag_ended)
+	if card_node.has_signal("card_released"):
+		card_node.card_released.connect(_on_card_released.bind(card_node))
+	if card_node.has_signal("card_cancelled"):
+		card_node.card_cancelled.connect(_on_card_cancelled)
+	if card_node.has_signal("target_mode_started"):
+		card_node.target_mode_started.connect(_on_target_mode_started)
+	if card_node.has_signal("target_mode_ended"):
+		card_node.target_mode_ended.connect(_on_target_mode_ended)
 	if not card_node.has_method("setup"):
 		card_node.gui_input.connect(_on_card_gui_input.bind(card, card_node))
 
@@ -195,6 +275,14 @@ func _create_enemy_node(enemy: EnemyUnit) -> Control:
 func _on_enemy_ui_selected(enemy: EnemyUnit) -> void:
 	selected_target = enemy
 	enemy_selected.emit(enemy)
+	
+	if is_dragging and dragging_card:
+		card_dropped.emit(dragging_card, enemy)
+		is_dragging = false
+		drag_arrow.hide_arrow()
+		clear_target_highlights()
+		dragging_card = null
+		drag_card_node = null
 
 func _on_enemy_gui_input(event: InputEvent, enemy: EnemyUnit) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -348,3 +436,117 @@ func play_card_animation(card: CardData, card_node: Control, target = null) -> v
 	
 	if card_node.has_method("play_play_animation"):
 		card_node.play_play_animation(target_pos)
+
+func _on_card_drag_started(card: CardData, start_pos: Vector2, card_node: Control) -> void:
+	is_dragging = true
+	dragging_card = card
+	drag_card_node = card_node
+	
+	highlight_valid_targets(card)
+	drag_arrow.show_arrow()
+	
+	card_drag_started.emit(card)
+
+func _on_card_drag_updated(card: CardData, current_pos: Vector2) -> void:
+	if not is_dragging or drag_card_node == null:
+		return
+	
+	var card_center = drag_card_node.global_position + drag_card_node.size / 2
+	drag_arrow.set_points(card_center, current_pos)
+	
+	var hover_target = _get_target_at_position(current_pos)
+	_update_hover_highlight(hover_target)
+
+func _on_card_drag_ended(card: CardData, end_pos: Vector2) -> void:
+	if not is_dragging:
+		return
+	
+	var card_node = current_hand_cards.get(card)
+	
+	var target = _get_target_at_position(end_pos)
+	
+	if target:
+		card_dropped.emit(card, target)
+		is_dragging = false
+		drag_arrow.hide_arrow()
+		clear_target_highlights()
+		dragging_card = null
+		drag_card_node = null
+	else:
+		if card_node and card_node.has_method("is_in_target_mode") and card_node.is_in_target_mode():
+			pass
+		else:
+			if card_node and card_node.has_method("reset_position"):
+				card_node.reset_position()
+			is_dragging = false
+			drag_arrow.hide_arrow()
+			clear_target_highlights()
+			dragging_card = null
+			drag_card_node = null
+			ensure_cards_layout_state()
+			show_state_message("请选择有效目标", 0.5)
+
+func _get_target_at_position(pos: Vector2):
+	for enemy in current_enemy_nodes:
+		var enemy_node = current_enemy_nodes[enemy]
+		var rect = Rect2(enemy_node.global_position, enemy_node.size)
+		if rect.has_point(pos):
+			return enemy
+	
+	if player_area:
+		var player_rect = Rect2(player_area.global_position, player_area.size)
+		if player_rect.has_point(pos):
+			return player_manager
+	
+	return null
+
+func _update_hover_highlight(hover_target) -> void:
+	for enemy in current_enemy_nodes:
+		var enemy_node = current_enemy_nodes[enemy]
+		if enemy_node.has_method("set_highlight_for_target"):
+			enemy_node.set_highlight_for_target(enemy == hover_target)
+	
+	if player_area and player_area.has_method("set_highlight_for_target"):
+		player_area.set_highlight_for_target(hover_target == player_manager)
+
+func _on_card_released(card: CardData, card_node: Control) -> void:
+	card_released.emit(card, card_node)
+
+func _on_card_cancelled(card: CardData) -> void:
+	if is_dragging:
+		is_dragging = false
+		drag_arrow.hide_arrow()
+		clear_target_highlights()
+		dragging_card = null
+		drag_card_node = null
+	
+	card_cancelled.emit(card)
+	ensure_cards_layout_state()
+
+func _on_target_mode_started(card: CardData) -> void:
+	is_dragging = true
+	dragging_card = card
+	drag_card_node = current_hand_cards.get(card)
+	
+	highlight_valid_targets(card)
+	drag_arrow.show_arrow()
+	
+	target_mode_requested.emit(card)
+
+func _on_target_mode_ended(_card: CardData) -> void:
+	is_dragging = false
+	drag_arrow.hide_arrow()
+	clear_target_highlights()
+	dragging_card = null
+	drag_card_node = null
+	
+	ensure_cards_layout_state()
+
+func ensure_cards_layout_state() -> void:
+	for card in current_hand_cards:
+		var card_node = current_hand_cards[card]
+		if card_node and card_node.has_method("restore_to_layout_state"):
+			card_node.restore_to_layout_state()
+	
+	if last_hand.size() > 0:
+		update_hand_display(last_hand)

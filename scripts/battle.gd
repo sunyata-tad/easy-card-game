@@ -17,27 +17,26 @@ func _setup_exit_button():
 		exit_button.pressed.connect(_on_exit_pressed)
 
 func receive_data(data: Dictionary) -> void:
-	character_stats = data.get("character_stats", {})
-	
 	if not is_initialized:
 		is_initialized = true
-		_initialize_battle()
+		_initialize_battle(data)
 
-func _initialize_battle():
+func _initialize_battle(data: Dictionary = {}):
 	battle_controller = BattleController.new()
 	battle_controller.battle_ended.connect(_on_battle_ended)
 	battle_controller.turn_changed.connect(_on_turn_changed)
 	
-	var enemies_data: Array = []
+	var enemies_data: Array = data.get("enemies", [])
 	var deck_data: Array = []
 	
 	if GameData:
-		var enemy = GameData.get_random_enemy_for_battle()
-		if enemy:
-			enemies_data = [enemy]
+		if enemies_data.is_empty():
+			var enemy = GameData.get_random_enemy_for_battle()
+			if enemy:
+				enemies_data = [enemy]
 		deck_data = GameData.get_deck()
 	
-	battle_controller.setup_battle(self, deck_data, enemies_data, character_stats)
+	battle_controller.setup_battle(self, deck_data, enemies_data)
 	battle_controller.start_battle()
 
 func _on_exit_pressed():

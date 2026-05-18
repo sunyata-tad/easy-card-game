@@ -98,6 +98,8 @@ func _serialize_game_data() -> Dictionary:
 		"player_deck": deck_data,
 		"player_max_hp": GameData.player_max_hp,
 		"player_current_hp": GameData.player_current_hp,
+		"player_strength": GameData.player_strength,
+		"player_dexterity": GameData.player_dexterity,
 		"gold": GameData.gold,
 		"battles_won": GameData.battles_won,
 		"total_damage_dealt": GameData.total_damage_dealt,
@@ -112,6 +114,8 @@ func apply_game_data(data: Dictionary) -> void:
 	
 	GameData.player_max_hp = game_data.get("player_max_hp", 80)
 	GameData.player_current_hp = game_data.get("player_current_hp", 80)
+	GameData.player_strength = game_data.get("player_strength", 0)
+	GameData.player_dexterity = game_data.get("player_dexterity", 0)
 	GameData.gold = game_data.get("gold", 0)
 	GameData.battles_won = game_data.get("battles_won", 0)
 	GameData.total_damage_dealt = game_data.get("total_damage_dealt", 0)
@@ -142,9 +146,12 @@ func apply_game_data(data: Dictionary) -> void:
 			GameData.player_deck.append(card)
 			print("加载卡牌: %s, is_upgraded=%s, effects=%s, tags=%s" % [card.name, str(card.is_upgraded), str(card.effects), str(card.tags)])
 	
+	print("加载角色属性: HP=%d/%d, 力量=%d, 敏捷=%d" % [GameData.player_current_hp, GameData.player_max_hp, GameData.player_strength, GameData.player_dexterity])
+	
 	GameData.deck_changed.emit(GameData.player_deck)
 	GameData.hp_changed.emit(GameData.player_current_hp, GameData.player_max_hp)
 	GameData.gold_changed.emit(GameData.gold)
+	GameData.stats_changed.emit(GameData.player_strength, GameData.player_dexterity)
 
 func save_before_battle_exit() -> bool:
 	return save_game(GameProgress.IN_BATTLE, {"was_in_battle": true})
