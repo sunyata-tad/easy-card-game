@@ -10,26 +10,28 @@ var player_area: Node
 var end_turn_button: Button
 var deck_info_node: Node
 var state_display_label: Label = null
+var target_button: Button = null
+var target_marker: Control = null
 
 var drag_arrow: DragArrow = null
 var is_dragging: bool = false
 var dragging_card: CardData = null
 var drag_card_node: Control = null
 var last_hand: Array = []
+var is_selecting_target: bool = false
 
 var current_hand_cards: Dictionary = {}
 var current_enemy_nodes: Dictionary = {}
-var selected_card: CardData = null
 var selected_target = null
+var current_target_index: int = 0
 
 signal card_clicked(card: CardData, card_node: Control)
 signal card_released(card: CardData, card_node: Control)
 signal card_cancelled(card: CardData)
-signal card_drag_started(card: CardData)
 signal card_dropped(card: CardData, target)
-signal target_mode_requested(card: CardData)
 signal enemy_selected(enemy: EnemyUnit)
 signal end_turn_clicked()
+signal attack_target_selected(enemy: EnemyUnit)
 
 func _init(root: Control):
 	root_node = root
@@ -38,6 +40,8 @@ func _init(root: Control):
 	_load_card_scene()
 	_setup_state_display()
 	_setup_drag_arrow()
+	_setup_target_button()
+	_setup_target_marker()
 
 func _setup_state_display() -> void:
 	state_display_label = Label.new()
@@ -55,6 +59,98 @@ func _setup_drag_arrow() -> void:
 	drag_arrow = DragArrow.new()
 	drag_arrow.name = "DragArrow"
 	root_node.add_child(drag_arrow)
+
+func _setup_target_button() -> void:
+	if end_turn_button == null:
+		return
+	
+	target_button = Button.new()
+	target_button.name = "TargetButton"
+	target_button.text = "攻击目标"
+	target_button.custom_minimum_size = Vector2(120, 40)
+	
+	var button_pos = end_turn_button.position
+	target_button.position = Vector2(button_pos.x, button_pos.y - 50)
+	
+	target_button.pressed.connect(_on_target_button_pressed)
+	root_node.add_child(target_button)
+
+func _setup_target_marker() -> void:
+	target_marker = Control.new()
+	target_marker.name = "TargetMarker"
+	target_marker.set_script(load("res://scripts/ui/target_marker.gd"))
+	root_node.add_child(target_marker)
+
+func _on_target_button_pressed() -> void:
+	if is_selecting_target:
+		cancel_target_selection()
+	else:
+		start_target_selection()
+
+func start_target_selection() -> void:
+	is_selecting_target = true
+	highlight_all_enemies()
+	drag_arrow.show_arrow()
+	
+	if target_button:
+		target_button.text = "取消选择"
+	
+	show_state_message("请选择攻击目标", 1.0)
+
+func cancel_target_selection() -> void:
+	is_selecting_target = false
+	clear_target_highlights()
+	drag_arrow.hide_arrow()
+	
+	if target_button:
+		target_button.text = "攻击目标"
+	
+	show_state_message("已取消", 0.5)
+
+func highlight_all_enemies() -> void:
+	for enemy in current_enemy_nodes:
+		var enemy_node = current_enemy_nodes[enemy]
+		if enemy_node.has_method("set_highlight_for_target"):
+			enemy_node.set_highlight_for_target(true)
+
+func select_attack_target(enemy: EnemyUnit) -> void:
+	if not is_selecting_target:
+		return
+	
+	var index = 0
+	var enemies = current_enemy_nodes.keys()
+	for i in range(enemies.size()):
+		if enemies[i] == enemy:
+			index = i
+			break
+	
+	current_target_index = index
+	if player_manager:
+		player_manager.set_selected_target(index)
+	
+	is_selecting_target = false
+	clear_target_highlights()
+	drag_arrow.hide_arrow()
+	
+	if target_button:
+		target_button.text = "攻击目标"
+	
+	update_target_marker(enemy)
+	attack_target_selected.emit(enemy)
+	show_state_message("已选择目标", 0.5)
+
+func update_target_marker(enemy: EnemyUnit) -> void:
+	if target_marker == null:
+		return
+	
+	var enemy_node = current_enemy_nodes.get(enemy)
+	if enemy_node:
+		if target_marker.has_method("set_target"):
+			target_marker.call("set_target", enemy_node)
+
+func clear_target_marker() -> void:
+	if target_marker and target_marker.has_method("clear"):
+		target_marker.call("clear")
 
 func show_state_message(message: String, duration: float = 1.0) -> void:
 	if state_display_label == null:
@@ -210,11 +306,9 @@ func _setup_card_interaction(card_node: Control, card: CardData) -> void:
 
 func _on_card_gui_input(event: InputEvent, card: CardData, card_node: Control) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		selected_card = card
 		card_clicked.emit(card, card_node)
 
 func _on_card_ui_clicked(card: CardData) -> void:
-	selected_card = card
 	card_clicked.emit(card, null)
 
 func update_enemy_display(enemies: Array) -> void:
@@ -228,6 +322,13 @@ func update_enemy_display(enemies: Array) -> void:
 		if enemy_node:
 			enemy_container.add_child(enemy_node)
 			current_enemy_nodes[enemy] = enemy_node
+	
+	if current_target_index >= enemies.size():
+		current_target_index = 0
+	
+	if enemies.size() > 0 and current_target_index < enemies.size():
+		var target_enemy = enemies[current_target_index]
+		update_target_marker(target_enemy)
 
 func _clear_enemies() -> void:
 	for enemy_node in current_enemy_nodes.values():
@@ -275,6 +376,10 @@ func _create_enemy_node(enemy: EnemyUnit) -> Control:
 func _on_enemy_ui_selected(enemy: EnemyUnit) -> void:
 	selected_target = enemy
 	enemy_selected.emit(enemy)
+	
+	if is_selecting_target:
+		select_attack_target(enemy)
+		return
 	
 	if is_dragging and dragging_card:
 		card_dropped.emit(dragging_card, enemy)
@@ -444,8 +549,6 @@ func _on_card_drag_started(card: CardData, start_pos: Vector2, card_node: Contro
 	
 	highlight_valid_targets(card)
 	drag_arrow.show_arrow()
-	
-	card_drag_started.emit(card)
 
 func _on_card_drag_updated(card: CardData, current_pos: Vector2) -> void:
 	if not is_dragging or drag_card_node == null:
@@ -530,8 +633,6 @@ func _on_target_mode_started(card: CardData) -> void:
 	
 	highlight_valid_targets(card)
 	drag_arrow.show_arrow()
-	
-	target_mode_requested.emit(card)
 
 func _on_target_mode_ended(_card: CardData) -> void:
 	is_dragging = false

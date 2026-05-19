@@ -84,6 +84,14 @@ func _get_display_text() -> String:
 	
 	for effect in card_data.effects:
 		var effect_type = effect.get("effect_type", "")
+		var value = effect.get("value", 0)
+		
+		if effect_type == "temp_damage_boost":
+			return "本回合伤害+%d" % value
+		
+		if effect_type == "damage_boost":
+			return "伤害永久+%d" % value
+		
 		var base_stat = effect.get("base_stat", "")
 		var multiplier = effect.get("multiplier", 1.0)
 		

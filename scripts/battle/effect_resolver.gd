@@ -1,21 +1,5 @@
 class_name EffectResolver
 
-enum EffectType {
-	DAMAGE,
-	BLOCK,
-	HEAL,
-	DRAW,
-	SEARCH_DRAW_PILE,
-	SEARCH_DISCARD_PILE,
-	APPLY_BUFF,
-	APPLY_DEBUFF,
-	ADD_CARD_TO_HAND,
-	DISCARD_HAND,
-	EXHAUST_CARD,
-	GAIN_ENERGY,
-	LOSE_HP
-}
-
 var card_database: CardDatabase
 var buff_database
 
@@ -61,6 +45,10 @@ func resolve_effect(effect: Dictionary, source, target = null) -> Dictionary:
 			result = _resolve_block(value, source, target)
 		"heal":
 			result = _resolve_heal(value, source, target)
+		"damage_boost":
+			result = _resolve_damage_boost(value, source)
+		"temp_damage_boost":
+			result = _resolve_temp_damage_boost(value, source)
 		"draw":
 			result = _resolve_draw(value, source)
 		"search_draw":
@@ -77,10 +65,8 @@ func resolve_effect(effect: Dictionary, source, target = null) -> Dictionary:
 			result = _resolve_discard_random(value, source)
 		"shuffle_discard_to_draw":
 			result = _resolve_shuffle_discard_to_draw(source)
-		"apply_buff":
+		"apply_buff", "apply_debuff":
 			result = _resolve_apply_buff(effect, target)
-		"apply_debuff":
-			result = _resolve_apply_debuff(effect, target)
 		"add_card_to_hand":
 			result = _resolve_add_card(effect, source)
 	
@@ -148,6 +134,19 @@ func _resolve_heal(base_heal: int, source, target) -> Dictionary:
 	
 	return {"success": false, "value": 0}
 
+func _resolve_damage_boost(value: int, source) -> Dictionary:
+	if source is PlayerManager:
+		source.strength += value
+		return {"success": true, "value": value, "new_strength": source.strength}
+	return {"success": false, "value": 0}
+
+func _resolve_temp_damage_boost(value: int, source) -> Dictionary:
+	if source is PlayerManager:
+		source.add_temp_damage_bonus(value)
+		var total = source.get_total_damage()
+		return {"success": true, "value": value, "total_damage": total}
+	return {"success": false, "value": 0}
+
 func _resolve_draw(count: int, source) -> Dictionary:
 	if source.has_method("get") and source.get("card_system"):
 		var card_system = source.card_system
@@ -205,9 +204,6 @@ func _resolve_apply_buff(effect: Dictionary, target) -> Dictionary:
 		return {"success": true, "value": stacks, "buff": buff_data}
 	
 	return {"success": false, "value": 0}
-
-func _resolve_apply_debuff(effect: Dictionary, target) -> Dictionary:
-	return _resolve_apply_buff(effect, target)
 
 func _resolve_add_card(effect: Dictionary, source) -> Dictionary:
 	var card_id = effect.get("card_id", "")

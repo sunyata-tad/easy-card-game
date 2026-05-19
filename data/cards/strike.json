@@ -2,30 +2,24 @@
 	"id": "strike",
 	"name": "打击",
 	"type": "attack",
-	"description": "造成力量×1点伤害",
+	"description": "本回合伤害增加5点",
 	"rarity": "basic",
-	"target_type": "single_enemy",
+	"target_type": "self",
 	"tags": ["Attack", "Strike", "Basic"],
 	"treated_as": [],
 	"effects": [
 		{
-			"effect_type": "damage",
-			"value": 0,
-			"scaling_key": "damage",
-			"base_stat": "strength",
-			"multiplier": 1.0
+			"effect_type": "temp_damage_boost",
+			"value": 5
 		}
 	],
 	"upgrade": {
 		"name": "打击+",
-		"description": "造成力量×1.5点伤害",
+		"description": "本回合伤害增加8点",
 		"effects": [
 			{
-				"effect_type": "damage",
-				"value": 0,
-				"scaling_key": "damage",
-				"base_stat": "strength",
-				"multiplier": 1.5
+				"effect_type": "temp_damage_boost",
+				"value": 8
 			}
 		]
 	}

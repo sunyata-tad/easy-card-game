@@ -6,12 +6,15 @@ var block: int = 0
 var buff_manager: BuffManager
 var strength: int = 0
 var dexterity: int = 0
+var temp_damage_bonus: int = 0
+var selected_target_index: int = 0
 
 signal hp_changed(current: int, maximum: int)
 signal block_changed(amount: int)
 signal player_died()
 signal player_damaged(amount: int)
 signal player_healed(amount: int)
+signal target_selected(index: int)
 
 func _init(initial_max_hp: int = 80):
 	max_hp = initial_max_hp
@@ -20,7 +23,20 @@ func _init(initial_max_hp: int = 80):
 	_connect_buff_signals()
 
 func _connect_buff_signals() -> void:
-	buff_manager.buffs_changed.connect(_on_buffs_changed)
+	pass
+
+func get_total_damage() -> int:
+	return strength + temp_damage_bonus
+
+func add_temp_damage_bonus(amount: int) -> void:
+	temp_damage_bonus += amount
+
+func reset_temp_damage_bonus() -> void:
+	temp_damage_bonus = 0
+
+func set_selected_target(index: int) -> void:
+	selected_target_index = index
+	target_selected.emit(index)
 
 func take_damage(amount: int) -> int:
 	if amount <= 0:
@@ -90,6 +106,3 @@ func get_hp_percent() -> float:
 
 func apply_buff(buff: BuffData) -> void:
 	buff_manager.apply_buff(buff)
-
-func _on_buffs_changed() -> void:
-	pass

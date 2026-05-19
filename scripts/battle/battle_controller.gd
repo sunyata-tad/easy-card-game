@@ -33,11 +33,9 @@ func _initialize_systems() -> void:
 	enemy_database = EnemyDatabase.new()
 
 func _connect_signals() -> void:
-	state_machine.state_changed.connect(_on_state_changed)
 	state_machine.state_enter.connect(_on_state_enter)
 	
 	turn_manager.player_turn_start.connect(_on_player_turn_start)
-	turn_manager.enemy_turn_start.connect(_on_enemy_turn_start)
 	
 	card_system.card_played.connect(_on_card_played)
 	card_system.hand_changed.connect(_on_hand_changed)
@@ -95,8 +93,14 @@ func _connect_ui_signals() -> void:
 	ui_controller.enemy_selected.connect(_on_ui_enemy_selected)
 	ui_controller.end_turn_clicked.connect(_on_ui_end_turn_clicked)
 
-func _on_state_changed(new_state: int, old_state: int) -> void:
-	pass
+func _check_battle_end_state() -> bool:
+	if enemy_system.is_all_defeated():
+		state_machine.change_state(StateMachine.BattleState.VICTORY)
+		return true
+	elif not player_manager.is_alive():
+		state_machine.change_state(StateMachine.BattleState.DEFEAT)
+		return true
+	return false
 
 func _on_state_enter(state: int) -> void:
 	match state:
@@ -120,16 +124,15 @@ func _on_battle_init() -> void:
 	ui_controller.show_state_message("战斗开始!", 1.0)
 
 func _on_draw_phase() -> void:
+	player_manager.reset_block()
+	enemy_system.reset_all_block()
+	
 	card_system.draw_cards(5)
 	ui_controller.show_state_message("回合开始", 0.6)
 	turn_changed.emit(true)
 	_decide_all_enemy_intents()
 	
-	if enemy_system.is_all_defeated():
-		state_machine.change_state(StateMachine.BattleState.VICTORY)
-	elif not player_manager.is_alive():
-		state_machine.change_state(StateMachine.BattleState.DEFEAT)
-	else:
+	if not _check_battle_end_state():
 		turn_manager.start_new_turn(true)
 		state_machine.change_state(StateMachine.BattleState.PLAYER_TURN)
 
@@ -141,17 +144,13 @@ func _on_enemy_turn_phase() -> void:
 	ui_controller.show_state_message("敌人回合", 0.8)
 	turn_manager.start_new_turn(false)
 	turn_changed.emit(false)
-	_execute_enemy_turns()
+	await _execute_enemy_turns()
 
 func _on_turn_end_phase() -> void:
-	_process_turn_end_effects()
+	await _process_turn_end_effects()
 	turn_manager.end_current_turn()
 	
-	if enemy_system.is_all_defeated():
-		state_machine.change_state(StateMachine.BattleState.VICTORY)
-	elif not player_manager.is_alive():
-		state_machine.change_state(StateMachine.BattleState.DEFEAT)
-	else:
+	if not _check_battle_end_state():
 		state_machine.change_state(StateMachine.BattleState.DRAW_PHASE)
 
 func _on_victory() -> void:
@@ -171,21 +170,58 @@ func sync_player_stats_to_gamedata() -> void:
 		print("同步角色属性到GameData: HP=%d/%d, 力量=%d, 敏捷=%d" % [GameData.player_current_hp, GameData.player_max_hp, GameData.player_strength, GameData.player_dexterity])
 
 func _process_turn_end_effects() -> void:
-	player_manager.reset_block()
-	enemy_system.reset_all_block()
+	await _execute_player_auto_attack()
+	
+	if _check_battle_end_state():
+		return
+	
+	await _execute_enemy_attacks()
+	
+	player_manager.reset_temp_damage_bonus()
+
+func _execute_enemy_attacks() -> void:
+	print("[DEBUG] 敌方攻击前玩家护甲: block=%d" % player_manager.block)
+	var alive_enemies = enemy_system.get_alive_enemies()
+	
+	for enemy in alive_enemies:
+		_execute_single_enemy_turn(enemy)
+		await get_tree().create_timer(0.3).timeout
+
+func _execute_player_auto_attack() -> void:
+	var total_damage = player_manager.get_total_damage()
+	var dexterity = player_manager.dexterity
+	
+	print("[DEBUG] 回合结束: 敏捷=%d, 力量=%d, 临时伤害=%d, 总伤害=%d" % [dexterity, player_manager.strength, player_manager.temp_damage_bonus, total_damage])
+	
+	if dexterity > 0:
+		print("[DEBUG] 获得护甲前: block=%d" % player_manager.block)
+		player_manager.gain_block(dexterity)
+		print("[DEBUG] 获得护甲后: block=%d" % player_manager.block)
+		ui_controller.show_state_message("获得 %d 护甲" % dexterity, 0.3)
+		_update_player_ui()
+		await get_tree().create_timer(0.2).timeout
+	
+	if total_damage > 0:
+		var alive_enemies = enemy_system.get_alive_enemies()
+		var target_index = player_manager.selected_target_index
+		
+		if target_index >= alive_enemies.size():
+			target_index = 0
+		
+		if alive_enemies.size() > 0 and target_index < alive_enemies.size():
+			var target_enemy = alive_enemies[target_index]
+			target_enemy.take_damage(total_damage)
+			ui_controller.update_single_enemy(target_enemy)
+			ui_controller.show_damage_number(target_enemy, total_damage)
+			ui_controller.show_state_message("对目标造成 %d 伤害" % total_damage, 0.3)
+			await get_tree().create_timer(0.2).timeout
 
 func _decide_all_enemy_intents() -> void:
 	for enemy in enemy_system.get_alive_enemies():
 		enemy.decide_next_intent()
 
 func _execute_enemy_turns() -> void:
-	var alive_enemies = enemy_system.get_alive_enemies()
-	
-	for enemy in alive_enemies:
-		_execute_single_enemy_turn(enemy)
-	
-	await get_tree().create_timer(0.5).timeout
-	
+	await get_tree().create_timer(0.3).timeout
 	state_machine.change_state(StateMachine.BattleState.TURN_END)
 
 func _execute_single_enemy_turn(enemy: EnemyUnit) -> void:
@@ -235,9 +271,6 @@ func _apply_tick_effect(target, effect: Dictionary) -> void:
 			elif target is EnemyUnit:
 				target.heal(value * stacks)
 
-func _on_enemy_turn_start() -> void:
-	pass
-
 func play_card(card: CardData, target = null) -> bool:
 	if not state_machine.is_player_turn():
 		return false
@@ -262,11 +295,7 @@ func play_card(card: CardData, target = null) -> bool:
 	if not state_machine.is_battle_active():
 		return true
 	
-	if enemy_system.is_all_defeated():
-		state_machine.change_state(StateMachine.BattleState.VICTORY)
-	elif not player_manager.is_alive():
-		state_machine.change_state(StateMachine.BattleState.DEFEAT)
-	else:
+	if not _check_battle_end_state():
 		state_machine.change_state(StateMachine.BattleState.PLAYER_TURN)
 	
 	return true
