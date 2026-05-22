@@ -14,8 +14,8 @@ func _setup_exit_button():
 		exit_button.pressed.connect(_on_exit_pressed)
 
 func _on_exit_pressed():
-	SaveManager.save_game(SaveManager.GameProgress.IN_REWARD)
-	GameManager.go_to_main_menu()
+	SaveManager.save_map_state()
+	GameManager.go_to_map("test_map")
 
 func _setup_ui():
 	if title_label:
@@ -219,10 +219,5 @@ func _on_card_upgrade_selected(card_index: int):
 
 func _continue_to_next_battle():
 	GameData.record_battle_won()
-	SaveManager.save_at_reward_screen()
-	
-	var enemy = GameData.get_random_enemy_for_battle()
-	if enemy:
-		GameManager.start_battle([enemy])
-	else:
-		GameManager.go_to_game_over(GameData.get_battle_stats())
+	SaveManager.save_map_state()
+	GameManager.go_to_map("test_map")

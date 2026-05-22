@@ -4,8 +4,8 @@ enum GameScene {
 	MAIN_MENU,
 	CHARACTER_SELECT,
 	CHARACTER_CREATION,
+	MAP,
 	BATTLE,
-	REWARD,
 	GAME_OVER
 }
 
@@ -13,8 +13,8 @@ const SCENES := {
 	GameScene.MAIN_MENU: "res://scenes/start.tscn",
 	GameScene.CHARACTER_SELECT: "res://scenes/CharacterSelectScreen.tscn",
 	GameScene.CHARACTER_CREATION: "res://scenes/CharacterCreationScreen.tscn",
+	GameScene.MAP: "res://scenes/MapScreen.tscn",
 	GameScene.BATTLE: "res://scenes/BattleScene.tscn",
-	GameScene.REWARD: "res://scenes/RewardScreen.tscn",
 	GameScene.GAME_OVER: "res://scenes/GameOverScreen.tscn"
 }
 
@@ -68,6 +68,12 @@ func go_to_character_select() -> void:
 func go_to_character_creation() -> void:
 	change_scene(GameScene.CHARACTER_CREATION)
 
+func go_to_map(map_id: String = "test_map", map_state: Dictionary = {}) -> void:
+	var data: Dictionary = {"map_id": map_id}
+	if not map_state.is_empty():
+		data["map_state"] = map_state
+	change_scene(GameScene.MAP, data)
+
 func start_battle(enemies: Array = []) -> void:
 	var data = {"enemies": enemies}
 	change_scene(GameScene.BATTLE, data)
@@ -75,13 +81,7 @@ func start_battle(enemies: Array = []) -> void:
 
 func end_battle(victory: bool, battle_stats: Dictionary = {}) -> void:
 	battle_ended.emit(victory)
-	
-	if victory:
-		var data = {"stats": battle_stats}
-		change_scene(GameScene.REWARD, data)
-	else:
-		var data = {"stats": battle_stats}
-		change_scene(GameScene.GAME_OVER, data)
+	go_to_map("test_map")
 
 func go_to_game_over(stats: Dictionary = {}) -> void:
 	var data = {"stats": stats}

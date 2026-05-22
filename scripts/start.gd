@@ -66,24 +66,25 @@ func _on_continue_pressed() -> void:
 	
 	SaveManager.apply_game_data(save_data)
 	
-	var progress = int(save_data.get("progress", SaveManager.GameProgress.IN_BATTLE))
-	print("继续游戏，存档进度: %d (IN_REWARD=%d)" % [progress, SaveManager.GameProgress.IN_REWARD])
+	var progress = int(save_data.get("progress", SaveManager.GameProgress.IN_MAP))
+	var map_id = save_data.get("map_id", "test_map")
+	var map_state = save_data.get("map_state", {})
+	var enemy_id = save_data.get("enemy_id", "")
 	
 	match progress:
+		SaveManager.GameProgress.IN_MAP:
+			GameManager.go_to_map(map_id, map_state)
 		SaveManager.GameProgress.IN_BATTLE:
-			var enemy = GameData.get_random_enemy_for_battle()
+			var enemy_db = EnemyDatabase.new()
+			var enemy = enemy_db.get_enemy(enemy_id) if not enemy_id.is_empty() else null
 			if enemy:
 				GameManager.start_battle([enemy])
-		SaveManager.GameProgress.IN_REWARD:
-			var additional = save_data.get("additional", {})
-			var battle_stats = additional.get("battle_stats", {})
-			GameManager.change_scene(GameManager.GameScene.REWARD, {"stats": battle_stats})
+			else:
+				GameManager.go_to_map(map_id, map_state)
 		SaveManager.GameProgress.GAME_OVER:
 			GameManager.go_to_game_over(GameData.get_battle_stats())
 		_:
-			var enemy = GameData.get_random_enemy_for_battle()
-			if enemy:
-				GameManager.start_battle([enemy])
+			GameManager.go_to_map(map_id, map_state)
 
 func _on_exit_pressed() -> void:
 	get_tree().quit()

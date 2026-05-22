@@ -1,0 +1,152 @@
+{
+	"id": "test_map",
+	"name": "测试场",
+	"start_location": "test_entrance",
+	"locations": {
+		"test_entrance": {
+			"id": "test_entrance",
+			"name": "入口大厅",
+			"description": "一个宽敞的大厅，四周散发着微弱的光芒。中央有一个测试人偶台。",
+			"connections": {
+				"north": "test_arena",
+				"east": "test_storage"
+			},
+			"interactables": ["test_dummy_stand", "entrance_sign"]
+		},
+		"test_arena": {
+			"id": "test_arena",
+			"name": "战斗竞技场",
+			"description": "一个圆形的竞技场，地面刻满了神秘的符文。这里是进行战斗测试的地方。",
+			"connections": {
+				"south": "test_entrance",
+				"east": "test_reward_room"
+			},
+			"interactables": ["arena_dummy", "healing_shrine"]
+		},
+		"test_storage": {
+			"id": "test_storage",
+			"name": "储物室",
+			"description": "堆满了各种测试道具的房间。",
+			"connections": {
+				"west": "test_entrance",
+				"north": "test_reward_room"
+			},
+			"interactables": ["storage_box", "item_shelf"]
+		},
+		"test_reward_room": {
+			"id": "test_reward_room",
+			"name": "奖励房间",
+			"description": "一个装饰华丽的房间，据说这里有宝藏。",
+			"connections": {
+				"west": "test_arena",
+				"south": "test_storage"
+			},
+			"interactables": ["treasure_chest", "mysterious_portal"]
+		}
+	},
+	"interactables": {
+		"test_dummy_stand": {
+			"id": "test_dummy_stand",
+			"name": "测试人偶台",
+			"description": "一个台座，上面写着：点击可与测试人偶战斗",
+			"type": "battle_trigger",
+			"enemy_id": "test_dummy",
+			"states": {
+				"default": {
+					"interactions": ["战斗"]
+				}
+			}
+		},
+		"entrance_sign": {
+			"id": "entrance_sign",
+			"name": "告示牌",
+			"description": "欢迎来到测试场！这里可以测试各种游戏机制。",
+			"type": "info",
+			"states": {
+				"default": {
+					"interactions": ["阅读"]
+				}
+			}
+		},
+		"arena_dummy": {
+			"id": "arena_dummy",
+			"name": "竞技场人偶",
+			"description": "一个更强大的测试人偶，闪烁着红色的光芒。",
+			"type": "battle_trigger",
+			"enemy_id": "test_dummy",
+			"states": {
+				"default": {
+					"interactions": ["战斗"]
+				}
+			}
+		},
+		"healing_shrine": {
+			"id": "healing_shrine",
+			"name": "治愈神龛",
+			"description": "一个散发绿色光芒的神龛，可以恢复生命值。",
+			"type": "heal",
+			"heal_amount": 20,
+			"states": {
+				"default": {
+					"interactions": ["治愈", "祈祷"]
+				}
+			}
+		},
+		"storage_box": {
+			"id": "storage_box",
+			"name": "储物箱",
+			"description": "一个破旧的木箱，也许里面有东西。",
+			"type": "container",
+			"default_state": "closed",
+			"states": {
+				"closed": {
+					"description": "一个破旧的木箱，锁得很紧。",
+					"interactions": ["打开", "检查"]
+				},
+				"opened": {
+					"description": "一个打开的空箱子。",
+					"interactions": ["检查"]
+				}
+			}
+		},
+		"item_shelf": {
+			"id": "item_shelf",
+			"name": "道具架",
+			"description": "上面摆放着各种测试道具。",
+			"type": "info",
+			"states": {
+				"default": {
+					"interactions": ["查看", "整理"]
+				}
+			}
+		},
+		"treasure_chest": {
+			"id": "treasure_chest",
+			"name": "宝箱",
+			"description": "一个华丽的金色宝箱！",
+			"type": "container",
+			"default_state": "closed",
+			"states": {
+				"closed": {
+					"description": "一个华丽的金色宝箱，似乎藏着宝藏。",
+					"interactions": ["打开", "检查"]
+				},
+				"opened": {
+					"description": "一个打开的宝箱，里面空空如也。",
+					"interactions": ["检查"]
+				}
+			}
+		},
+		"mysterious_portal": {
+			"id": "mysterious_portal",
+			"name": "神秘传送门",
+			"description": "一个旋转的紫色传送门，不知道通向哪里。",
+			"type": "portal",
+			"states": {
+				"default": {
+					"interactions": ["进入", "观察"]
+				}
+			}
+		}
+	}
+}

@@ -61,8 +61,8 @@ func _on_exit_confirmed():
 	_save_and_exit()
 
 func _save_and_exit():
-	SaveManager.save_before_battle_exit()
-	GameManager.go_to_main_menu()
+	SaveManager.save_map_state()
+	GameManager.go_to_map("test_map")
 
 func _on_battle_ended(victory: bool):
 	battle_stats.victory = victory
@@ -71,8 +71,8 @@ func _on_battle_ended(victory: bool):
 		await get_tree().create_timer(0.5).timeout
 		if GameData:
 			GameData.record_battle_won()
-			SaveManager.save_game(SaveManager.GameProgress.IN_REWARD, {"battle_stats": battle_stats})
-			GameManager.end_battle(true, battle_stats)
+			SaveManager.save_map_state()
+			GameManager.go_to_map("test_map")
 		else:
 			_show_victory_screen()
 	else:
@@ -81,7 +81,7 @@ func _on_battle_ended(victory: bool):
 			var stats = GameData.get_battle_stats()
 			stats.victory = false
 			SaveManager.save_game_over()
-			GameManager.end_battle(false, stats)
+			GameManager.go_to_game_over(stats)
 		else:
 			_show_defeat_screen()
 
@@ -127,8 +127,9 @@ func _show_defeat_screen():
 
 func _on_continue_pressed():
 	if GameData:
-		SaveManager.save_at_reward_screen()
-		GameManager.end_battle(true, battle_stats)
+		GameData.record_battle_won()
+		SaveManager.save_map_state()
+		GameManager.go_to_map("test_map")
 
 func _on_retry_pressed():
 	if GameData:

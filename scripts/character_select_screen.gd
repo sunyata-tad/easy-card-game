@@ -163,9 +163,7 @@ func _on_character_selected(character: CharacterData):
 	
 	print("选择角色: HP=%d, 力量=%d, 敏捷=%d" % [max_hp, strength, dexterity])
 	
-	var enemy = GameData.get_random_enemy_for_battle()
-	if enemy:
-		GameManager.start_battle([enemy])
+	GameManager.go_to_map("test_map")
 
 func _on_create_new_character():
 	GameManager.go_to_character_creation()

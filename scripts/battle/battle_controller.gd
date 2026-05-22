@@ -150,6 +150,9 @@ func _on_turn_end_phase() -> void:
 	await _process_turn_end_effects()
 	turn_manager.end_current_turn()
 	
+	if not state_machine.is_battle_active():
+		return
+	
 	if not _check_battle_end_state():
 		state_machine.change_state(StateMachine.BattleState.DRAW_PHASE)
 
@@ -180,7 +183,6 @@ func _process_turn_end_effects() -> void:
 	player_manager.reset_temp_damage_bonus()
 
 func _execute_enemy_attacks() -> void:
-	print("[DEBUG] 敌方攻击前玩家护甲: block=%d" % player_manager.block)
 	var alive_enemies = enemy_system.get_alive_enemies()
 	
 	for enemy in alive_enemies:
@@ -191,12 +193,8 @@ func _execute_player_auto_attack() -> void:
 	var total_damage = player_manager.get_total_damage()
 	var dexterity = player_manager.dexterity
 	
-	print("[DEBUG] 回合结束: 敏捷=%d, 力量=%d, 临时伤害=%d, 总伤害=%d" % [dexterity, player_manager.strength, player_manager.temp_damage_bonus, total_damage])
-	
 	if dexterity > 0:
-		print("[DEBUG] 获得护甲前: block=%d" % player_manager.block)
 		player_manager.gain_block(dexterity)
-		print("[DEBUG] 获得护甲后: block=%d" % player_manager.block)
 		ui_controller.show_state_message("获得 %d 护甲" % dexterity, 0.3)
 		_update_player_ui()
 		await get_tree().create_timer(0.2).timeout

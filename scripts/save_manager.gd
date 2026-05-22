@@ -5,16 +5,21 @@ const SAVE_PATH := "user://savegame.json"
 enum GameProgress {
 	NONE,
 	IN_BATTLE,
-	IN_REWARD,
+	IN_MAP,
 	GAME_OVER
 }
 
-func save_game(progress: int = GameProgress.IN_BATTLE, additional_data: Dictionary = {}) -> bool:
+var _cached_map_state: Dictionary = {}
+
+func save_game(progress: int = GameProgress.IN_MAP, additional_data: Dictionary = {}) -> bool:
 	var save_data := {
-		"version": 1,
+		"version": 2,
 		"timestamp": Time.get_unix_time_from_system(),
 		"progress": progress,
 		"game_data": _serialize_game_data(),
+		"map_state": _serialize_map_state(),
+		"enemy_id": additional_data.get("enemy_id", ""),
+		"map_id": additional_data.get("map_id", "test_map"),
 		"additional": additional_data
 	}
 	
@@ -27,7 +32,6 @@ func save_game(progress: int = GameProgress.IN_BATTLE, additional_data: Dictiona
 	
 	file.store_string(json_string)
 	file.close()
-	print("SaveManager: Game saved successfully")
 	return true
 
 func load_game() -> Dictionary:
@@ -57,7 +61,6 @@ func has_save() -> bool:
 func delete_save() -> void:
 	if has_save():
 		DirAccess.remove_absolute(SAVE_PATH)
-		print("SaveManager: Save deleted")
 
 func get_save_info() -> Dictionary:
 	if not has_save():
@@ -106,6 +109,23 @@ func _serialize_game_data() -> Dictionary:
 		"cards_played": GameData.cards_played
 	}
 
+func _serialize_map_state() -> Dictionary:
+	var map_screen = _get_map_screen()
+	if map_screen and map_screen.has_method("get_map_state"):
+		var state = map_screen.get_map_state()
+		if not state.is_empty():
+			_cached_map_state = state
+		return state
+	return _cached_map_state
+
+func _get_map_screen() -> Node:
+	if not GameManager:
+		return null
+	var current = GameManager.current_scene
+	if current and current.has_method("get_map_state"):
+		return current
+	return null
+
 func apply_game_data(data: Dictionary) -> void:
 	if not GameData:
 		return
@@ -144,30 +164,27 @@ func apply_game_data(data: Dictionary) -> void:
 			if treated_as.size() > 0:
 				card.treated_as = treated_as
 			GameData.player_deck.append(card)
-			print("加载卡牌: %s, is_upgraded=%s, effects=%s, tags=%s" % [card.name, str(card.is_upgraded), str(card.effects), str(card.tags)])
-	
-	print("加载角色属性: HP=%d/%d, 力量=%d, 敏捷=%d" % [GameData.player_current_hp, GameData.player_max_hp, GameData.player_strength, GameData.player_dexterity])
 	
 	GameData.deck_changed.emit(GameData.player_deck)
 	GameData.hp_changed.emit(GameData.player_current_hp, GameData.player_max_hp)
 	GameData.gold_changed.emit(GameData.gold)
 	GameData.stats_changed.emit(GameData.player_strength, GameData.player_dexterity)
 
-func save_before_battle_exit() -> bool:
-	return save_game(GameProgress.IN_BATTLE, {"was_in_battle": true})
+func save_map_state() -> bool:
+	return save_game(GameProgress.IN_MAP)
 
-func save_at_reward_screen() -> bool:
-	return save_game(GameProgress.IN_REWARD, {"was_in_battle": false})
+func save_before_battle(enemy_id: String, map_id: String = "test_map") -> bool:
+	return save_game(GameProgress.IN_BATTLE, {"enemy_id": enemy_id, "map_id": map_id})
 
 func save_game_over() -> bool:
-	return save_game(GameProgress.GAME_OVER, {"was_in_battle": false})
+	return save_game(GameProgress.GAME_OVER)
 
 func get_progress_description(progress: int) -> String:
 	match progress:
+		GameProgress.IN_MAP:
+			return "探索地图"
 		GameProgress.IN_BATTLE:
 			return "战斗中"
-		GameProgress.IN_REWARD:
-			return "结算中"
 		GameProgress.GAME_OVER:
 			return "游戏结束"
 		_:
