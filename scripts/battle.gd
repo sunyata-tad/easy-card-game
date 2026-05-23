@@ -7,6 +7,7 @@ var battle_stats: Dictionary = {
 }
 var character_stats: Dictionary = {}
 var is_initialized: bool = false
+var discard_required_count: int = 0
 
 func _ready():
 	_setup_exit_button()
@@ -25,6 +26,7 @@ func _initialize_battle(data: Dictionary = {}):
 	battle_controller = BattleController.new()
 	battle_controller.battle_ended.connect(_on_battle_ended)
 	battle_controller.turn_changed.connect(_on_turn_changed)
+	battle_controller.discard_phase_started.connect(_on_discard_phase_started)
 	
 	var enemies_data: Array = data.get("enemies", [])
 	var deck_data: Array = []
@@ -62,7 +64,7 @@ func _on_exit_confirmed():
 
 func _save_and_exit():
 	SaveManager.save_map_state()
-	GameManager.go_to_map("test_map")
+	GameManager.go_to_map("test_map", SaveManager._cached_map_state)
 
 func _on_battle_ended(victory: bool):
 	battle_stats.victory = victory
@@ -72,7 +74,7 @@ func _on_battle_ended(victory: bool):
 		if GameData:
 			GameData.record_battle_won()
 			SaveManager.save_map_state()
-			GameManager.go_to_map("test_map")
+			GameManager.go_to_reward(battle_stats)
 		else:
 			_show_victory_screen()
 	else:
@@ -90,6 +92,18 @@ func _on_turn_changed(is_player_turn: bool):
 		print("玩家回合")
 	else:
 		print("敌人回合")
+
+func _on_discard_phase_started(cards_to_discard: int) -> void:
+	discard_required_count = cards_to_discard
+	if battle_controller and battle_controller.ui_controller:
+		battle_controller.ui_controller.enter_card_select_mode(
+			"弃牌阶段：选择至多 %d 张牌弃掉" % cards_to_discard,
+			0, cards_to_discard,
+			_on_discard_select_done
+		)
+
+func _on_discard_select_done(selected_cards: Array) -> void:
+	battle_controller.confirm_discard_cards(selected_cards)
 
 func _show_victory_screen():
 	var victory_label = Label.new()
@@ -129,7 +143,7 @@ func _on_continue_pressed():
 	if GameData:
 		GameData.record_battle_won()
 		SaveManager.save_map_state()
-		GameManager.go_to_map("test_map")
+		GameManager.go_to_map("test_map", SaveManager._cached_map_state)
 
 func _on_retry_pressed():
 	if GameData:

@@ -1,0 +1,34 @@
+{
+	"id": "蓄势",
+	"name": "蓄势",
+	"type": "skill",
+	"description": "取消本回合攻击，抽2张牌",
+	"rarity": "uncommon",
+	"target_type": "self",
+	"tags": ["Skill"],
+	"treated_as": [],
+	"effects": [
+		{
+			"effect_type": "skip_attack",
+			"value": 1
+		},
+		{
+			"effect_type": "draw",
+			"value": 2
+		}
+	],
+	"upgrade": {
+		"name": "蓄势+",
+		"description": "取消本回合攻击，抽3张牌",
+		"effects": [
+			{
+				"effect_type": "skip_attack",
+				"value": 1
+			},
+			{
+				"effect_type": "draw",
+				"value": 3
+			}
+		]
+	}
+}

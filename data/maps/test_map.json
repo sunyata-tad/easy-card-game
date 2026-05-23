@@ -21,7 +21,7 @@
 				"south": "test_entrance",
 				"east": "test_reward_room"
 			},
-			"interactables": ["arena_dummy", "healing_shrine"]
+			"interactables": ["arena_dummy", "healing_shrine", "guard_arena", "assassin_arena"]
 		},
 		"test_storage": {
 			"id": "test_storage",
@@ -31,7 +31,7 @@
 				"west": "test_entrance",
 				"north": "test_reward_room"
 			},
-			"interactables": ["storage_box", "item_shelf"]
+			"interactables": ["storage_box", "item_shelf", "deck_workbench"]
 		},
 		"test_reward_room": {
 			"id": "test_reward_room",
@@ -41,7 +41,7 @@
 				"west": "test_arena",
 				"south": "test_storage"
 			},
-			"interactables": ["treasure_chest", "mysterious_portal"]
+			"interactables": ["treasure_chest", "mysterious_portal", "mage_room"]
 		}
 	},
 	"interactables": {
@@ -145,6 +145,53 @@
 			"states": {
 				"default": {
 					"interactions": ["进入", "观察"]
+				}
+			}
+		},
+		"deck_workbench": {
+			"id": "deck_workbench",
+			"name": "卡组工作台",
+			"description": "一个可以查看和调整卡组的工作台。",
+			"type": "deck_view",
+			"states": {
+				"default": {
+					"interactions": ["查看卡组", "整理"]
+				}
+			}
+		},
+		"guard_arena": {
+			"id": "guard_arena",
+			"name": "石甲卫兵",
+			"description": "一个身披石甲的卫兵，正在竞技场中巡逻。",
+			"type": "battle_trigger",
+			"enemy_id": "石甲卫兵",
+			"states": {
+				"default": {
+					"interactions": ["战斗"]
+				}
+			}
+		},
+		"assassin_arena": {
+			"id": "assassin_arena",
+			"name": "暗影刺客",
+			"description": "暗处潜伏着一个刺客的身影，散发着危险气息。",
+			"type": "battle_trigger",
+			"enemy_id": "暗影刺客",
+			"states": {
+				"default": {
+					"interactions": ["战斗"]
+				}
+			}
+		},
+		"mage_room": {
+			"id": "mage_room",
+			"name": "腐化法师",
+			"description": "角落里站着一个被黑暗力量腐化的法师，低声吟唱着咒语。",
+			"type": "battle_trigger",
+			"enemy_id": "腐化法师",
+			"states": {
+				"default": {
+					"interactions": ["战斗"]
 				}
 			}
 		}

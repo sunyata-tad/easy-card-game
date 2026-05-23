@@ -6,6 +6,7 @@ enum GameScene {
 	CHARACTER_CREATION,
 	MAP,
 	BATTLE,
+	REWARD,
 	GAME_OVER
 }
 
@@ -15,6 +16,7 @@ const SCENES := {
 	GameScene.CHARACTER_CREATION: "res://scenes/CharacterCreationScreen.tscn",
 	GameScene.MAP: "res://scenes/MapScreen.tscn",
 	GameScene.BATTLE: "res://scenes/BattleScene.tscn",
+	GameScene.REWARD: "res://scenes/RewardScreen.tscn",
 	GameScene.GAME_OVER: "res://scenes/GameOverScreen.tscn"
 }
 
@@ -81,7 +83,16 @@ func start_battle(enemies: Array = []) -> void:
 
 func end_battle(victory: bool, battle_stats: Dictionary = {}) -> void:
 	battle_ended.emit(victory)
-	go_to_map("test_map")
+	if victory:
+		go_to_reward(battle_stats)
+	else:
+		var stats = GameData.get_battle_stats() if GameData else {}
+		stats.victory = false
+		go_to_game_over(stats)
+
+func go_to_reward(battle_stats: Dictionary = {}) -> void:
+	var data: Dictionary = {"battle_stats": battle_stats}
+	change_scene(GameScene.REWARD, data)
 
 func go_to_game_over(stats: Dictionary = {}) -> void:
 	var data = {"stats": stats}

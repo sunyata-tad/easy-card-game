@@ -2,8 +2,8 @@ extends Control
 
 enum CreationStep { NAME, STATS, DECK, TRAITS, ITEMS, CONFIRM }
 
-const MIN_DECK_SIZE: int = 40
-const MAX_DECK_SIZE: int = 60
+const MIN_DECK_SIZE: int = 10
+const MAX_DECK_SIZE: int = 30
 const TOTAL_STAT_POINTS: int = 15
 
 var current_step: int = CreationStep.NAME
@@ -13,7 +13,6 @@ var creation_data: Dictionary = {
 		"max_hp": 80,
 		"strength": 0,
 		"dexterity": 0,
-		"draw_count": 5,
 		"initial_block": 0
 	},
 	"deck_card_ids": [],
@@ -50,22 +49,25 @@ func _setup_initial_stats():
 		"max_hp": 80,
 		"strength": 0,
 		"dexterity": 0,
-		"draw_count": 5,
 		"initial_block": 0
 	}
 	remaining_stat_points = TOTAL_STAT_POINTS
 	
-	for i in range(20):
-		creation_data.deck_card_ids.append("strike")
-	for i in range(20):
-		creation_data.deck_card_ids.append("defend")
+	creation_data.deck_card_ids = []
+	for i in range(3):
+		creation_data.deck_card_ids.append("斩击")
+	for i in range(3):
+		creation_data.deck_card_ids.append("格挡")
+	for i in range(2):
+		creation_data.deck_card_ids.append("蓄力")
+	for i in range(2):
+		creation_data.deck_card_ids.append("蓄势")
 
 func _randomize_stats():
 	creation_data.base_stats = {
 		"max_hp": 80,
 		"strength": 0,
 		"dexterity": 0,
-		"draw_count": 5,
 		"initial_block": 0
 	}
 	remaining_stat_points = TOTAL_STAT_POINTS
@@ -175,7 +177,6 @@ func _show_stats_step():
 		{"key": "max_hp", "name": "最大HP", "min": 50, "max": 150, "step": 10},
 		{"key": "strength", "name": "力量", "min": 0, "max": 10, "step": 1},
 		{"key": "dexterity", "name": "敏捷", "min": 0, "max": 10, "step": 1},
-		{"key": "draw_count", "name": "抽牌数", "min": 3, "max": 7, "step": 1},
 		{"key": "initial_block", "name": "初始护甲", "min": 0, "max": 10, "step": 1}
 	]
 	

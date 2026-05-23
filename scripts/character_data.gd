@@ -8,7 +8,6 @@ var base_stats: Dictionary = {
 	"max_hp": 80,
 	"strength": 0,
 	"dexterity": 0,
-	"draw_count": 5,
 	"initial_block": 0
 }
 
@@ -55,9 +54,6 @@ func get_strength() -> int:
 
 func get_dexterity() -> int:
 	return current_stats.get("dexterity", base_stats.dexterity)
-
-func get_draw_count() -> int:
-	return current_stats.get("draw_count", base_stats.draw_count)
 
 func get_initial_block() -> int:
 	return current_stats.get("initial_block", base_stats.initial_block)

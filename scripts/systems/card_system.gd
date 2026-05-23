@@ -39,11 +39,7 @@ func draw_cards(count: int) -> Array:
 	
 	for i in count:
 		if draw_pile.is_empty():
-			if drawn_cards.size() < count:
-				deck_exhausted.emit()
-			break
-		
-		if hand.size() >= MAX_HAND_SIZE:
+			deck_exhausted.emit()
 			break
 		
 		var card = draw_pile.pop_front()
@@ -67,9 +63,8 @@ func play_card(card: CardData, target = null) -> bool:
 		return false
 	
 	hand.erase(card)
-	card_played.emit(card, target)
 	discard_pile.append(card)
-	card_discarded.emit(card)
+	card_played.emit(card, target)
 	hand_changed.emit(hand)
 	_emit_deck_count()
 	return true
@@ -222,6 +217,16 @@ func discard_random_hand_card() -> CardData:
 	hand_changed.emit(hand)
 	_emit_deck_count()
 	return card
+
+func discard_specific_card(card: CardData) -> bool:
+	if not hand.has(card):
+		return false
+	hand.erase(card)
+	discard_pile.append(card)
+	card_discarded.emit(card)
+	hand_changed.emit(hand)
+	_emit_deck_count()
+	return true
 
 func get_cards_in_hand_by_tag(tag: String) -> Array:
 	var result: Array = []

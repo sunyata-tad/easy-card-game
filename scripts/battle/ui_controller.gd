@@ -13,7 +13,20 @@ var state_display_label: Label = null
 var target_button: Button = null
 var target_marker: Control = null
 
+var _player_stats_panel: HBoxContainer = null
+var _player_buff_bar: HBoxContainer = null
 var drag_arrow: DragArrow = null
+
+var _card_select_active: bool = false
+var _card_select_min: int = 0
+var _card_select_max: int = 1
+var _card_selected_cards: Array = []
+var _card_select_staging: Control = null
+var _card_select_confirm_btn: Button = null
+var _card_select_info_label: Label = null
+var _card_select_callback: Callable = Callable()
+
+signal card_select_confirmed(selected_cards: Array)
 var is_dragging: bool = false
 var dragging_card: CardData = null
 var drag_card_node: Control = null
@@ -29,6 +42,7 @@ signal card_clicked(card: CardData, card_node: Control)
 signal card_released(card: CardData, card_node: Control)
 signal card_cancelled(card: CardData)
 signal card_dropped(card: CardData, target)
+signal card_played(card: CardData, target)
 signal enemy_selected(enemy: EnemyUnit)
 signal end_turn_clicked()
 signal attack_target_selected(enemy: EnemyUnit)
@@ -152,18 +166,46 @@ func clear_target_marker() -> void:
 	if target_marker and target_marker.has_method("clear"):
 		target_marker.call("clear")
 
+var _state_tween: Tween = null
+
 func show_state_message(message: String, duration: float = 1.0) -> void:
 	if state_display_label == null:
 		return
 	
+	if _state_tween and _state_tween.is_valid():
+		_state_tween.kill()
+	
 	state_display_label.text = message
 	state_display_label.visible = true
-	state_display_label.modulate = Color.WHITE
+	state_display_label.modulate = Color(1, 1, 1, 0)
+	
+	var fade_in = 0.2
+	var stay = duration
+	var fade_out = 0.3
+	
+	_state_tween = root_node.create_tween()
+	_state_tween.tween_property(state_display_label, "modulate:a", 1.0, fade_in)
+	_state_tween.tween_interval(stay)
+	_state_tween.tween_property(state_display_label, "modulate:a", 0.0, fade_out)
+	_state_tween.tween_callback(func(): state_display_label.visible = false)
+
+func show_turn_banner(text: String) -> void:
+	var banner = Label.new()
+	banner.text = text
+	banner.add_theme_font_size_override("font_size", 36)
+	banner.add_theme_color_override("font_color", Color(1, 0.9, 0.5))
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner.set_anchors_preset(Control.PRESET_CENTER)
+	banner.position = Vector2(-200, -20)
+	banner.z_index = 200
+	banner.modulate = Color(1, 1, 1, 0)
+	root_node.add_child(banner)
 	
 	var tween = root_node.create_tween()
-	tween.tween_interval(duration)
-	tween.tween_property(state_display_label, "modulate:a", 0.0, 0.3)
-	tween.tween_callback(func(): state_display_label.visible = false)
+	tween.tween_property(banner, "modulate:a", 1.0, 0.3)
+	tween.tween_interval(0.5)
+	tween.tween_property(banner, "modulate:a", 0.0, 0.3)
+	tween.tween_callback(banner.queue_free)
 
 func _find_ui_nodes() -> void:
 	hand_container = root_node.get_node_or_null("Background/HandArea")
@@ -174,6 +216,7 @@ func _find_ui_nodes() -> void:
 	
 	if player_area:
 		player_area.gui_input.connect(_on_player_area_input)
+		_create_player_info_panels()
 
 func _setup_signals() -> void:
 	if end_turn_button:
@@ -301,6 +344,8 @@ func _setup_card_interaction(card_node: Control, card: CardData) -> void:
 		card_node.target_mode_started.connect(_on_target_mode_started)
 	if card_node.has_signal("target_mode_ended"):
 		card_node.target_mode_ended.connect(_on_target_mode_ended)
+	if card_node.has_signal("card_play_requested"):
+		card_node.card_play_requested.connect(_on_card_play_requested)
 	if not card_node.has_method("setup"):
 		card_node.gui_input.connect(_on_card_gui_input.bind(card, card_node))
 
@@ -309,7 +354,14 @@ func _on_card_gui_input(event: InputEvent, card: CardData, card_node: Control) -
 		card_clicked.emit(card, card_node)
 
 func _on_card_ui_clicked(card: CardData) -> void:
+	if _card_select_active:
+		return
 	card_clicked.emit(card, null)
+
+func _on_card_play_requested(card: CardData) -> void:
+	if _card_select_active:
+		return
+	card_played.emit(card, null)
 
 func update_enemy_display(enemies: Array) -> void:
 	_clear_enemies()
@@ -404,6 +456,11 @@ func update_single_enemy(enemy: EnemyUnit) -> void:
 			hp_label.text = "%d/%d" % [enemy.current_hp, enemy.max_hp]
 		if hp_bar:
 			hp_bar.value = enemy.current_hp
+		
+		if node.has_method("_update_buff_bar"):
+			node._update_buff_bar()
+		if node.has_method("_update_intent_display"):
+			node._update_intent_display()
 
 func update_player_display(hp: int, max_hp: int, block: int) -> void:
 	if player_area == null:
@@ -432,6 +489,244 @@ func update_deck_info(draw_count: int, discard_count: int) -> void:
 		draw_label.text = "抽牌堆: %d" % draw_count
 	if discard_label:
 		discard_label.text = "弃牌堆: %d" % discard_count
+
+func _create_player_info_panels() -> void:
+	if player_area == null:
+		return
+	
+	var info_vbox = VBoxContainer.new()
+	info_vbox.name = "PlayerInfoVBox"
+	info_vbox.add_theme_constant_override("separation", 4)
+	player_area.get_parent().add_child(info_vbox)
+	
+	_player_buff_bar = HBoxContainer.new()
+	_player_buff_bar.name = "PlayerBuffBar"
+	_player_buff_bar.add_theme_constant_override("separation", 4)
+	info_vbox.add_child(_player_buff_bar)
+	
+	_player_stats_panel = HBoxContainer.new()
+	_player_stats_panel.name = "PlayerStatsPanel"
+	_player_stats_panel.add_theme_constant_override("separation", 8)
+	info_vbox.add_child(_player_stats_panel)
+	
+	_reposition_info_panel.call_deferred(info_vbox)
+
+func _reposition_info_panel(panel: VBoxContainer) -> void:
+	if player_area and is_instance_valid(panel):
+		var pa_rect = player_area.get_global_rect()
+		panel.global_position = Vector2(pa_rect.position.x + pa_rect.size.x + 10, pa_rect.position.y)
+
+func update_player_stats_info(pm: PlayerManager) -> void:
+	if _player_stats_panel == null:
+		return
+	
+	for child in _player_stats_panel.get_children():
+		child.queue_free()
+	
+	var stored = pm.get_stored_power()
+	var total = pm.get_total_damage()
+	var dmg_mult = pm.buff_manager.get_mult("damage")
+	var effective = int(total * dmg_mult)
+	
+	if stored > 0:
+		var st_lbl = Label.new()
+		st_lbl.text = "蓄力:%d" % stored
+		st_lbl.add_theme_font_size_override("font_size", 13)
+		st_lbl.add_theme_color_override("font_color", Color(1, 0.9, 0.3))
+		_player_stats_panel.add_child(st_lbl)
+	
+	var a_lbl = Label.new()
+	a_lbl.text = "预计攻击:%d" % effective
+	a_lbl.add_theme_font_size_override("font_size", 13)
+	a_lbl.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+	_player_stats_panel.add_child(a_lbl)
+
+func update_player_buff_bar(pm: PlayerManager) -> void:
+	if _player_buff_bar == null:
+		return
+	
+	for child in _player_buff_bar.get_children():
+		child.queue_free()
+	
+	if not pm.buff_manager:
+		return
+	
+	for buff in pm.buff_manager.buffs:
+		var buff_info = _extract_buff_info(buff)
+		if buff_info.is_empty():
+			continue
+		var lbl = _create_buff_label(buff_info)
+		_player_buff_bar.add_child(lbl)
+
+func _extract_buff_info(buff) -> Dictionary:
+	var stacks: int = 1
+	var duration: int = 0
+	var buff_id: String = ""
+	var buff_name: String = ""
+	var buff_type: String = "buff"
+	if buff is BuffData:
+		stacks = buff.stacks
+		duration = buff.duration
+		buff_id = buff.id
+		buff_name = buff.name
+		buff_type = buff.buff_type
+	elif buff is Dictionary:
+		stacks = buff.get("stacks", 1)
+		duration = buff.get("duration", 0)
+		buff_id = buff.get("id", buff.get("buff_id", ""))
+		buff_name = buff.get("name", "")
+		buff_type = buff.get("buff_type", "buff")
+	else:
+		return {}
+	return {"id": buff_id, "name": buff_name, "stacks": stacks, "duration": duration, "buff_type": buff_type}
+
+var _buff_tooltip_panel: PanelContainer = null
+
+func _create_buff_label(info: Dictionary) -> Control:
+	var buff_id: String = info.get("id", "")
+	var stacks: int = info.get("stacks", 1)
+	var duration: int = info.get("duration", 0)
+	
+	var symbol = _get_buff_symbol(buff_id)
+	var color = _get_buff_color(buff_id)
+	
+	var btn = Button.new()
+	btn.text = "%s%d" % [symbol, stacks]
+	if duration > 0:
+		btn.text += "(%d)" % duration
+	btn.add_theme_font_size_override("font_size", 12)
+	btn.add_theme_color_override("font_color", color)
+	btn.add_theme_color_override("font_hover_color", color)
+	btn.flat = true
+	btn.custom_minimum_size = Vector2(0, 18)
+	btn.focus_mode = Control.FOCUS_NONE
+	
+	var tooltip_text = _get_buff_tooltip(buff_id, stacks, duration)
+	if not tooltip_text.is_empty():
+		btn.mouse_entered.connect(_on_buff_label_hovered.bind(tooltip_text, btn))
+		btn.mouse_exited.connect(_on_buff_label_unhovered)
+	
+	return btn
+
+func _on_buff_label_hovered(text: String, source: Control) -> void:
+	_hide_buff_tooltip()
+	
+	_buff_tooltip_panel = PanelContainer.new()
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.06, 0.1, 0.95)
+	style.set_corner_radius_all(6)
+	style.set_content_margin_all(10)
+	style.border_color = Color(0.5, 0.5, 0.6, 1.0)
+	style.border_width_top = 1
+	style.border_width_bottom = 1
+	style.border_width_left = 1
+	style.border_width_right = 1
+	_buff_tooltip_panel.add_theme_stylebox_override("panel", style)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	
+	var lines = text.split("\n")
+	for line in lines:
+		var lbl = Label.new()
+		lbl.text = line
+		lbl.add_theme_font_size_override("font_size", 13)
+		if line == lines[0]:
+			lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
+		else:
+			lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+		vbox.add_child(lbl)
+	
+	_buff_tooltip_panel.add_child(vbox)
+	
+	var canvas = root_node.get_tree().root
+	canvas.add_child(_buff_tooltip_panel)
+	
+	var gp = source.global_position
+	var ts = _buff_tooltip_panel.get_combined_minimum_size()
+	var vp_size = source.get_viewport_rect().size
+	var px = gp.x + source.size.x + 6
+	if px + ts.x > vp_size.x:
+		px = gp.x - ts.x - 6
+	var py = gp.y - 5
+	if py + ts.y > vp_size.y:
+		py = vp_size.y - ts.y - 5
+	_buff_tooltip_panel.position = Vector2(px, py)
+	_buff_tooltip_panel.z_index = 100
+
+func _on_buff_label_unhovered() -> void:
+	_hide_buff_tooltip()
+
+func _hide_buff_tooltip() -> void:
+	if _buff_tooltip_panel and is_instance_valid(_buff_tooltip_panel):
+		_buff_tooltip_panel.queue_free()
+	_buff_tooltip_panel = null
+
+func _get_buff_tooltip(buff_id: String, stacks: int, duration: int) -> String:
+	var desc = _get_buff_description(buff_id, stacks)
+	if desc.is_empty():
+		return ""
+	var result = desc
+	if duration > 0:
+		result += "\n剩余 %d 回合" % duration
+	elif duration == -1:
+		result += "\n永久"
+	return result
+
+func _get_buff_description(buff_id: String, stacks: int) -> String:
+	match buff_id:
+		"strength":
+			return "力量 %d\n攻击伤害 +%d" % [stacks, stacks]
+		"dexterity":
+			return "敏捷 %d\n每回合获得 %d 护甲" % [stacks, stacks]
+		"temp_strength":
+			return "临时力量 %d\n本回合攻击伤害 +%d" % [stacks, stacks]
+		"stored_power":
+			return "蓄力 %d\n下回合攻击伤害 +%d" % [stacks, stacks]
+		"skip_attack":
+			return "蓄力中\n本回合不进行自动攻击"
+		"ignore_block":
+			return "破甲\n攻击无视敌方护甲"
+		"counter_stance":
+			return "招架\n受到攻击时反击等额伤害"
+		"weak":
+			return "虚弱\n造成的伤害 ×0.75"
+		"vulnerable":
+			return "易伤\n受到的伤害 ×1.5"
+		"poison":
+			return "中毒 %d\n每回合结束受到 %d 伤害" % [stacks, stacks]
+		"regen":
+			return "再生 %d\n每回合开始恢复 %d 生命" % [stacks, stacks]
+		_:
+			return ""
+
+func _get_buff_symbol(buff_id: String) -> String:
+	match buff_id:
+		"strength": return "⚔"
+		"dexterity": return "🛡"
+		"weak": return "痿"
+		"vulnerable": return "弱"
+		"poison": return "☠"
+		"temp_strength": return "⚡"
+		"skip_attack": return "蓄"
+		"ignore_block": return "破"
+		"counter_stance": return "架"
+		"stored_power": return "力"
+		_: return "●"
+
+func _get_buff_color(buff_id: String) -> Color:
+	match buff_id:
+		"strength": return Color(1, 0.5, 0.2)
+		"dexterity": return Color(0.3, 0.7, 1)
+		"weak": return Color(0.7, 0.7, 0.3)
+		"vulnerable": return Color(0.9, 0.4, 0.9)
+		"poison": return Color(0.4, 0.8, 0.2)
+		"temp_strength": return Color(1, 0.8, 0.2)
+		"skip_attack": return Color(0.5, 0.8, 0.5)
+		"ignore_block": return Color(1, 0.4, 0.2)
+		"counter_stance": return Color(0.2, 0.8, 0.8)
+		"stored_power": return Color(0.9, 0.7, 0.2)
+		_: return Color(0.7, 0.7, 0.7)
 
 func show_damage_number(target, amount: int) -> void:
 	if amount <= 0:
@@ -495,8 +790,8 @@ func _show_player_stats_popup() -> void:
 	
 	var stats_text = "生命值: %d / %d\n" % [player_manager.current_hp, player_manager.max_hp]
 	stats_text += "护甲: %d\n" % player_manager.block
-	stats_text += "力量: %d\n" % player_manager.strength
-	stats_text += "敏捷: %d" % player_manager.dexterity
+	stats_text += "力量: %d\n" % player_manager.get_strength()
+	stats_text += "敏捷: %d" % player_manager.get_dexterity()
 	
 	popup.dialog_text = stats_text
 	root_node.add_child(popup)
@@ -547,8 +842,13 @@ func _on_card_drag_started(card: CardData, start_pos: Vector2, card_node: Contro
 	dragging_card = card
 	drag_card_node = card_node
 	
-	highlight_valid_targets(card)
-	drag_arrow.show_arrow()
+	var needs_target = card.target_type == "single_enemy" or card.target_type == "single_ally"
+	if needs_target:
+		highlight_valid_targets(card)
+		drag_arrow.show_arrow()
+	else:
+		clear_target_highlights()
+		drag_arrow.hide_arrow()
 
 func _on_card_drag_updated(card: CardData, current_pos: Vector2) -> void:
 	if not is_dragging or drag_card_node == null:
@@ -564,8 +864,6 @@ func _on_card_drag_ended(card: CardData, end_pos: Vector2) -> void:
 	if not is_dragging:
 		return
 	
-	var card_node = current_hand_cards.get(card)
-	
 	var target = _get_target_at_position(end_pos)
 	
 	if target:
@@ -575,19 +873,28 @@ func _on_card_drag_ended(card: CardData, end_pos: Vector2) -> void:
 		clear_target_highlights()
 		dragging_card = null
 		drag_card_node = null
+	elif dragging_card and not _card_select_active:
+		var needs_target = dragging_card.target_type == "single_enemy" or dragging_card.target_type == "single_ally"
+		if not needs_target:
+			if drag_card_node and drag_card_node.drag_exited_hand:
+				card_played.emit(card, null)
+		if drag_card_node and drag_card_node.has_method("reset_position"):
+			drag_card_node.reset_position()
+		is_dragging = false
+		drag_arrow.hide_arrow()
+		clear_target_highlights()
+		dragging_card = null
+		drag_card_node = null
+		ensure_cards_layout_state()
 	else:
-		if card_node and card_node.has_method("is_in_target_mode") and card_node.is_in_target_mode():
-			pass
-		else:
-			if card_node and card_node.has_method("reset_position"):
-				card_node.reset_position()
-			is_dragging = false
-			drag_arrow.hide_arrow()
-			clear_target_highlights()
-			dragging_card = null
-			drag_card_node = null
-			ensure_cards_layout_state()
-			show_state_message("请选择有效目标", 0.5)
+		if drag_card_node and drag_card_node.has_method("reset_position"):
+			drag_card_node.reset_position()
+		is_dragging = false
+		drag_arrow.hide_arrow()
+		clear_target_highlights()
+		dragging_card = null
+		drag_card_node = null
+		ensure_cards_layout_state()
 
 func _get_target_at_position(pos: Vector2):
 	for enemy in current_enemy_nodes:
@@ -651,3 +958,155 @@ func ensure_cards_layout_state() -> void:
 	
 	if last_hand.size() > 0:
 		update_hand_display(last_hand)
+
+func is_card_select_active() -> bool:
+	return _card_select_active
+
+func get_card_node(card: CardData) -> Control:
+	return current_hand_cards.get(card)
+
+func enter_card_select_mode(prompt: String, min_select: int, max_select: int, callback: Callable) -> void:
+	_card_select_active = true
+	_card_select_min = min_select
+	_card_select_max = max_select
+	_card_selected_cards.clear()
+	_card_select_callback = callback
+	
+	var bar = HBoxContainer.new()
+	bar.name = "CardSelectBar"
+	bar.add_theme_constant_override("separation", 12)
+	bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	bar.offset_top = -50
+	bar.offset_bottom = 0
+	root_node.add_child(bar)
+	_card_select_staging = bar
+	
+	var bg = ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.6)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bar.add_child(bg)
+	
+	var inner = HBoxContainer.new()
+	inner.name = "InnerHBox"
+	inner.set_anchors_preset(Control.PRESET_FULL_RECT)
+	inner.add_theme_constant_override("separation", 12)
+	inner.alignment = BoxContainer.ALIGNMENT_CENTER
+	bar.add_child(inner)
+	
+	_card_select_info_label = Label.new()
+	_card_select_info_label.text = prompt
+	_card_select_info_label.add_theme_font_size_override("font_size", 16)
+	_card_select_info_label.add_theme_color_override("font_color", Color(1, 0.9, 0.5))
+	inner.add_child(_card_select_info_label)
+	
+	_card_select_confirm_btn = Button.new()
+	_card_select_confirm_btn.text = "确认"
+	_card_select_confirm_btn.custom_minimum_size = Vector2(100, 32)
+	_card_select_confirm_btn.pressed.connect(_on_card_select_confirm)
+	inner.add_child(_card_select_confirm_btn)
+	
+	var cancel_btn = Button.new()
+	cancel_btn.name = "CancelBtn"
+	cancel_btn.text = "跳过"
+	cancel_btn.custom_minimum_size = Vector2(100, 32)
+	cancel_btn.pressed.connect(_on_card_select_cancel)
+	inner.add_child(cancel_btn)
+	
+	_update_card_select_ui()
+	
+	for card in current_hand_cards:
+		var card_node = current_hand_cards[card]
+		if card_node:
+			if card_node.has_signal("card_clicked") and not card_node.card_clicked.is_connected(_on_card_select_card_clicked):
+				card_node.card_clicked.connect(_on_card_select_card_clicked)
+			if card_node.has_method("set") and "is_select_mode" in card_node:
+				card_node.is_select_mode = true
+
+func _on_card_select_gui_input(event: InputEvent, card: CardData) -> void:
+	if not _card_select_active:
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_toggle_card_selection(card)
+
+func _on_card_select_card_clicked(card: CardData) -> void:
+	if not _card_select_active:
+		return
+	_toggle_card_selection(card)
+
+func _toggle_card_selection(card: CardData) -> void:
+	if card in _card_selected_cards:
+		_card_selected_cards.erase(card)
+		_deselect_card(card)
+	else:
+		if _card_selected_cards.size() >= _card_select_max:
+			return
+		_card_selected_cards.append(card)
+		_select_card(card)
+	_update_card_select_ui()
+
+func _select_card(card: CardData) -> void:
+	var card_node = current_hand_cards.get(card)
+	if card_node == null:
+		return
+	var tween = card_node.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(card_node, "position:y", card_node.original_position.y - 30, 0.15)
+	tween.tween_property(card_node, "modulate", Color(1, 0.7, 0.7, 1), 0.15)
+
+func _deselect_card(card: CardData) -> void:
+	var card_node = current_hand_cards.get(card)
+	if card_node == null:
+		return
+	var tween = card_node.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(card_node, "position:y", card_node.original_position.y, 0.15)
+	tween.tween_property(card_node, "modulate", Color.WHITE, 0.15)
+
+func _update_card_select_ui() -> void:
+	if _card_select_info_label:
+		var count = _card_selected_cards.size()
+		_card_select_info_label.text = "已选 %d / %d（至少%d张）" % [count, _card_select_max, _card_select_min]
+	
+	if _card_select_confirm_btn:
+		_card_select_confirm_btn.disabled = _card_selected_cards.size() < _card_select_min
+
+func _on_card_select_confirm() -> void:
+	if _card_selected_cards.size() < _card_select_min:
+		return
+	
+	var selected = _card_selected_cards.duplicate()
+	_exit_card_select_mode()
+	
+	if _card_select_callback.is_valid():
+		_card_select_callback.call(selected)
+	
+	card_select_confirmed.emit(selected)
+
+func _on_card_select_cancel() -> void:
+	_card_selected_cards.clear()
+	for card in current_hand_cards:
+		_deselect_card(card)
+	
+	if _card_select_min == 0:
+		_on_card_select_confirm()
+	else:
+		_exit_card_select_mode()
+
+func _exit_card_select_mode() -> void:
+	_card_select_active = false
+	
+	for card in current_hand_cards:
+		var card_node = current_hand_cards[card]
+		if card_node:
+			if card_node.has_signal("card_clicked") and card_node.card_clicked.is_connected(_on_card_select_card_clicked):
+				card_node.card_clicked.disconnect(_on_card_select_card_clicked)
+			if card_node.has_method("set") and "is_select_mode" in card_node:
+				card_node.is_select_mode = false
+	
+	if _card_select_staging and is_instance_valid(_card_select_staging):
+		_card_select_staging.queue_free()
+	_card_select_staging = null
+	_card_select_confirm_btn = null
+	_card_select_info_label = null
+	_card_selected_cards.clear()

@@ -1,6 +1,8 @@
 {
 	"starter_deck": [
-		{"card_id": "strike", "count": 5},
-		{"card_id": "defend", "count": 5}
+		{"card_id": "斩击", "count": 3},
+		{"card_id": "格挡", "count": 3},
+		{"card_id": "蓄力", "count": 2},
+		{"card_id": "蓄势", "count": 2}
 	]
 }

@@ -1,0 +1,28 @@
+{
+	"id": "暗影刺客",
+	"name": "暗影刺客",
+	"max_hp": 15,
+	"ai_type": "basic",
+	"actions": [
+		{
+			"type": "attack",
+			"damage": 8,
+			"intent_text": "暗杀 8",
+			"intent_icon": "sword"
+		},
+		{
+			"type": "debuff",
+			"buff_id": "weak",
+			"stacks": 1,
+			"intent_text": "下毒",
+			"intent_icon": "poison"
+		},
+		{
+			"type": "attack",
+			"damage": 6,
+			"intent_text": "刺击 6",
+			"intent_icon": "sword"
+		}
+	],
+	"description": "来自暗影的刺客，攻击凶猛但身躯脆弱"
+}

@@ -20,6 +20,9 @@ var is_pressed: bool = false
 var press_tween: Tween = null
 var mouse_inside: bool = true
 var is_awaiting_target: bool = false
+var tooltip_panel: PanelContainer = null
+var drag_exited_hand: bool = false
+var is_select_mode: bool = false
 
 signal card_clicked(card: CardData)
 signal card_hovered(card: CardData)
@@ -31,6 +34,7 @@ signal card_released(card: CardData)
 signal card_cancelled(card: CardData)
 signal target_mode_started(card: CardData)
 signal target_mode_ended(card: CardData)
+signal card_play_requested(card: CardData)
 
 const ATTACK_COLOR := Color(0.9, 0.3, 0.3, 1.0)
 const SKILL_COLOR := Color(0.3, 0.5, 0.9, 1.0)
@@ -98,9 +102,9 @@ func _get_display_text() -> String:
 		if base_stat != "" and player_manager:
 			var stat_value = 0
 			if base_stat == "strength":
-				stat_value = player_manager.strength
+				stat_value = player_manager.get_strength()
 			elif base_stat == "dexterity":
-				stat_value = player_manager.dexterity
+				stat_value = player_manager.get_dexterity()
 			
 			var final_value = int(stat_value * multiplier)
 			
@@ -153,6 +157,7 @@ func _gui_input(event: InputEvent):
 				if card_data:
 					is_pressed = true
 					mouse_inside = true
+					drag_exited_hand = false
 					drag_start_pos = get_global_mouse_position()
 					
 					if is_awaiting_target:
@@ -164,19 +169,29 @@ func _gui_input(event: InputEvent):
 				if is_pressed:
 					is_pressed = false
 					
-					if _needs_target():
-						if is_dragging:
+					if is_awaiting_target:
+						pass
+					elif is_select_mode:
+						if mouse_inside:
+							card_clicked.emit(card_data)
+						_cancel_press()
+					elif is_dragging:
+						if _needs_target():
 							end_drag()
-						elif mouse_inside:
+						elif drag_exited_hand:
+							card_play_requested.emit(card_data)
+							end_drag()
+						else:
+							_cancel_press()
+					elif _needs_target():
+						if mouse_inside:
 							start_target_mode()
 						else:
 							_cancel_press()
 					else:
-						if mouse_inside:
-							_animate_press_up()
-							card_released.emit(card_data)
-						else:
-							_cancel_press()
+						if mouse_inside and not is_dragging:
+							card_clicked.emit(card_data)
+						_cancel_press()
 				accept_event()
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 			if is_pressed or is_awaiting_target:
@@ -191,13 +206,22 @@ func _input(event: InputEvent):
 		return
 	
 	if event is InputEventMouseMotion:
-		if is_pressed and _needs_target() and not is_dragging:
+		if is_pressed and not is_dragging and not is_awaiting_target and not is_select_mode:
 			var current_pos = get_global_mouse_position()
 			var distance = current_pos.distance_to(drag_start_pos)
 			if distance > 10.0:
 				start_drag()
 		
-		if is_dragging or is_awaiting_target:
+		if is_dragging:
+			var global_mouse_pos = get_global_mouse_position()
+			if _needs_target():
+				pass
+			else:
+				global_position = global_mouse_pos - size / 2
+			drag_updated.emit(card_data, global_mouse_pos)
+			if not _needs_target():
+				drag_exited_hand = not _is_in_hand_area(global_mouse_pos)
+		elif is_awaiting_target:
 			var global_mouse_pos = get_global_mouse_position()
 			drag_updated.emit(card_data, global_mouse_pos)
 
@@ -206,12 +230,14 @@ func _on_mouse_entered():
 	mouse_inside = true
 	_animate_hover(true)
 	card_hovered.emit(card_data)
+	_show_tooltip()
 
 func _on_mouse_exited():
 	is_hovered = false
 	mouse_inside = false
 	_animate_hover(false)
 	card_unhovered.emit(card_data)
+	_hide_tooltip()
 
 func _needs_target() -> bool:
 	if card_data == null:
@@ -260,6 +286,7 @@ func _cancel_press():
 
 func start_drag():
 	is_dragging = true
+	drag_exited_hand = false
 	drag_start_pos = get_global_mouse_position()
 	drag_started.emit(card_data, drag_start_pos)
 	
@@ -271,16 +298,27 @@ func start_drag():
 	press_tween.tween_property(self, "scale", Vector2(1.15, 1.15), 0.08)
 	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.08)
 	
+	if _needs_target():
+		var vp_size = get_viewport_rect().size
+		var center = Vector2(vp_size.x / 2 - size.x / 2, vp_size.y / 2 - size.y / 2 - 50)
+		press_tween.tween_property(self, "global_position", center, 0.15)
+		press_tween.tween_property(self, "modulate", Color(1.1, 1.1, 1.0, 0.8), 0.15)
+	else:
+		press_tween.tween_property(self, "modulate", Color(1.1, 1.1, 1.0, 0.85), 0.08)
+
+func _is_in_hand_area(pos: Vector2) -> bool:
+	var parent = get_parent()
+	if parent == null:
+		return false
+	var hand_rect = parent.get_global_rect()
+	return hand_rect.has_point(pos)
+	
 func end_drag():
 	is_dragging = false
+	drag_exited_hand = false
 	var end_pos = get_global_mouse_position()
 	drag_ended.emit(card_data, end_pos)
-	
-	if press_tween and press_tween.is_valid():
-		press_tween.kill()
-	
-	press_tween = create_tween()
-	press_tween.tween_property(self, "scale", original_scale, 0.1)
+	drag_updated.emit(card_data, end_pos)
 
 func _animate_click():
 	var tween = create_tween()
@@ -327,6 +365,7 @@ func play_draw_animation(start_pos: Vector2):
 	tween.tween_property(self, "scale", original_scale, 0.12)
 
 func reset_position():
+	_hide_tooltip()
 	position = original_position
 	scale = original_scale
 	rotation_degrees = 0.0
@@ -379,3 +418,79 @@ func cancel_target_mode():
 
 func set_original_position(pos: Vector2):
 	original_position = pos
+
+func _show_tooltip() -> void:
+	if card_data == null or is_dragging or is_awaiting_target:
+		return
+	_hide_tooltip()
+	
+	tooltip_panel = PanelContainer.new()
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.08, 0.12, 0.95)
+	style.set_corner_radius_all(6)
+	style.set_content_margin_all(10)
+	style.border_color = Color(0.5, 0.5, 0.6, 1.0)
+	style.border_width_top = 1
+	style.border_width_bottom = 1
+	style.border_width_left = 1
+	style.border_width_right = 1
+	tooltip_panel.add_theme_stylebox_override("panel", style)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	
+	var name_lbl = Label.new()
+	name_lbl.text = card_data.name
+	name_lbl.add_theme_font_size_override("font_size", 16)
+	name_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
+	vbox.add_child(name_lbl)
+	
+	var type_lbl = Label.new()
+	type_lbl.text = "[%s]" % _get_type_text(card_data.type)
+	type_lbl.add_theme_font_size_override("font_size", 12)
+	type_lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.7))
+	vbox.add_child(type_lbl)
+	
+	var desc_lbl = Label.new()
+	desc_lbl.text = card_data.get_description_text()
+	desc_lbl.add_theme_font_size_override("font_size", 13)
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.custom_minimum_size = Vector2(160, 0)
+	vbox.add_child(desc_lbl)
+	
+	if card_data.rarity != "basic" and not card_data.rarity.is_empty():
+		var rarity_lbl = Label.new()
+		rarity_lbl.text = card_data.rarity
+		rarity_lbl.add_theme_font_size_override("font_size", 11)
+		rarity_lbl.add_theme_color_override("font_color", _get_rarity_color(card_data.rarity))
+		vbox.add_child(rarity_lbl)
+	
+	tooltip_panel.add_child(vbox)
+	
+	var canvas = get_tree().root
+	canvas.add_child(tooltip_panel)
+	
+	var gp = global_position
+	var ts = tooltip_panel.get_combined_minimum_size()
+	var vp_size = get_viewport_rect().size
+	var px = gp.x + size.x + 8
+	if px + ts.x > vp_size.x:
+		px = gp.x - ts.x - 8
+	var py = gp.y - 10
+	if py + ts.y > vp_size.y:
+		py = vp_size.y - ts.y - 5
+	tooltip_panel.position = Vector2(px, py)
+	tooltip_panel.z_index = 100
+
+func _hide_tooltip() -> void:
+	if tooltip_panel and is_instance_valid(tooltip_panel):
+		tooltip_panel.queue_free()
+	tooltip_panel = null
+
+func _get_rarity_color(rarity: String) -> Color:
+	match rarity:
+		"common": return Color(0.8, 0.8, 0.8)
+		"uncommon": return Color(0.2, 0.8, 0.4)
+		"rare": return Color(0.3, 0.5, 0.9)
+		"epic": return Color(0.7, 0.3, 0.9)
+		_: return Color(0.7, 0.7, 0.7)

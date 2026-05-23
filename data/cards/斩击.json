@@ -1,11 +1,11 @@
 {
-	"id": "strike",
-	"name": "打击",
+	"id": "斩击",
+	"name": "斩击",
 	"type": "attack",
 	"description": "本回合伤害增加5点",
 	"rarity": "basic",
 	"target_type": "self",
-	"tags": ["Attack", "Strike", "Basic"],
+	"tags": ["Attack", "Basic"],
 	"treated_as": [],
 	"effects": [
 		{
@@ -14,7 +14,7 @@
 		}
 	],
 	"upgrade": {
-		"name": "打击+",
+		"name": "斩击+",
 		"description": "本回合伤害增加8点",
 		"effects": [
 			{

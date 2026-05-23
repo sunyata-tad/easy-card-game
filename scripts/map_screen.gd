@@ -430,6 +430,8 @@ func _on_interaction_action_pressed(interactable_id: String, action: String):
 			var heal_amount = result.heal_amount
 			if GameData:
 				GameData.heal(heal_amount)
+		elif result.get("show_deck", false):
+			_show_deck_workbench()
 		
 		if result.get("state_changed", false):
 			_update_interactables()
@@ -756,6 +758,139 @@ func _add_stat_cell(grid: GridContainer, stat_name: String, value: String) -> vo
 	value_label.text = value
 	value_label.add_theme_font_size_override("font_size", 15)
 	grid.add_child(value_label)
+
+func _show_deck_workbench() -> void:
+	var popup = PopupPanel.new()
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.1, 0.1, 0.16, 1.0)
+	style.set_corner_radius_all(6)
+	style.set_content_margin_all(16)
+	popup.add_theme_stylebox_override("panel", style)
+	
+	var main_vbox = VBoxContainer.new()
+	main_vbox.add_theme_constant_override("separation", 8)
+	
+	var title = Label.new()
+	title.text = "卡组工作台"
+	title.add_theme_font_size_override("font_size", 18)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	main_vbox.add_child(title)
+	
+	main_vbox.add_child(HSeparator.new())
+	
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 12)
+	
+	var deck_vbox = VBoxContainer.new()
+	deck_vbox.add_theme_constant_override("separation", 4)
+	var deck_title = Label.new()
+	deck_title.text = "当前卡组"
+	deck_title.add_theme_font_size_override("font_size", 14)
+	deck_vbox.add_child(deck_title)
+	
+	var deck_scroll = ScrollContainer.new()
+	deck_scroll.custom_minimum_size = Vector2(200, 280)
+	deck_vbox.add_child(deck_scroll)
+	
+	var deck_list = VBoxContainer.new()
+	deck_list.add_theme_constant_override("separation", 2)
+	deck_scroll.add_child(deck_list)
+	
+	var card_db = CardDatabase.new()
+	var deck = GameData.player_deck
+	var deck_counts: Dictionary = {}
+	for card in deck:
+		if not card.id.is_empty():
+			deck_counts[card.id] = deck_counts.get(card.id, 0) + 1
+	
+	for card_id in deck_counts:
+		var card_data = card_db.get_card(card_id)
+		var card_name = card_data.name if card_data else card_id
+		var count = deck_counts[card_id]
+		var row = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		var lbl = Label.new()
+		lbl.text = "%s ×%d" % [card_name, count]
+		lbl.custom_minimum_size = Vector2(120, 0)
+		row.add_child(lbl)
+		var remove_btn = Button.new()
+		remove_btn.text = "-"
+		remove_btn.custom_minimum_size = Vector2(28, 24)
+		remove_btn.pressed.connect(_on_deck_remove_card.bind(card_id, popup))
+		row.add_child(remove_btn)
+		deck_list.add_child(row)
+	
+	var deck_size_label = Label.new()
+	deck_size_label.text = "共 %d 张" % deck.size()
+	deck_vbox.add_child(deck_size_label)
+	hbox.add_child(deck_vbox)
+	
+	var lib_vbox = VBoxContainer.new()
+	lib_vbox.add_theme_constant_override("separation", 4)
+	var lib_title = Label.new()
+	lib_title.text = "可用卡牌"
+	lib_title.add_theme_font_size_override("font_size", 14)
+	lib_vbox.add_child(lib_title)
+	
+	var lib_scroll = ScrollContainer.new()
+	lib_scroll.custom_minimum_size = Vector2(200, 280)
+	lib_vbox.add_child(lib_scroll)
+	
+	var lib_list = VBoxContainer.new()
+	lib_list.add_theme_constant_override("separation", 2)
+	lib_scroll.add_child(lib_list)
+	
+	var all_ids = card_db.get_all_card_ids()
+	for cid in all_ids:
+		var card_data = card_db.get_card(cid)
+		if not card_data:
+			continue
+		var row = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		var lbl = Label.new()
+		lbl.text = card_data.name
+		lbl.custom_minimum_size = Vector2(120, 0)
+		row.add_child(lbl)
+		var add_btn = Button.new()
+		add_btn.text = "+"
+		add_btn.custom_minimum_size = Vector2(28, 24)
+		add_btn.pressed.connect(_on_deck_add_card.bind(cid, popup))
+		row.add_child(add_btn)
+		lib_list.add_child(row)
+	
+	hbox.add_child(lib_vbox)
+	main_vbox.add_child(hbox)
+	main_vbox.add_child(HSeparator.new())
+	
+	var close_btn = Button.new()
+	close_btn.text = "关闭"
+	close_btn.custom_minimum_size = Vector2(200, 36)
+	close_btn.pressed.connect(func(): popup.hide())
+	main_vbox.add_child(close_btn)
+	
+	popup.add_child(main_vbox)
+	add_child(popup)
+	popup.popup_centered()
+
+func _on_deck_add_card(card_id: String, popup: PopupPanel) -> void:
+	var card_db = CardDatabase.new()
+	var card = card_db.get_card(card_id)
+	if card and GameData:
+		GameData.add_card_to_deck(card.duplicate())
+		popup.hide()
+		_show_deck_workbench()
+
+func _on_deck_remove_card(card_id: String, popup: PopupPanel) -> void:
+	if not GameData:
+		return
+	var deck = GameData.player_deck
+	for card in deck:
+		if card.id == card_id:
+			GameData.remove_card_from_deck(card)
+			break
+	popup.hide()
+	_show_deck_workbench()
 
 func _add_panel_separator() -> void:
 	var sep = HSeparator.new()

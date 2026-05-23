@@ -1,0 +1,26 @@
+{
+	"id": "格挡",
+	"name": "格挡",
+	"type": "skill",
+	"description": "获得5点护甲",
+	"rarity": "basic",
+	"target_type": "self",
+	"tags": ["Skill", "Basic"],
+	"treated_as": [],
+	"effects": [
+		{
+			"effect_type": "block",
+			"value": 5
+		}
+	],
+	"upgrade": {
+		"name": "格挡+",
+		"description": "获得8点护甲",
+		"effects": [
+			{
+				"effect_type": "block",
+				"value": 8
+			}
+		]
+	}
+}

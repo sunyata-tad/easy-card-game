@@ -47,6 +47,7 @@ func setup(enemy: EnemyUnit):
 	if blk_lbl:
 		blk_lbl.visible = false
 	
+	_create_buff_bar()
 	_update_intent_display()
 	_connect_enemy_signals()
 
@@ -56,6 +57,8 @@ func _connect_enemy_signals():
 		enemy_unit.block_changed.connect(_on_enemy_block_changed)
 		enemy_unit.enemy_died.connect(_on_enemy_died)
 		enemy_unit.intent_changed.connect(_on_intent_changed)
+		if enemy_unit.buff_manager:
+			enemy_unit.buff_manager.buffs_changed.connect(_update_buff_bar)
 
 func _update_hp_display():
 	if enemy_unit == null:
@@ -108,18 +111,29 @@ func _update_intent_display():
 	match intent_type:
 		"attack":
 			var damage = intent.get("damage", 0)
+			var mult = enemy_unit.buff_manager.get_mult("damage")
+			var add = int(enemy_unit.buff_manager.get_flat_add("damage"))
+			var effective = int((damage + add) * mult)
 			if intent_text != "":
-				intent_lbl.text = "%s %d" % [intent_text, damage]
+				intent_lbl.text = "⚔ %s %d" % [intent_text, effective]
 			else:
-				intent_lbl.text = "攻击 %d" % damage
+				intent_lbl.text = "⚔ 攻击 %d" % effective
 			intent_lbl.add_theme_color_override("font_color", Color(1, 0.3, 0.3, 1))
 		"defend":
 			var block = intent.get("block", 0)
+			var mult = enemy_unit.buff_manager.get_mult("block")
+			var effective = int(block * mult)
 			if intent_text != "":
-				intent_lbl.text = "%s %d" % [intent_text, block]
+				intent_lbl.text = "🛡 %s %d" % [intent_text, effective]
 			else:
-				intent_lbl.text = "防御 %d" % block
+				intent_lbl.text = "🛡 防御 %d" % effective
 			intent_lbl.add_theme_color_override("font_color", Color(0.4, 0.8, 1, 1))
+		"buff":
+			intent_lbl.text = "↑ %s" % (intent_text if intent_text != "" else "强化")
+			intent_lbl.add_theme_color_override("font_color", Color(0.3, 0.9, 0.4, 1))
+		"debuff":
+			intent_lbl.text = "↓ %s" % (intent_text if intent_text != "" else "削弱")
+			intent_lbl.add_theme_color_override("font_color", Color(0.8, 0.4, 0.9, 1))
 		_:
 			intent_lbl.text = intent_text if intent_text != "" else ""
 			intent_lbl.visible = intent_text != ""
@@ -209,3 +223,191 @@ func show_block_number(amount: int):
 	tween.tween_property(block_label_temp, "position:y", 40, 0.5)
 	tween.tween_property(block_label_temp, "modulate:a", 0.0, 0.5)
 	tween.chain().tween_callback(block_label_temp.queue_free)
+
+var _buff_bar: HBoxContainer = null
+
+func _create_buff_bar() -> void:
+	_buff_bar = HBoxContainer.new()
+	_buff_bar.name = "BuffBar"
+	_buff_bar.add_theme_constant_override("separation", 2)
+	_buff_bar.position = Vector2(5, 95)
+	_buff_bar.custom_minimum_size = Vector2(140, 18)
+	add_child(_buff_bar)
+	_update_buff_bar()
+
+func _update_buff_bar() -> void:
+	if _buff_bar == null or enemy_unit == null:
+		return
+	
+	for child in _buff_bar.get_children():
+		child.queue_free()
+	
+	if not enemy_unit.buff_manager:
+		return
+	
+	for buff in enemy_unit.buff_manager.buffs:
+		var buff_info = _extract_buff_info(buff)
+		if buff_info.is_empty():
+			continue
+		var lbl = _create_buff_label(buff_info)
+		_buff_bar.add_child(lbl)
+
+func _extract_buff_info(buff) -> Dictionary:
+	var stacks: int = 1
+	var duration: int = 0
+	var buff_id: String = ""
+	var buff_name: String = ""
+	var buff_type: String = "buff"
+	if buff is BuffData:
+		stacks = buff.stacks
+		duration = buff.duration
+		buff_id = buff.id
+		buff_name = buff.name
+		buff_type = buff.buff_type
+	elif buff is Dictionary:
+		stacks = buff.get("stacks", 1)
+		duration = buff.get("duration", 0)
+		buff_id = buff.get("id", buff.get("buff_id", ""))
+		buff_name = buff.get("name", "")
+		buff_type = buff.get("buff_type", "buff")
+	else:
+		return {}
+	return {"id": buff_id, "name": buff_name, "stacks": stacks, "duration": duration, "buff_type": buff_type}
+
+var _buff_tooltip_panel: PanelContainer = null
+
+func _create_buff_label(info: Dictionary) -> Control:
+	var buff_id: String = info.get("id", "")
+	var stacks: int = info.get("stacks", 1)
+	var duration: int = info.get("duration", 0)
+	
+	var symbol = _get_buff_symbol(buff_id)
+	var color = _get_buff_color(buff_id)
+	
+	var btn = Button.new()
+	btn.text = "%s%d" % [symbol, stacks]
+	if duration > 0:
+		btn.text += "(%d)" % duration
+	btn.add_theme_font_size_override("font_size", 11)
+	btn.add_theme_color_override("font_color", color)
+	btn.add_theme_color_override("font_hover_color", color)
+	btn.flat = true
+	btn.custom_minimum_size = Vector2(0, 16)
+	btn.focus_mode = Control.FOCUS_NONE
+	
+	var tooltip_text = _get_buff_tooltip(buff_id, stacks, duration)
+	if not tooltip_text.is_empty():
+		btn.mouse_entered.connect(_on_buff_label_hovered.bind(tooltip_text, btn))
+		btn.mouse_exited.connect(_on_buff_label_unhovered)
+	
+	return btn
+
+func _on_buff_label_hovered(text: String, source: Control) -> void:
+	_hide_buff_tooltip()
+	
+	_buff_tooltip_panel = PanelContainer.new()
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.06, 0.1, 0.95)
+	style.set_corner_radius_all(6)
+	style.set_content_margin_all(10)
+	style.border_color = Color(0.5, 0.5, 0.6, 1.0)
+	style.border_width_top = 1
+	style.border_width_bottom = 1
+	style.border_width_left = 1
+	style.border_width_right = 1
+	_buff_tooltip_panel.add_theme_stylebox_override("panel", style)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	
+	var lines = text.split("\n")
+	for line in lines:
+		var lbl = Label.new()
+		lbl.text = line
+		lbl.add_theme_font_size_override("font_size", 13)
+		if line == lines[0]:
+			lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
+		else:
+			lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+		vbox.add_child(lbl)
+	
+	_buff_tooltip_panel.add_child(vbox)
+	
+	var canvas = get_tree().root
+	canvas.add_child(_buff_tooltip_panel)
+	
+	var gp = source.global_position
+	var ts = _buff_tooltip_panel.get_combined_minimum_size()
+	var vp_size = source.get_viewport_rect().size
+	var px = gp.x + source.size.x + 6
+	if px + ts.x > vp_size.x:
+		px = gp.x - ts.x - 6
+	var py = gp.y - 5
+	if py + ts.y > vp_size.y:
+		py = vp_size.y - ts.y - 5
+	_buff_tooltip_panel.position = Vector2(px, py)
+	_buff_tooltip_panel.z_index = 100
+
+func _on_buff_label_unhovered() -> void:
+	_hide_buff_tooltip()
+
+func _hide_buff_tooltip() -> void:
+	if _buff_tooltip_panel and is_instance_valid(_buff_tooltip_panel):
+		_buff_tooltip_panel.queue_free()
+	_buff_tooltip_panel = null
+
+func _get_buff_tooltip(buff_id: String, stacks: int, duration: int) -> String:
+	var desc = _get_buff_description(buff_id, stacks)
+	if desc.is_empty():
+		return ""
+	var result = desc
+	if duration > 0:
+		result += "\n剩余 %d 回合" % duration
+	elif duration == -1:
+		result += "\n永久"
+	return result
+
+func _get_buff_description(buff_id: String, stacks: int) -> String:
+	match buff_id:
+		"strength":
+			return "力量 %d\n攻击伤害 +%d" % [stacks, stacks]
+		"dexterity":
+			return "敏捷 %d\n每回合获得 %d 护甲" % [stacks, stacks]
+		"weak":
+			return "虚弱\n造成的伤害 ×0.75"
+		"vulnerable":
+			return "易伤\n受到的伤害 ×1.5"
+		"poison":
+			return "中毒 %d\n每回合结束受到 %d 伤害" % [stacks, stacks]
+		"regen":
+			return "再生 %d\n每回合开始恢复 %d 生命" % [stacks, stacks]
+		_:
+			return ""
+
+func _get_buff_symbol(buff_id: String) -> String:
+	match buff_id:
+		"strength": return "⚔"
+		"dexterity": return "🛡"
+		"weak": return "痿"
+		"vulnerable": return "弱"
+		"poison": return "☠"
+		"temp_strength": return "⚡"
+		"skip_attack": return "蓄"
+		"ignore_block": return "破"
+		"counter_stance": return "架"
+		"stored_power": return "力"
+		_: return "●"
+
+func _get_buff_color(buff_id: String) -> Color:
+	match buff_id:
+		"strength": return Color(1, 0.5, 0.2)
+		"dexterity": return Color(0.3, 0.7, 1)
+		"weak": return Color(0.7, 0.7, 0.3)
+		"vulnerable": return Color(0.9, 0.4, 0.9)
+		"poison": return Color(0.4, 0.8, 0.2)
+		"temp_strength": return Color(1, 0.8, 0.2)
+		"skip_attack": return Color(0.5, 0.8, 0.5)
+		"ignore_block": return Color(1, 0.4, 0.2)
+		"counter_stance": return Color(0.2, 0.8, 0.8)
+		"stored_power": return Color(0.9, 0.7, 0.2)
+		_: return Color(0.7, 0.7, 0.7)

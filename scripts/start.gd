@@ -75,12 +75,7 @@ func _on_continue_pressed() -> void:
 		SaveManager.GameProgress.IN_MAP:
 			GameManager.go_to_map(map_id, map_state)
 		SaveManager.GameProgress.IN_BATTLE:
-			var enemy_db = EnemyDatabase.new()
-			var enemy = enemy_db.get_enemy(enemy_id) if not enemy_id.is_empty() else null
-			if enemy:
-				GameManager.start_battle([enemy])
-			else:
-				GameManager.go_to_map(map_id, map_state)
+			GameManager.go_to_map(map_id, map_state)
 		SaveManager.GameProgress.GAME_OVER:
 			GameManager.go_to_game_over(GameData.get_battle_stats())
 		_:

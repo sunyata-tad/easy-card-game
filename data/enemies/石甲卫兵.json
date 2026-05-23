@@ -1,0 +1,27 @@
+{
+	"id": "石甲卫兵",
+	"name": "石甲卫兵",
+	"max_hp": 30,
+	"ai_type": "basic",
+	"actions": [
+		{
+			"type": "attack",
+			"damage": 3,
+			"intent_text": "攻击 3",
+			"intent_icon": "sword"
+		},
+		{
+			"type": "defend",
+			"block": 5,
+			"intent_text": "防御 5",
+			"intent_icon": "shield"
+		},
+		{
+			"type": "attack",
+			"damage": 5,
+			"intent_text": "重击 5",
+			"intent_icon": "sword"
+		}
+	],
+	"description": "身披石甲的卫兵，攻守兼备，节奏稳健"
+}

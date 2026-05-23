@@ -7,20 +7,45 @@ signal buff_removed(buff: BuffData)
 signal buff_expired(buff: BuffData)
 signal buffs_changed()
 
+var DURATION_STACK_BUFFS: Array = ["weak", "vulnerable"]
+
+var MODIFIER_FORMULAS: Dictionary = {
+	"strength": func(stacks: int) -> Dictionary: return {"damage_add": float(stacks)},
+	"dexterity": func(stacks: int) -> Dictionary: return {"block_add": float(stacks)},
+	"weak": func(_stacks: int) -> Dictionary: return {"damage_mult": 0.75},
+	"vulnerable": func(_stacks: int) -> Dictionary: return {"damage_taken_mult": 1.5},
+	"temp_strength": func(stacks: int) -> Dictionary: return {"damage_add": float(stacks)},
+	"skip_attack": func(_stacks: int) -> Dictionary: return {},
+	"ignore_block": func(_stacks: int) -> Dictionary: return {},
+	"counter_stance": func(_stacks: int) -> Dictionary: return {},
+	"stored_power": func(stacks: int) -> Dictionary: return {"damage_add": float(stacks)},
+}
+
 func _init():
 	pass
 
 func apply_buff(buff: BuffData) -> void:
 	var existing = get_buff_by_id(buff.id)
 	if existing != null:
-		existing.add_stacks(buff.stacks)
-		if buff.duration > 0 and existing.duration < buff.duration:
-			existing.duration = buff.duration
+		if DURATION_STACK_BUFFS.has(buff.id):
+			if buff.duration > 0:
+				existing.duration += buff.duration
+		else:
+			existing.add_stacks(buff.stacks)
+			if buff.duration > 0 and existing.duration < buff.duration:
+				existing.duration = buff.duration
+			recalculate_modifiers(existing)
 	else:
-		buffs.append(buff.duplicate())
+		var new_buff = buff.duplicate()
+		recalculate_modifiers(new_buff)
+		buffs.append(new_buff)
 	
 	buff_applied.emit(buff)
 	buffs_changed.emit()
+
+func recalculate_modifiers(buff: BuffData) -> void:
+	if MODIFIER_FORMULAS.has(buff.id):
+		buff.modifiers = MODIFIER_FORMULAS[buff.id].call(buff.stacks)
 
 func remove_buff(buff_id: String) -> void:
 	var buff = get_buff_by_id(buff_id)
@@ -49,9 +74,23 @@ func get_modifier(stat_name: String) -> float:
 		if buff.modifiers.has(stat_name + "_mult"):
 			total_mult *= buff.modifiers[stat_name + "_mult"]
 		if buff.modifiers.has(stat_name + "_add"):
-			total_add += buff.modifiers[stat_name + "_add"] * buff.stacks
+			total_add += buff.modifiers[stat_name + "_add"]
 	
 	return total_mult + total_add
+
+func get_flat_add(stat_name: String) -> float:
+	var total_add: float = 0.0
+	for buff in buffs:
+		if buff.modifiers.has(stat_name + "_add"):
+			total_add += buff.modifiers[stat_name + "_add"]
+	return total_add
+
+func get_mult(stat_name: String) -> float:
+	var total_mult: float = 1.0
+	for buff in buffs:
+		if buff.modifiers.has(stat_name + "_mult"):
+			total_mult *= buff.modifiers[stat_name + "_mult"]
+	return total_mult
 
 func tick_buffs(timing: String) -> Array:
 	var triggered_effects: Array = []

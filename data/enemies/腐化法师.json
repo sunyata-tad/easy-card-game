@@ -1,0 +1,29 @@
+{
+	"id": "腐化法师",
+	"name": "腐化法师",
+	"max_hp": 22,
+	"ai_type": "basic",
+	"actions": [
+		{
+			"type": "buff",
+			"buff_id": "strength",
+			"stacks": 1,
+			"intent_text": "蓄能",
+			"intent_icon": "buff"
+		},
+		{
+			"type": "debuff",
+			"buff_id": "vulnerable",
+			"stacks": 1,
+			"intent_text": "衰弱",
+			"intent_icon": "debuff"
+		},
+		{
+			"type": "attack",
+			"damage": 4,
+			"intent_text": "法击 4",
+			"intent_icon": "sword"
+		}
+	],
+	"description": "被黑暗力量腐化的法师，会强化自身并削弱对手"
+}

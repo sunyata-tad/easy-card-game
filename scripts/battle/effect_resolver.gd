@@ -2,6 +2,7 @@ class_name EffectResolver
 
 var card_database: CardDatabase
 var buff_database
+var card_system: CardSystem = null
 
 signal effect_resolved(effect_type: int, result: Dictionary)
 signal damage_dealt(target, amount: int)
@@ -13,12 +14,12 @@ signal buff_applied(target, buff: BuffData)
 func _init():
 	card_database = CardDatabase.new()
 
-func resolve_effects(effects: Array, source, target = null) -> Dictionary:
-	var results: Dictionary = {}
+func resolve_effects(effects: Array, source, target = null) -> Array:
+	var results: Array = []
 	
-	for effect in effects:
-		var result = resolve_effect(effect, source, target)
-		results[effect.get("effect_type", "unknown")] = result
+	for i in effects.size():
+		var result = resolve_effect(effects[i], source, target)
+		results.append(result)
 	
 	return results
 
@@ -33,10 +34,10 @@ func resolve_effect(effect: Dictionary, source, target = null) -> Dictionary:
 	if base_stat != "" and source is PlayerManager:
 		var stat_value = 0
 		if base_stat == "strength":
-			stat_value = source.strength
+			stat_value = source.get_strength()
 		elif base_stat == "dexterity":
-			stat_value = source.dexterity
-		value = int(stat_value * multiplier)
+			stat_value = source.get_dexterity()
+		value = value + int(stat_value * multiplier)
 	
 	match effect_type_str:
 		"damage":
@@ -49,6 +50,14 @@ func resolve_effect(effect: Dictionary, source, target = null) -> Dictionary:
 			result = _resolve_damage_boost(value, source)
 		"temp_damage_boost":
 			result = _resolve_temp_damage_boost(value, source)
+		"skip_attack":
+			result = _resolve_skip_attack(value, source)
+		"store_damage":
+			result = _resolve_store_damage(source)
+		"ignore_block":
+			result = _resolve_ignore_block(source)
+		"counter_stance":
+			result = _resolve_counter_stance(source)
 		"draw":
 			result = _resolve_draw(value, source)
 		"search_draw":
@@ -77,20 +86,35 @@ func _resolve_damage(base_damage: int, source, target) -> Dictionary:
 	if target == null:
 		return {"success": false, "value": 0}
 	
+	var total_damage = base_damage
+	if source is PlayerManager:
+		var strength_buff = source.buff_manager.get_buff_by_id("strength")
+		if strength_buff:
+			total_damage += strength_buff.stacks
+		var temp_buff = source.buff_manager.get_buff_by_id("temp_strength")
+		if temp_buff:
+			total_damage += temp_buff.stacks
+	
 	var damage_mult: float = 1.0
 	if source is PlayerManager:
-		damage_mult = source.buff_manager.get_modifier("damage")
+		damage_mult = source.buff_manager.get_mult("damage")
+		total_damage = int(source.hook_chain.trigger("calc_attack_damage", total_damage))
 	elif source.has_method("get") and source.get("buff_manager"):
-		damage_mult = source.buff_manager.get_modifier("damage")
+		total_damage += int(source.buff_manager.get_flat_add("damage"))
+		damage_mult = source.buff_manager.get_mult("damage")
 	
-	var final_damage = int(base_damage * damage_mult)
+	var final_damage = int(total_damage * damage_mult)
+	
+	var should_ignore_block = false
+	if source is PlayerManager:
+		should_ignore_block = source.buff_manager.has_buff("ignore_block")
 	
 	if target is PlayerManager:
 		var actual = target.take_damage(final_damage)
 		damage_dealt.emit(target, actual)
 		return {"success": true, "value": actual, "target": target}
 	elif target is EnemyUnit:
-		var actual = target.take_damage(final_damage)
+		var actual = target.take_damage(final_damage, should_ignore_block)
 		damage_dealt.emit(target, actual)
 		return {"success": true, "value": actual, "target": target}
 	
@@ -98,12 +122,14 @@ func _resolve_damage(base_damage: int, source, target) -> Dictionary:
 
 func _resolve_block(base_block: int, source, target) -> Dictionary:
 	var block_mult: float = 1.0
-	if source is PlayerManager:
-		block_mult = source.buff_manager.get_modifier("block")
-	elif source.has_method("get") and source.get("buff_manager"):
-		block_mult = source.buff_manager.get_modifier("block")
+	if target is PlayerManager:
+		block_mult = target.buff_manager.get_mult("block")
+	elif target is EnemyUnit:
+		block_mult = target.buff_manager.get_mult("block")
 	
 	var final_block = int(base_block * block_mult)
+	if final_block <= 0:
+		return {"success": false, "value": 0}
 	
 	if target is PlayerManager:
 		target.gain_block(final_block)
@@ -119,7 +145,7 @@ func _resolve_block(base_block: int, source, target) -> Dictionary:
 func _resolve_heal(base_heal: int, source, target) -> Dictionary:
 	var heal_mult: float = 1.0
 	if target is PlayerManager:
-		heal_mult = target.buff_manager.get_modifier("heal")
+		heal_mult = target.buff_manager.get_mult("heal")
 	
 	var final_heal = int(base_heal * heal_mult)
 	
@@ -136,34 +162,116 @@ func _resolve_heal(base_heal: int, source, target) -> Dictionary:
 
 func _resolve_damage_boost(value: int, source) -> Dictionary:
 	if source is PlayerManager:
-		source.strength += value
-		return {"success": true, "value": value, "new_strength": source.strength}
+		var buff = BuffData.new({
+			"id": "strength",
+			"name": "力量",
+			"buff_type": "buff",
+			"duration": -1,
+			"stacks": value
+		})
+		source.buff_manager.apply_buff(buff)
+		return {"success": true, "value": value, "new_strength": source.get_strength()}
 	return {"success": false, "value": 0}
 
 func _resolve_temp_damage_boost(value: int, source) -> Dictionary:
 	if source is PlayerManager:
-		source.add_temp_damage_bonus(value)
-		var total = source.get_total_damage()
-		return {"success": true, "value": value, "total_damage": total}
+		var buff = BuffData.new({
+			"id": "temp_strength",
+			"name": "临时力量",
+			"buff_type": "buff",
+			"duration": 1,
+			"stacks": value,
+			"trigger_timing": "on_turn_end_remove"
+		})
+		source.buff_manager.apply_buff(buff)
+		return {"success": true, "value": value}
+	return {"success": false, "value": 0}
+
+func _resolve_skip_attack(_value: int, source) -> Dictionary:
+	if source is PlayerManager:
+		var buff = BuffData.new({
+			"id": "skip_attack",
+			"name": "蓄力",
+			"buff_type": "buff",
+			"duration": 1,
+			"stacks": 1,
+			"trigger_timing": "on_turn_end_remove"
+		})
+		source.buff_manager.apply_buff(buff)
+		return {"success": true, "value": 1}
+	return {"success": false, "value": 0}
+
+func _resolve_store_damage(source) -> Dictionary:
+	if source is PlayerManager:
+		var current = source.get_strength()
+		var temp_buff = source.buff_manager.get_buff_by_id("temp_strength")
+		if temp_buff:
+			current += temp_buff.stacks
+			source.buff_manager.remove_buff("temp_strength")
+		var stored_buff = source.buff_manager.get_buff_by_id("stored_power")
+		if stored_buff:
+			stored_buff.add_stacks(current)
+			source.buff_manager.recalculate_modifiers(stored_buff)
+		else:
+			var new_buff = BuffData.new({
+				"id": "stored_power",
+				"name": "蓄力",
+				"buff_type": "buff",
+				"duration": -1,
+				"stacks": current
+			})
+			source.buff_manager.apply_buff(new_buff)
+		return {"success": true, "value": current, "stored_total": source.get_stored_power()}
+	return {"success": false, "value": 0}
+
+func _resolve_ignore_block(source) -> Dictionary:
+	if source is PlayerManager:
+		var buff = BuffData.new({
+			"id": "ignore_block",
+			"name": "破甲",
+			"buff_type": "buff",
+			"duration": 1,
+			"stacks": 1,
+			"trigger_timing": "on_turn_end_remove"
+		})
+		source.buff_manager.apply_buff(buff)
+		return {"success": true, "value": 1}
+	return {"success": false, "value": 0}
+
+func _resolve_counter_stance(source) -> Dictionary:
+	if source is PlayerManager:
+		var buff = BuffData.new({
+			"id": "counter_stance",
+			"name": "招架",
+			"buff_type": "buff",
+			"duration": 1,
+			"stacks": 1,
+			"trigger_timing": "on_turn_end_remove"
+		})
+		source.buff_manager.apply_buff(buff)
+		return {"success": true, "value": 1}
 	return {"success": false, "value": 0}
 
 func _resolve_draw(count: int, source) -> Dictionary:
-	if source.has_method("get") and source.get("card_system"):
-		var card_system = source.card_system
+	if card_system:
 		var drawn = card_system.draw_cards(count)
+		cards_drawn.emit(drawn.size())
+		return {"success": true, "value": drawn.size(), "cards": drawn}
+	elif source.has_method("get") and source.get("card_system"):
+		var cs = source.card_system
+		var drawn = cs.draw_cards(count)
 		cards_drawn.emit(drawn.size())
 		return {"success": true, "value": drawn.size(), "cards": drawn}
 	return {"success": false, "value": 0}
 
 func _resolve_search_draw(effect: Dictionary, source) -> Dictionary:
 	var card_id = effect.get("card_id", "")
-	var card_system = null
+	var cs = card_system
+	if not cs and source.has_method("get") and source.get("card_system"):
+		cs = source.card_system
 	
-	if source.has_method("get") and source.get("card_system"):
-		card_system = source.card_system
-	
-	if card_system:
-		var card = card_system.search_and_draw(card_id)
+	if cs:
+		var card = cs.search_and_draw(card_id)
 		if card:
 			return {"success": true, "value": 1, "card": card}
 	
@@ -171,13 +279,12 @@ func _resolve_search_draw(effect: Dictionary, source) -> Dictionary:
 
 func _resolve_search_discard(effect: Dictionary, source) -> Dictionary:
 	var card_id = effect.get("card_id", "")
-	var card_system = null
+	var cs = card_system
+	if not cs and source.has_method("get") and source.get("card_system"):
+		cs = source.card_system
 	
-	if source.has_method("get") and source.get("card_system"):
-		card_system = source.card_system
-	
-	if card_system:
-		var card = card_system.search_discard_and_draw(card_id)
+	if cs:
+		var card = cs.search_discard_and_draw(card_id)
 		if card:
 			return {"success": true, "value": 1, "card": card}
 	
@@ -186,6 +293,8 @@ func _resolve_search_discard(effect: Dictionary, source) -> Dictionary:
 func _resolve_apply_buff(effect: Dictionary, target) -> Dictionary:
 	var buff_id = effect.get("buff_id", "")
 	var stacks = effect.get("value", 1)
+	if effect.has("stacks"):
+		stacks = effect.stacks
 	
 	if buff_id.is_empty():
 		return {"success": false, "value": 0}
@@ -283,16 +392,14 @@ func _create_buff_from_id(buff_id: String, stacks: int = 1) -> BuffData:
 			"name": "力量",
 			"buff_type": "buff",
 			"duration": -1,
-			"stacks": stacks,
-			"modifiers": {"damage_mult": 1.0 + 0.25 * stacks}
+			"stacks": stacks
 		},
 		"dexterity": {
 			"id": "dexterity",
 			"name": "敏捷",
 			"buff_type": "buff",
 			"duration": -1,
-			"stacks": stacks,
-			"modifiers": {"block_mult": 1.0 + 0.25 * stacks}
+			"stacks": stacks
 		},
 		"weak": {
 			"id": "weak",

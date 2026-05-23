@@ -57,10 +57,25 @@ const LAYOUTS := {
 }
 
 static func get_layout(hand_size: int, container_width: float) -> Dictionary:
-	var size = clamp(hand_size, 1, 10)
-	var layout = LAYOUTS[size]
+	var size = maxi(hand_size, 1)
 	
-	var spacing = layout.spacing
+	if size <= 10 and LAYOUTS.has(size):
+		var layout = LAYOUTS[size]
+		var spacing = layout.spacing
+		var total_width = CARD_WIDTH + (size - 1) * spacing
+		var start_x = (container_width - total_width) / 2.0
+		var center_index = (size - 1) / 2.0
+		
+		return {
+			"spacing": spacing,
+			"start_x": start_x,
+			"center_index": center_index,
+			"max_rotation": layout.max_rotation,
+			"curve_factor": layout.curve_factor,
+			"base_y": BASE_Y
+		}
+	
+	var spacing = minf((container_width - CARD_WIDTH) / maxf(size - 1, 1), 52.0)
 	var total_width = CARD_WIDTH + (size - 1) * spacing
 	var start_x = (container_width - total_width) / 2.0
 	var center_index = (size - 1) / 2.0
@@ -69,8 +84,8 @@ static func get_layout(hand_size: int, container_width: float) -> Dictionary:
 		"spacing": spacing,
 		"start_x": start_x,
 		"center_index": center_index,
-		"max_rotation": layout.max_rotation,
-		"curve_factor": layout.curve_factor,
+		"max_rotation": 8.0,
+		"curve_factor": 2.0,
 		"base_y": BASE_Y
 	}
 

@@ -20,14 +20,14 @@ func _init(enemy_data: EnemyData):
 	current_hp = max_hp
 	buff_manager = BuffManager.new()
 
-func take_damage(amount: int) -> int:
+func take_damage(amount: int, ignore_target_block: bool = false) -> int:
 	if amount <= 0 or is_dead:
 		return 0
 	
-	var damage_mult = buff_manager.get_modifier("damage_taken")
+	var damage_mult = buff_manager.get_mult("damage_taken")
 	var actual_damage = int(amount * damage_mult)
 	
-	if block > 0:
+	if not ignore_target_block and block > 0:
 		if block >= actual_damage:
 			block -= actual_damage
 			block_changed.emit(block)
@@ -43,6 +43,7 @@ func take_damage(amount: int) -> int:
 	
 	if current_hp <= 0:
 		is_dead = true
+		clear_intent()
 		enemy_died.emit()
 	
 	return actual_damage

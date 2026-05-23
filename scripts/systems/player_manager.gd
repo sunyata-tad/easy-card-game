@@ -4,10 +4,10 @@ var current_hp: int
 var max_hp: int
 var block: int = 0
 var buff_manager: BuffManager
-var strength: int = 0
-var dexterity: int = 0
-var temp_damage_bonus: int = 0
+var hook_chain: HookChain
 var selected_target_index: int = 0
+var is_dead: bool = false
+var selected_target: EnemyUnit = null
 
 signal hp_changed(current: int, maximum: int)
 signal block_changed(amount: int)
@@ -15,40 +15,51 @@ signal player_died()
 signal player_damaged(amount: int)
 signal player_healed(amount: int)
 signal target_selected(index: int)
+signal counter_damage(amount: int)
 
 func _init(initial_max_hp: int = 80):
 	max_hp = initial_max_hp
 	current_hp = max_hp
 	buff_manager = BuffManager.new()
-	_connect_buff_signals()
+	hook_chain = HookChain.new()
 
-func _connect_buff_signals() -> void:
-	pass
+func get_strength() -> int:
+	var buff = buff_manager.get_buff_by_id("strength")
+	return buff.stacks if buff else 0
+
+func get_dexterity() -> int:
+	var buff = buff_manager.get_buff_by_id("dexterity")
+	return buff.stacks if buff else 0
+
+func get_stored_power() -> int:
+	var buff = buff_manager.get_buff_by_id("stored_power")
+	return buff.stacks if buff else 0
 
 func get_total_damage() -> int:
-	return strength + temp_damage_bonus
+	return int(buff_manager.get_flat_add("damage"))
 
-func add_temp_damage_bonus(amount: int) -> void:
-	temp_damage_bonus += amount
-
-func reset_temp_damage_bonus() -> void:
-	temp_damage_bonus = 0
+func get_total_block() -> int:
+	return int(buff_manager.get_flat_add("block"))
 
 func set_selected_target(index: int) -> void:
 	selected_target_index = index
 	target_selected.emit(index)
 
 func take_damage(amount: int) -> int:
-	if amount <= 0:
+	if is_dead or amount <= 0:
 		return 0
 	
-	var damage_mult = buff_manager.get_modifier("damage_taken")
+	var damage_mult = buff_manager.get_mult("damage_taken")
 	var actual_damage = int(amount * damage_mult)
+	actual_damage = int(hook_chain.trigger("calc_damage_taken", actual_damage, {"source_type": "enemy"}))
 	
 	if block > 0:
 		if block >= actual_damage:
+			var blocked = actual_damage
 			block -= actual_damage
 			block_changed.emit(block)
+			if buff_manager.has_buff("counter_stance"):
+				counter_damage.emit(blocked)
 			return 0
 		else:
 			actual_damage -= block
@@ -60,6 +71,7 @@ func take_damage(amount: int) -> int:
 	player_damaged.emit(actual_damage)
 	
 	if current_hp <= 0:
+		is_dead = true
 		player_died.emit()
 	
 	return actual_damage
@@ -67,17 +79,14 @@ func take_damage(amount: int) -> int:
 func gain_block(amount: int) -> void:
 	if amount <= 0:
 		return
-	
-	var block_mult = buff_manager.get_modifier("block")
-	var actual_block = int(amount * block_mult)
-	block += actual_block
+	block += amount
 	block_changed.emit(block)
 
 func heal(amount: int) -> int:
 	if amount <= 0:
 		return 0
 	
-	var heal_mult = buff_manager.get_modifier("heal")
+	var heal_mult = buff_manager.get_mult("heal")
 	var actual_heal = int(amount * heal_mult)
 	var old_hp = current_hp
 	current_hp = mini(current_hp + actual_heal, max_hp)
@@ -99,7 +108,7 @@ func set_max_hp(value: int) -> void:
 	hp_changed.emit(current_hp, max_hp)
 
 func is_alive() -> bool:
-	return current_hp > 0
+	return not is_dead and current_hp > 0
 
 func get_hp_percent() -> float:
 	return float(current_hp) / float(max_hp)

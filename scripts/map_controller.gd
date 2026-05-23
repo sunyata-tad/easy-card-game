@@ -279,6 +279,15 @@ func execute_interaction(interactable_id: String, action: String) -> Dictionary:
 				result.message = "你整理了道具架，一切变得井井有条。"
 				map_state.add_log("interact", result.message)
 		
+		"deck_view":
+			if action == "查看卡组":
+				result.message = "你查看了当前卡组。"
+				result.show_deck = true
+				map_state.add_log("interact", result.message)
+			elif action == "整理":
+				result.message = "你整理了卡组工作台。"
+				map_state.add_log("interact", result.message)
+		
 		_:
 			result.message = "你与%s进行了交互。" % interactable_name
 			map_state.add_log("interact", result.message)
