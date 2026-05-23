@@ -292,6 +292,8 @@ func _resolve_search_discard(effect: Dictionary, source) -> Dictionary:
 
 func _resolve_apply_buff(effect: Dictionary, target) -> Dictionary:
 	var buff_id = effect.get("buff_id", "")
+	if buff_id.is_empty():
+		buff_id = effect.get("buff_type", "")
 	var stacks = effect.get("value", 1)
 	if effect.has("stacks"):
 		stacks = effect.stacks

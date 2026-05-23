@@ -278,7 +278,6 @@ func _execute_player_auto_attack() -> void:
 		await get_tree().create_timer(0.2).timeout
 	
 	if player_manager.buff_manager.has_buff("skip_attack"):
-		ui_controller.show_state_message("蓄力中...伤害叠加至下回合", 1.2)
 		await get_tree().create_timer(0.2).timeout
 		return
 	
@@ -480,6 +479,7 @@ func _update_player_ui() -> void:
 	ui_controller.update_player_display(player_manager.current_hp, player_manager.max_hp, player_manager.block)
 	ui_controller.update_player_stats_info(player_manager)
 	ui_controller.update_player_buff_bar(player_manager)
+	ui_controller.update_all_enemy_intents()
 
 func _update_initial_ui() -> void:
 	ui_controller.update_enemy_display(enemy_system.get_all_enemies())

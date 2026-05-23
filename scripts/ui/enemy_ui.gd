@@ -8,6 +8,7 @@ extends Control
 @onready var block_label: Label = $BlockLabel
 
 var enemy_unit: EnemyUnit
+var player_manager: PlayerManager = null
 var is_selected: bool = false
 var original_scale: Vector2 = Vector2.ONE
 
@@ -26,8 +27,9 @@ func _setup_signals():
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
 
-func setup(enemy: EnemyUnit):
+func setup(enemy: EnemyUnit, pm: PlayerManager = null):
 	enemy_unit = enemy
+	player_manager = pm
 	
 	var name_lbl = get_node_or_null("NameLabel")
 	var hp_lbl = get_node_or_null("HPLabel")
@@ -59,6 +61,9 @@ func _connect_enemy_signals():
 		enemy_unit.intent_changed.connect(_on_intent_changed)
 		if enemy_unit.buff_manager:
 			enemy_unit.buff_manager.buffs_changed.connect(_update_buff_bar)
+			enemy_unit.buff_manager.buffs_changed.connect(_update_intent_display)
+	if player_manager and player_manager.buff_manager:
+		player_manager.buff_manager.buffs_changed.connect(_on_player_buffs_changed)
 
 func _update_hp_display():
 	if enemy_unit == null:
@@ -91,6 +96,9 @@ func _on_enemy_died():
 func _on_intent_changed(_intent: Dictionary):
 	_update_intent_display()
 
+func _on_player_buffs_changed():
+	_update_intent_display()
+
 func _update_intent_display():
 	if enemy_unit == null:
 		return
@@ -114,6 +122,9 @@ func _update_intent_display():
 			var mult = enemy_unit.buff_manager.get_mult("damage")
 			var add = int(enemy_unit.buff_manager.get_flat_add("damage"))
 			var effective = int((damage + add) * mult)
+			if player_manager:
+				var damage_taken_mult = player_manager.buff_manager.get_mult("damage_taken")
+				effective = int(effective * damage_taken_mult)
 			if intent_text != "":
 				intent_lbl.text = "⚔ %s %d" % [intent_text, effective]
 			else:
@@ -229,9 +240,12 @@ var _buff_bar: HBoxContainer = null
 func _create_buff_bar() -> void:
 	_buff_bar = HBoxContainer.new()
 	_buff_bar.name = "BuffBar"
-	_buff_bar.add_theme_constant_override("separation", 2)
-	_buff_bar.position = Vector2(5, 95)
-	_buff_bar.custom_minimum_size = Vector2(140, 18)
+	_buff_bar.add_theme_constant_override("separation", 4)
+	_buff_bar.offset_left = 5.0
+	_buff_bar.offset_top = 95.0
+	_buff_bar.offset_right = 145.0
+	_buff_bar.offset_bottom = 113.0
+	_buff_bar.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_buff_bar)
 	_update_buff_bar()
 

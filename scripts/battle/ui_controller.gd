@@ -61,11 +61,11 @@ func _setup_state_display() -> void:
 	state_display_label = Label.new()
 	state_display_label.name = "StateDisplay"
 	state_display_label.add_theme_font_size_override("font_size", 32)
-	state_display_label.add_theme_color_override("font_color", Color.WHITE)
+	state_display_label.add_theme_color_override("font_color", Color(1, 0.85, 0.3))
 	state_display_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	state_display_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	state_display_label.set_anchors_preset(Control.PRESET_CENTER)
-	state_display_label.position = Vector2(-100, -150)
+	state_display_label.position = Vector2(-150, -15)
 	state_display_label.visible = false
 	root_node.add_child(state_display_label)
 
@@ -193,10 +193,10 @@ func show_turn_banner(text: String) -> void:
 	var banner = Label.new()
 	banner.text = text
 	banner.add_theme_font_size_override("font_size", 36)
-	banner.add_theme_color_override("font_color", Color(1, 0.9, 0.5))
+	banner.add_theme_color_override("font_color", Color(1, 0.85, 0.3))
 	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	banner.set_anchors_preset(Control.PRESET_CENTER)
-	banner.position = Vector2(-200, -20)
+	banner.position = Vector2(-150, -18)
 	banner.z_index = 200
 	banner.modulate = Color(1, 1, 1, 0)
 	root_node.add_child(banner)
@@ -396,7 +396,7 @@ func _create_enemy_node(enemy: EnemyUnit) -> Control:
 		enemy_node = enemy_scene.instantiate() as Control
 		
 		if enemy_node.has_method("setup"):
-			enemy_node.setup(enemy)
+			enemy_node.setup(enemy, player_manager)
 			enemy_node.enemy_selected.connect(_on_enemy_ui_selected)
 	else:
 		enemy_node = Control.new()
@@ -460,6 +460,12 @@ func update_single_enemy(enemy: EnemyUnit) -> void:
 		if node.has_method("_update_buff_bar"):
 			node._update_buff_bar()
 		if node.has_method("_update_intent_display"):
+			node._update_intent_display()
+
+func update_all_enemy_intents() -> void:
+	for enemy in current_enemy_nodes:
+		var node = current_enemy_nodes[enemy]
+		if node and is_instance_valid(node) and node.has_method("_update_intent_display"):
 			node._update_intent_display()
 
 func update_player_display(hp: int, max_hp: int, block: int) -> void:
@@ -976,14 +982,14 @@ func enter_card_select_mode(prompt: String, min_select: int, max_select: int, ca
 	bar.name = "CardSelectBar"
 	bar.add_theme_constant_override("separation", 12)
 	bar.alignment = BoxContainer.ALIGNMENT_CENTER
-	bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	bar.offset_top = -50
-	bar.offset_bottom = 0
+	bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	bar.offset_top = 10
+	bar.offset_bottom = 50
 	root_node.add_child(bar)
 	_card_select_staging = bar
 	
 	var bg = ColorRect.new()
-	bg.color = Color(0, 0, 0, 0.6)
+	bg.color = Color(0, 0, 0, 0.5)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bar.add_child(bg)
 	
@@ -1015,6 +1021,9 @@ func enter_card_select_mode(prompt: String, min_select: int, max_select: int, ca
 	
 	_update_card_select_ui()
 	
+	if end_turn_button:
+		end_turn_button.disabled = true
+	
 	for card in current_hand_cards:
 		var card_node = current_hand_cards[card]
 		if card_node:
@@ -1022,6 +1031,7 @@ func enter_card_select_mode(prompt: String, min_select: int, max_select: int, ca
 				card_node.card_clicked.connect(_on_card_select_card_clicked)
 			if card_node.has_method("set") and "is_select_mode" in card_node:
 				card_node.is_select_mode = true
+			card_node.mouse_filter = Control.MOUSE_FILTER_STOP
 
 func _on_card_select_gui_input(event: InputEvent, card: CardData) -> void:
 	if not _card_select_active:
@@ -1049,10 +1059,20 @@ func _select_card(card: CardData) -> void:
 	var card_node = current_hand_cards.get(card)
 	if card_node == null:
 		return
+	var vp_size = card_node.get_viewport_rect().size
+	var parent = card_node.get_parent()
+	var center_local: Vector2
+	if parent:
+		center_local = parent.global_position
+		center_local = Vector2(vp_size.x / 2 - card_node.size.x / 2 - center_local.x, vp_size.y / 2 - card_node.size.y / 2 - 50 - center_local.y)
+	else:
+		center_local = Vector2(vp_size.x / 2 - card_node.size.x / 2, vp_size.y / 2 - card_node.size.y / 2 - 50)
 	var tween = card_node.create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(card_node, "position:y", card_node.original_position.y - 30, 0.15)
+	tween.tween_property(card_node, "position", center_local, 0.2).set_ease(Tween.EASE_OUT)
 	tween.tween_property(card_node, "modulate", Color(1, 0.7, 0.7, 1), 0.15)
+	tween.tween_property(card_node, "scale", Vector2(1.1, 1.1), 0.15)
+	tween.tween_property(card_node, "z_index", 50, 0.0)
 
 func _deselect_card(card: CardData) -> void:
 	var card_node = current_hand_cards.get(card)
@@ -1060,8 +1080,10 @@ func _deselect_card(card: CardData) -> void:
 		return
 	var tween = card_node.create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(card_node, "position:y", card_node.original_position.y, 0.15)
+	tween.tween_property(card_node, "position", card_node.original_position, 0.2).set_ease(Tween.EASE_OUT)
 	tween.tween_property(card_node, "modulate", Color.WHITE, 0.15)
+	tween.tween_property(card_node, "scale", card_node.original_scale, 0.15)
+	tween.tween_property(card_node, "z_index", 0, 0.0)
 
 func _update_card_select_ui() -> void:
 	if _card_select_info_label:
@@ -1095,6 +1117,9 @@ func _on_card_select_cancel() -> void:
 
 func _exit_card_select_mode() -> void:
 	_card_select_active = false
+	
+	if end_turn_button:
+		end_turn_button.disabled = false
 	
 	for card in current_hand_cards:
 		var card_node = current_hand_cards[card]
