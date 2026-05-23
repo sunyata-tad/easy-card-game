@@ -109,8 +109,35 @@ func decrease_durations() -> void:
 	
 	for buff in buffs:
 		buff.decrease_duration()
+		if buff.stack_decay.has("on_turn_end"):
+			var decay_amount = buff.stack_decay["on_turn_end"]
+			buff.remove_stacks(decay_amount)
+			recalculate_modifiers(buff)
+		elif buff.stack_decay.has("on_turn_end_pct"):
+			var pct = buff.stack_decay["on_turn_end_pct"]
+			var decay_amount = max(int(buff.stacks * pct), 1)
+			buff.remove_stacks(decay_amount)
+			recalculate_modifiers(buff)
 		if buff.is_expired():
 			expired_buffs.append(buff)
+	
+	for buff in expired_buffs:
+		buffs.erase(buff)
+		buff_expired.emit(buff)
+	
+	if expired_buffs.size() > 0:
+		buffs_changed.emit()
+
+func decay_on_event(event: String) -> void:
+	var expired_buffs: Array = []
+	
+	for buff in buffs:
+		if buff.stack_decay.has(event):
+			var decay_amount = buff.stack_decay[event]
+			buff.remove_stacks(decay_amount)
+			recalculate_modifiers(buff)
+			if buff.is_expired():
+				expired_buffs.append(buff)
 	
 	for buff in expired_buffs:
 		buffs.erase(buff)

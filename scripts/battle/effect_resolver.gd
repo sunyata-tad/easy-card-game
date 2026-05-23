@@ -191,7 +191,7 @@ func _resolve_skip_attack(_value: int, source) -> Dictionary:
 	if source is PlayerManager:
 		var buff = BuffData.new({
 			"id": "skip_attack",
-			"name": "蓄力",
+			"name": "蓄势",
 			"buff_type": "buff",
 			"duration": 1,
 			"stacks": 1,

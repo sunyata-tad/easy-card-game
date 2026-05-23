@@ -10,6 +10,7 @@ var trigger_timing: String
 var modifiers: Dictionary
 var tick_effect: Dictionary
 var icon_path: String
+var stack_decay: Dictionary
 
 func _init(data: Dictionary):
 	id = data.get("id", "")
@@ -22,6 +23,7 @@ func _init(data: Dictionary):
 	modifiers = data.get("modifiers", {})
 	tick_effect = data.get("tick_effect", {})
 	icon_path = data.get("icon_path", "")
+	stack_decay = data.get("stack_decay", {})
 
 func add_stacks(amount: int) -> void:
 	stacks = mini(stacks + amount, max_stacks)
@@ -47,5 +49,6 @@ func duplicate() -> BuffData:
 		"trigger_timing": trigger_timing,
 		"modifiers": modifiers.duplicate(true),
 		"tick_effect": tick_effect.duplicate(true),
-		"icon_path": icon_path
+		"icon_path": icon_path,
+		"stack_decay": stack_decay.duplicate(true)
 	})

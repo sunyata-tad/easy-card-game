@@ -3,79 +3,56 @@ class_name HandLayoutPresets
 const CARD_WIDTH := 140.0
 const BASE_Y := 20.0
 
-const LAYOUTS := {
-	1: {
-		"spacing": 0.0,
-		"max_rotation": 0.0,
-		"curve_factor": 0.0
-	},
-	2: {
-		"spacing": 140.0,
-		"max_rotation": 6.0,
-		"curve_factor": 1.5
-	},
-	3: {
-		"spacing": 130.0,
-		"max_rotation": 7.0,
-		"curve_factor": 2.0
-	},
-	4: {
-		"spacing": 115.0,
-		"max_rotation": 8.0,
-		"curve_factor": 2.0
-	},
-	5: {
-		"spacing": 100.0,
-		"max_rotation": 9.0,
-		"curve_factor": 2.5
-	},
-	6: {
-		"spacing": 88.0,
-		"max_rotation": 9.0,
-		"curve_factor": 2.5
-	},
-	7: {
-		"spacing": 76.0,
-		"max_rotation": 10.0,
-		"curve_factor": 2.5
-	},
-	8: {
-		"spacing": 66.0,
-		"max_rotation": 10.0,
-		"curve_factor": 2.5
-	},
-	9: {
-		"spacing": 58.0,
-		"max_rotation": 9.0,
-		"curve_factor": 2.0
-	},
-	10: {
-		"spacing": 52.0,
-		"max_rotation": 8.0,
-		"curve_factor": 2.0
-	}
+const IDEAL_SPACINGS := {
+	1: 0.0,
+	2: 155.0,
+	3: 155.0,
+	4: 150.0,
+	5: 148.0,
+	6: 145.0,
+	7: 142.0,
+	8: 140.0,
+	9: 138.0,
+	10: 136.0
+}
+
+const ROTATION_CURVE := {
+	1: {"max_rotation": 0.0, "curve_factor": 0.0},
+	2: {"max_rotation": 4.0, "curve_factor": 1.0},
+	3: {"max_rotation": 5.0, "curve_factor": 1.2},
+	4: {"max_rotation": 5.0, "curve_factor": 1.2},
+	5: {"max_rotation": 5.0, "curve_factor": 1.3},
+	6: {"max_rotation": 5.0, "curve_factor": 1.3},
+	7: {"max_rotation": 5.0, "curve_factor": 1.3},
+	8: {"max_rotation": 4.0, "curve_factor": 1.2},
+	9: {"max_rotation": 4.0, "curve_factor": 1.0},
+	10: {"max_rotation": 3.0, "curve_factor": 1.0}
 }
 
 static func get_layout(hand_size: int, container_width: float) -> Dictionary:
 	var size = maxi(hand_size, 1)
 	
-	if size <= 10 and LAYOUTS.has(size):
-		var layout = LAYOUTS[size]
-		var spacing = layout.spacing
-		var total_width = CARD_WIDTH + (size - 1) * spacing
-		var start_x = (container_width - total_width) / 2.0
-		var center_index = (size - 1) / 2.0
-		
-		return {
-			"spacing": spacing,
-			"start_x": start_x,
-			"center_index": center_index,
-			"max_rotation": layout.max_rotation,
-			"curve_factor": layout.curve_factor,
-			"base_y": BASE_Y
-		}
+	var ideal_spacing: float
+	var max_rotation: float
+	var curve_factor: float
 	
-	var spacing = minf((container_width - CARD_WIDTH) / maxf(size - 1, 1), 52.0)
+	if size <= 10 and IDEAL_SPACINGS.has(size):
+		ideal_spacing = IDEAL_SPACINGS[size]
+		var rc = ROTATION_CURVE[size]
+		max_rotation = rc.max_rotation
+		curve_factor = rc.curve_factor
+	else:
+		ideal_spacing = 130.0
+		max_rotation = 4.0
+		curve_factor = 1.0
+	
+	var max_spacing: float
+	if size > 1:
+		max_spacing = (container_width - CARD_WIDTH) / float(size - 1)
+	else:
+		max_spacing = ideal_spacing
+	
+	var spacing = minf(ideal_spacing, max_spacing)
 	var total_width = CARD_WIDTH + (size - 1) * spacing
 	var start_x = (container_width - total_width) / 2.0
 	var center_index = (size - 1) / 2.0
@@ -84,8 +61,8 @@ static func get_layout(hand_size: int, container_width: float) -> Dictionary:
 		"spacing": spacing,
 		"start_x": start_x,
 		"center_index": center_index,
-		"max_rotation": 8.0,
-		"curve_factor": 2.0,
+		"max_rotation": max_rotation,
+		"curve_factor": curve_factor,
 		"base_y": BASE_Y
 	}
 
@@ -101,4 +78,3 @@ static func get_card_position(index: int, hand_size: int, container_width: float
 		"position": Vector2(x_pos, y_pos),
 		"rotation": rotation_deg
 	}
-

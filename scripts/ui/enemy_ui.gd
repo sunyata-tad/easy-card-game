@@ -290,6 +290,8 @@ func _extract_buff_info(buff) -> Dictionary:
 
 var _buff_tooltip_panel: PanelContainer = null
 
+const NO_STACK_BUFFS: Array = ["skip_attack", "ignore_block", "counter_stance"]
+
 func _create_buff_label(info: Dictionary) -> Control:
 	var buff_id: String = info.get("id", "")
 	var stacks: int = info.get("stacks", 1)
@@ -297,9 +299,13 @@ func _create_buff_label(info: Dictionary) -> Control:
 	
 	var symbol = _get_buff_symbol(buff_id)
 	var color = _get_buff_color(buff_id)
+	var show_stacks = not NO_STACK_BUFFS.has(buff_id)
 	
 	var btn = Button.new()
-	btn.text = "%s%d" % [symbol, stacks]
+	if show_stacks:
+		btn.text = "%s%d" % [symbol, stacks]
+	else:
+		btn.text = symbol
 	if duration > 0:
 		btn.text += "(%d)" % duration
 	btn.add_theme_font_size_override("font_size", 11)

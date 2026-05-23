@@ -150,7 +150,6 @@ func _on_battle_init() -> void:
 	turn_manager.reset()
 	is_first_turn = true
 	is_discard_phase = false
-	ui_controller.show_turn_banner("战斗开始!")
 
 func _on_draw_phase() -> void:
 	player_manager.reset_block()
@@ -170,7 +169,8 @@ func _on_draw_phase() -> void:
 
 func _on_player_turn_phase() -> void:
 	ui_controller.set_interactive(true)
-	ui_controller.show_turn_banner("你的回合")
+	if state_machine.previous_state != StateMachine.BattleState.RESOLVING:
+		ui_controller.show_turn_banner("你的回合")
 
 func _on_resolving_phase() -> void:
 	ui_controller.set_interactive(false)

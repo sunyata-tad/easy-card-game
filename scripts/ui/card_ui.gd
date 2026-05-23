@@ -13,6 +13,7 @@ var is_hovered: bool = false
 var is_selected: bool = false
 var original_position: Vector2
 var original_scale: Vector2 = Vector2.ONE
+var original_rotation: float = 0.0
 
 var is_dragging: bool = false
 var drag_start_pos: Vector2
@@ -137,7 +138,7 @@ func _get_type_text(type: String) -> String:
 		_: return ""
 
 func _animate_hover(hover: bool):
-	if is_pressed or is_awaiting_target:
+	if is_pressed or is_awaiting_target or is_select_mode:
 		return
 	
 	var target_scale = Vector2(1.12, 1.12) if hover else original_scale
@@ -162,6 +163,8 @@ func _gui_input(event: InputEvent):
 					
 					if is_awaiting_target:
 						cancel_target_mode()
+					elif is_select_mode:
+						pass
 					else:
 						_animate_press_down()
 				accept_event()
@@ -174,7 +177,7 @@ func _gui_input(event: InputEvent):
 					elif is_select_mode:
 						if mouse_inside:
 							card_clicked.emit(card_data)
-						_cancel_press()
+						is_pressed = false
 					elif is_dragging:
 						if _needs_target():
 							end_drag()

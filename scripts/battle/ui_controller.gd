@@ -65,7 +65,8 @@ func _setup_state_display() -> void:
 	state_display_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	state_display_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	state_display_label.set_anchors_preset(Control.PRESET_CENTER)
-	state_display_label.position = Vector2(-150, -15)
+	state_display_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	state_display_label.grow_vertical = Control.GROW_DIRECTION_BOTH
 	state_display_label.visible = false
 	root_node.add_child(state_display_label)
 
@@ -195,8 +196,10 @@ func show_turn_banner(text: String) -> void:
 	banner.add_theme_font_size_override("font_size", 36)
 	banner.add_theme_color_override("font_color", Color(1, 0.85, 0.3))
 	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	banner.set_anchors_preset(Control.PRESET_CENTER)
-	banner.position = Vector2(-150, -18)
+	banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	banner.grow_vertical = Control.GROW_DIRECTION_BOTH
 	banner.z_index = 200
 	banner.modulate = Color(1, 1, 1, 0)
 	root_node.add_child(banner)
@@ -279,6 +282,8 @@ func update_hand_display(hand: Array) -> void:
 			
 			if card_node.has_method("set_original_position"):
 				card_node.call("set_original_position", target_pos)
+			if "original_rotation" in card_node:
+				card_node.original_rotation = target_rotation
 
 func _animate_card_to_position(card_node: Control, target_pos: Vector2, target_rotation: float) -> void:
 	var current_pos = card_node.position
@@ -588,6 +593,8 @@ func _extract_buff_info(buff) -> Dictionary:
 
 var _buff_tooltip_panel: PanelContainer = null
 
+const NO_STACK_BUFFS: Array = ["skip_attack", "ignore_block", "counter_stance"]
+
 func _create_buff_label(info: Dictionary) -> Control:
 	var buff_id: String = info.get("id", "")
 	var stacks: int = info.get("stacks", 1)
@@ -595,9 +602,13 @@ func _create_buff_label(info: Dictionary) -> Control:
 	
 	var symbol = _get_buff_symbol(buff_id)
 	var color = _get_buff_color(buff_id)
+	var show_stacks = not NO_STACK_BUFFS.has(buff_id)
 	
 	var btn = Button.new()
-	btn.text = "%s%d" % [symbol, stacks]
+	if show_stacks:
+		btn.text = "%s%d" % [symbol, stacks]
+	else:
+		btn.text = symbol
 	if duration > 0:
 		btn.text += "(%d)" % duration
 	btn.add_theme_font_size_override("font_size", 12)
@@ -690,7 +701,7 @@ func _get_buff_description(buff_id: String, stacks: int) -> String:
 		"stored_power":
 			return "蓄力 %d\n下回合攻击伤害 +%d" % [stacks, stacks]
 		"skip_attack":
-			return "蓄力中\n本回合不进行自动攻击"
+			return "蓄势\n本回合不进行自动攻击"
 		"ignore_block":
 			return "破甲\n攻击无视敌方护甲"
 		"counter_stance":
@@ -1061,29 +1072,74 @@ func _select_card(card: CardData) -> void:
 		return
 	var vp_size = card_node.get_viewport_rect().size
 	var parent = card_node.get_parent()
+	var idx = _card_selected_cards.find(card)
+	if idx < 0:
+		idx = _card_selected_cards.size()
+	var total = _card_selected_cards.size()
+	var card_w = card_node.size.x
+	var spacing = card_w + 20
+	var total_width = max(total, 1) * spacing
+	var offset_x = -total_width / 2.0 + idx * spacing + spacing / 2.0 - card_w / 2.0
+	var center_x = vp_size.x / 2.0 + offset_x
+	var center_y = vp_size.y / 2.0 - card_node.size.y / 2.0 - 50
 	var center_local: Vector2
 	if parent:
-		center_local = parent.global_position
-		center_local = Vector2(vp_size.x / 2 - card_node.size.x / 2 - center_local.x, vp_size.y / 2 - card_node.size.y / 2 - 50 - center_local.y)
+		center_local = Vector2(center_x - parent.global_position.x, center_y - parent.global_position.y)
 	else:
-		center_local = Vector2(vp_size.x / 2 - card_node.size.x / 2, vp_size.y / 2 - card_node.size.y / 2 - 50)
+		center_local = Vector2(center_x, center_y)
 	var tween = card_node.create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(card_node, "position", center_local, 0.2).set_ease(Tween.EASE_OUT)
 	tween.tween_property(card_node, "modulate", Color(1, 0.7, 0.7, 1), 0.15)
 	tween.tween_property(card_node, "scale", Vector2(1.1, 1.1), 0.15)
+	tween.tween_property(card_node, "rotation_degrees", 0.0, 0.15)
 	tween.tween_property(card_node, "z_index", 50, 0.0)
+	_reposition_selected_cards()
+
+func _reposition_selected_cards() -> void:
+	if _card_selected_cards.size() == 0:
+		return
+	var first_node = current_hand_cards.get(_card_selected_cards[0])
+	if first_node == null:
+		return
+	var vp_size = first_node.get_viewport_rect().size
+	var parent = first_node.get_parent()
+	var total = _card_selected_cards.size()
+	var card_w = first_node.size.x
+	var spacing = card_w + 20
+	var total_width = total * spacing
+	var center_y = vp_size.y / 2.0 - first_node.size.y / 2.0 - 50
+	
+	for i in range(total):
+		var card = _card_selected_cards[i]
+		var card_node = current_hand_cards.get(card)
+		if card_node == null:
+			continue
+		var offset_x = -total_width / 2.0 + i * spacing + spacing / 2.0 - card_node.size.x / 2.0
+		var center_x = vp_size.x / 2.0 + offset_x
+		var center_local: Vector2
+		if parent:
+			center_local = Vector2(center_x - parent.global_position.x, center_y - parent.global_position.y)
+		else:
+			center_local = Vector2(center_x, center_y)
+		var tween = card_node.create_tween()
+		tween.set_parallel(true)
+		tween.tween_property(card_node, "position", center_local, 0.15).set_ease(Tween.EASE_OUT)
+		tween.tween_property(card_node, "rotation_degrees", 0.0, 0.1)
 
 func _deselect_card(card: CardData) -> void:
 	var card_node = current_hand_cards.get(card)
 	if card_node == null:
 		return
+	var target_rotation = card_node.original_rotation if "original_rotation" in card_node else 0.0
 	var tween = card_node.create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(card_node, "position", card_node.original_position, 0.2).set_ease(Tween.EASE_OUT)
 	tween.tween_property(card_node, "modulate", Color.WHITE, 0.15)
 	tween.tween_property(card_node, "scale", card_node.original_scale, 0.15)
+	tween.tween_property(card_node, "rotation_degrees", target_rotation, 0.15)
 	tween.tween_property(card_node, "z_index", 0, 0.0)
+	_reposition_selected_cards()
 
 func _update_card_select_ui() -> void:
 	if _card_select_info_label:
