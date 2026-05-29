@@ -53,11 +53,6 @@ func draw_cards(count: int) -> Array:
 	
 	return drawn_cards
 
-func _shuffle_discard_into_draw() -> void:
-	while not discard_pile.is_empty():
-		draw_pile.append(discard_pile.pop_front())
-	shuffle_draw_pile()
-
 func play_card(card: CardData, target = null) -> bool:
 	if not hand.has(card):
 		return false

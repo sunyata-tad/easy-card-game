@@ -290,6 +290,9 @@ func _resolve_search_discard(effect: Dictionary, source) -> Dictionary:
 	
 	return {"success": false, "value": 0}
 
+func apply_buff(effect: Dictionary, target) -> Dictionary:
+	return _resolve_apply_buff(effect, target)
+
 func _resolve_apply_buff(effect: Dictionary, target) -> Dictionary:
 	var buff_id = effect.get("buff_id", "")
 	if buff_id.is_empty():

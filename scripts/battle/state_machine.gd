@@ -29,7 +29,7 @@ func _setup_valid_transitions() -> void:
 		BattleState.PLAYER_TURN: [BattleState.RESOLVING, BattleState.ENEMY_TURN, BattleState.VICTORY, BattleState.DEFEAT],
 		BattleState.RESOLVING: [BattleState.PLAYER_TURN, BattleState.ENEMY_TURN, BattleState.VICTORY, BattleState.DEFEAT],
 		BattleState.ENEMY_TURN: [BattleState.TURN_END, BattleState.VICTORY, BattleState.DEFEAT],
-		BattleState.TURN_END: [BattleState.DRAW_PHASE, BattleState.ENEMY_TURN, BattleState.VICTORY, BattleState.DEFEAT],
+		BattleState.TURN_END: [BattleState.DRAW_PHASE, BattleState.VICTORY, BattleState.DEFEAT],
 		BattleState.VICTORY: [],
 		BattleState.DEFEAT: []
 	}

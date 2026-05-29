@@ -245,7 +245,7 @@ func _show_deck_step():
 	vbox.add_child(hint)
 	
 	var card_db = CardDatabase.new()
-	var all_card_ids = card_db.get_all_card_ids()
+	var pool_ids = CardPoolManager.get_all_card_ids()
 	
 	var scroll = ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(400, 300)
@@ -254,7 +254,7 @@ func _show_deck_step():
 	var cards_container = VBoxContainer.new()
 	scroll.add_child(cards_container)
 	
-	for card_id in all_card_ids:
+	for card_id in pool_ids:
 		var card = card_db.get_card(card_id)
 		if card:
 			var row = HBoxContainer.new()

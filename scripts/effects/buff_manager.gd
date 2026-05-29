@@ -66,18 +66,6 @@ func get_all_buffs() -> Array:
 func has_buff(buff_id: String) -> bool:
 	return get_buff_by_id(buff_id) != null
 
-func get_modifier(stat_name: String) -> float:
-	var total_mult: float = 1.0
-	var total_add: float = 0.0
-	
-	for buff in buffs:
-		if buff.modifiers.has(stat_name + "_mult"):
-			total_mult *= buff.modifiers[stat_name + "_mult"]
-		if buff.modifiers.has(stat_name + "_add"):
-			total_add += buff.modifiers[stat_name + "_add"]
-	
-	return total_mult + total_add
-
 func get_flat_add(stat_name: String) -> float:
 	var total_add: float = 0.0
 	for buff in buffs:

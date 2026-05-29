@@ -49,6 +49,7 @@ func _show_new_game_confirmation():
 func _start_new_game():
 	SaveManager.delete_save()
 	GameData.initialize_new_run()
+	CardPoolManager.initialize_with_starter_cards()
 	GameManager.go_to_character_select()
 
 func _on_cancel_new_game():

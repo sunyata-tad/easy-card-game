@@ -829,7 +829,7 @@ func _show_deck_workbench() -> void:
 	var lib_vbox = VBoxContainer.new()
 	lib_vbox.add_theme_constant_override("separation", 4)
 	var lib_title = Label.new()
-	lib_title.text = "可用卡牌"
+	lib_title.text = "卡池（永久）"
 	lib_title.add_theme_font_size_override("font_size", 14)
 	lib_vbox.add_child(lib_title)
 	
@@ -841,7 +841,7 @@ func _show_deck_workbench() -> void:
 	lib_list.add_theme_constant_override("separation", 2)
 	lib_scroll.add_child(lib_list)
 	
-	var all_ids = card_db.get_all_card_ids()
+	var all_ids = CardPoolManager.get_all_card_ids()
 	for cid in all_ids:
 		var card_data = card_db.get_card(cid)
 		if not card_data:

@@ -21,6 +21,7 @@ GameManager="*res://scripts/game_manager.gd"
 GameData="*res://scripts/game_data.gd"
 SaveManager="*res://scripts/save_manager.gd"
 CharacterManager="*res://scripts/character_manager.gd"
+CardPoolManager="*res://scripts/card_pool_manager.gd"
 
 [dotnet]
 

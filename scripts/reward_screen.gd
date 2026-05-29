@@ -57,34 +57,46 @@ func _setup_ui():
 func _show_card_choices():
 	if reward_container == null:
 		return
-	
+
 	var card_db = CardDatabase.new()
 	var all_card_ids = card_db.get_all_card_ids()
-	
+	var pool_ids = CardPoolManager.get_all_card_ids()
+
 	var available_cards: Array = []
 	for card_id in all_card_ids:
 		var card = card_db.get_card(card_id)
-		if card and card.rarity != "basic":
+		if card and card.rarity != "basic" and not pool_ids.has(card_id):
 			available_cards.append(card)
-	
+
+	if available_cards.is_empty():
+		for card_id in all_card_ids:
+			var card = card_db.get_card(card_id)
+			if card and card.rarity != "basic":
+				available_cards.append(card)
+
 	available_cards.shuffle()
 	var max_choices = mini(3, available_cards.size())
 	var offered_cards = available_cards.slice(0, max_choices)
-	
+
 	if offered_cards.is_empty():
 		var no_cards_label = Label.new()
 		no_cards_label.text = "没有可选卡牌"
 		reward_container.add_child(no_cards_label)
 		return
-	
+
 	for card in offered_cards:
+		var is_new = not CardPoolManager.has_card(card.id)
+		var btn_text = "%s - %s" % [card.name, card.description]
+		if is_new:
+			btn_text = "[新!] " + btn_text
 		var btn = Button.new()
-		btn.text = "%s - %s" % [card.name, card.description]
+		btn.text = btn_text
 		btn.custom_minimum_size = Vector2(200, 40)
 		btn.pressed.connect(_on_card_selected.bind(card.id))
 		reward_container.add_child(btn)
 
 func _on_card_selected(card_id: String):
+	CardPoolManager.add_card(card_id)
 	var card_db = CardDatabase.new()
 	var card = card_db.get_card(card_id)
 	if card and GameData:

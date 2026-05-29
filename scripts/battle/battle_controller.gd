@@ -354,13 +354,13 @@ func _execute_enemy_action(enemy: EnemyUnit, action: Dictionary) -> void:
 			var buff_id = action.get("buff_id", "")
 			var stacks = action.get("stacks", 1)
 			if not buff_id.is_empty():
-				effect_resolver._resolve_apply_buff({"buff_id": buff_id, "value": stacks}, enemy)
+				effect_resolver.apply_buff({"buff_id": buff_id, "value": stacks}, enemy)
 				ui_controller.update_single_enemy(enemy)
 		"debuff":
 			var buff_id = action.get("buff_id", "")
 			var stacks = action.get("stacks", 1)
 			if not buff_id.is_empty():
-				effect_resolver._resolve_apply_buff({"buff_id": buff_id, "value": stacks}, player_manager)
+				effect_resolver.apply_buff({"buff_id": buff_id, "value": stacks}, player_manager)
 				_update_player_ui()
 
 func _on_player_turn_start() -> void:
