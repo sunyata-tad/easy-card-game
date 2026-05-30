@@ -18,6 +18,9 @@ mono_crash.*.json
 .DS_Store
 Thumbs.db
 
+# Tool-specific
+.claude/
+
 # IDE specific
 .vscode/
 .idea/
