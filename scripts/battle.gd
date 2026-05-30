@@ -27,17 +27,17 @@ func _initialize_battle(data: Dictionary = {}):
 	battle_controller.battle_ended.connect(_on_battle_ended)
 	battle_controller.turn_changed.connect(_on_turn_changed)
 	battle_controller.discard_phase_started.connect(_on_discard_phase_started)
-	
+
 	var enemies_data: Array = data.get("enemies", [])
 	var deck_data: Array = []
-	
+
 	if GameData:
 		if enemies_data.is_empty():
 			var enemy = GameData.get_random_enemy_for_battle()
 			if enemy:
 				enemies_data = [enemy]
 		deck_data = GameData.get_deck()
-	
+
 	battle_controller.setup_battle(self, deck_data, enemies_data)
 	battle_controller.start_battle()
 
@@ -50,7 +50,7 @@ func _show_exit_confirmation():
 	confirmation.add_button("保存并退出", true, "save_exit")
 	confirmation.add_cancel_button("取消")
 	add_child(confirmation)
-	
+
 	confirmation.custom_action.connect(_on_exit_dialog_action)
 	confirmation.confirmed.connect(_on_exit_confirmed)
 	confirmation.popup_centered()
@@ -64,11 +64,11 @@ func _on_exit_confirmed():
 
 func _save_and_exit():
 	SaveManager.save_map_state()
-	GameManager.go_to_map("test_map", SaveManager._cached_map_state)
+	GameManager.go_to_map("test_map", SaveManager.get_cached_map_state())
 
 func _on_battle_ended(victory: bool):
 	battle_stats.victory = victory
-	
+
 	if victory:
 		await get_tree().create_timer(0.5).timeout
 		if GameData:
@@ -82,7 +82,6 @@ func _on_battle_ended(victory: bool):
 		if GameData:
 			var stats = GameData.get_battle_stats()
 			stats.victory = false
-			SaveManager.save_game_over()
 			GameManager.go_to_game_over(stats)
 		else:
 			_show_defeat_screen()
@@ -113,7 +112,7 @@ func _show_victory_screen():
 	victory_label.set_anchors_preset(Control.PRESET_CENTER)
 	victory_label.position = Vector2(-100, -24)
 	add_child(victory_label)
-	
+
 	var continue_button = Button.new()
 	continue_button.text = "继续"
 	continue_button.add_theme_font_size_override("font_size", 24)
@@ -130,7 +129,7 @@ func _show_defeat_screen():
 	defeat_label.set_anchors_preset(Control.PRESET_CENTER)
 	defeat_label.position = Vector2(-120, -24)
 	add_child(defeat_label)
-	
+
 	var retry_button = Button.new()
 	retry_button.text = "重试"
 	retry_button.add_theme_font_size_override("font_size", 24)
@@ -143,7 +142,7 @@ func _on_continue_pressed():
 	if GameData:
 		GameData.record_battle_won()
 		SaveManager.save_map_state()
-		GameManager.go_to_map("test_map", SaveManager._cached_map_state)
+		GameManager.go_to_map("test_map", SaveManager.get_cached_map_state())
 
 func _on_retry_pressed():
 	if GameData:

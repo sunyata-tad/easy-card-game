@@ -117,6 +117,12 @@ func _create_top_section() -> Control:
 	settings_button.custom_minimum_size = Vector2(80, 28)
 	settings_button.pressed.connect(_on_settings_pressed)
 	header.add_child(settings_button)
+
+	var overview_btn = Button.new()
+	overview_btn.text = "地图"
+	overview_btn.custom_minimum_size = Vector2(80, 28)
+	overview_btn.pressed.connect(_on_map_overview_pressed)
+	header.add_child(overview_btn)
 	
 	var info_container = VBoxContainer.new()
 	info_container.custom_minimum_size = Vector2(0, 95)
@@ -957,3 +963,383 @@ func get_map_state() -> Dictionary:
 
 func load_map_state(state_data: Dictionary) -> void:
 	map_controller.deserialize_state(state_data)
+
+
+func _on_map_overview_pressed():
+	var layout = _compute_overview_layout()
+	var regions = _get_regions()
+
+	if regions.is_empty():
+		return
+
+	var popup = PopupPanel.new()
+	var panel_style = StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.08, 0.08, 0.14, 0.98)
+	panel_style.set_corner_radius_all(8)
+	panel_style.set_content_margin_all(12)
+	popup.add_theme_stylebox_override("panel", panel_style)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	popup.add_child(vbox)
+
+	var title_bar = HBoxContainer.new()
+	var back_btn = Button.new()
+	back_btn.text = "<- 返回"
+	back_btn.custom_minimum_size = Vector2(60, 28)
+	back_btn.visible = false
+	title_bar.add_child(back_btn)
+
+	var title_lbl = Label.new()
+	title_lbl.text = "世界地图"
+	title_lbl.add_theme_font_size_override("font_size", 20)
+	title_lbl.add_theme_color_override("font_color", Color(1, 0.85, 0.3))
+	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_bar.add_child(title_lbl)
+
+	var close_btn = Button.new()
+	close_btn.text = "关闭"
+	close_btn.pressed.connect(func(): popup.hide())
+	title_bar.add_child(close_btn)
+	vbox.add_child(title_bar)
+	vbox.add_child(HSeparator.new())
+
+	var scroll = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	vbox.add_child(scroll)
+
+	var canvas: Control = null
+	var region_layout: Dictionary = {}
+	var scale_factor = 1.0
+	var panning = false
+	var pan_start_mouse = Vector2.ZERO
+	var pan_start_canvas_pos = Vector2.ZERO
+	var in_region = false
+
+
+
+	var show_region = func(region_id: String):
+		var region_name = region_id
+		var region_ids: Array = []
+		for r in regions:
+			if r.id == region_id:
+				region_name = r.name
+				region_ids = r.locations.duplicate()
+				break
+
+		var new_layout = _compute_overview_layout(region_ids)
+		region_layout.clear()
+		region_layout.merge(new_layout)
+
+		for c in scroll.get_children():
+			scroll.remove_child(c)
+			c.queue_free()
+		canvas = null
+
+		back_btn.visible = true
+		title_lbl.text = region_name
+		in_region = true
+
+		if region_layout.positions.is_empty():
+			var empty_lbl = Label.new()
+			empty_lbl.text = "该区域没有可显示的地点"
+			scroll.add_child(empty_lbl)
+			return
+
+		var base_zoom = _compute_fit_zoom(region_layout, 660, 460)
+		canvas = _build_overview_map(region_layout, base_zoom)
+		canvas.position = Vector2.ZERO
+		canvas.scale = Vector2(1, 1)
+		scale_factor = 1.0
+		canvas.mouse_filter = Control.MOUSE_FILTER_STOP
+		canvas.gui_input.connect(func(event: InputEvent):
+			if event is InputEventMouseButton:
+				var pressed = event.is_pressed()
+				if event.button_index == MOUSE_BUTTON_WHEEL_UP and pressed:
+					var old_scale = scale_factor
+					scale_factor = clampf(scale_factor * 1.08, 0.2, 4.0)
+					var vp_size = scroll.size
+					var center = vp_size / 2.0
+					var map_local = (center - canvas.position) / old_scale
+					canvas.scale = Vector2(scale_factor, scale_factor)
+					canvas.position = center - map_local * scale_factor
+					canvas.accept_event()
+				elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and pressed:
+					var old_scale = scale_factor
+					scale_factor = clampf(scale_factor / 1.08, 0.2, 4.0)
+					var vp_size = scroll.size
+					var center = vp_size / 2.0
+					var map_local = (center - canvas.position) / old_scale
+					canvas.scale = Vector2(scale_factor, scale_factor)
+					canvas.position = center - map_local * scale_factor
+					canvas.accept_event()
+				elif event.button_index == MOUSE_BUTTON_LEFT:
+					if pressed:
+						panning = true
+						pan_start_mouse = Vector2(event.position.x, event.position.y)
+						pan_start_canvas_pos = canvas.position
+					else:
+						panning = false
+					canvas.accept_event()
+			if event is InputEventMouseMotion and panning:
+				var delta = Vector2(event.position.x, event.position.y) - pan_start_mouse
+				canvas.position = pan_start_canvas_pos + delta * scale_factor
+		)
+		scroll.add_child(canvas)
+
+	var show_world = func():
+		for c in scroll.get_children():
+			scroll.remove_child(c)
+			c.queue_free()
+		canvas = null
+
+		back_btn.visible = false
+		title_lbl.text = "世界地图"
+		in_region = false
+
+		var world_vbox = VBoxContainer.new()
+		world_vbox.add_theme_constant_override("separation", 10)
+		world_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+		for r in regions:
+			var entry = PanelContainer.new()
+			var entry_style = StyleBoxFlat.new()
+			entry_style.bg_color = Color(0.12, 0.12, 0.2, 0.8)
+			entry_style.set_corner_radius_all(4)
+			entry_style.set_content_margin_all(12)
+			entry.add_theme_stylebox_override("panel", entry_style)
+			entry.custom_minimum_size = Vector2(0, 50)
+			entry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+			var entry_hbox = HBoxContainer.new()
+			var name_lbl = Label.new()
+			name_lbl.text = r.name
+			name_lbl.add_theme_font_size_override("font_size", 16)
+			name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			entry_hbox.add_child(name_lbl)
+
+			var enter_btn = Button.new()
+			enter_btn.text = "进入"
+			enter_btn.pressed.connect(show_region.bind(r.id))
+			entry_hbox.add_child(enter_btn)
+
+			entry.add_child(entry_hbox)
+			world_vbox.add_child(entry)
+
+		scroll.add_child(world_vbox)
+
+	back_btn.pressed.connect(show_world)
+	show_world.call()
+
+	add_child(popup)
+	popup.popup_centered(Vector2i(700, 520))
+
+func _get_regions() -> Array:
+	var map_data = map_controller.current_map_data
+	return map_data.get("regions", [])
+
+
+func _build_overview_map(layout: Dictionary, zoom: float) -> Control:
+	var positions = layout.positions
+	var connections = layout.connections
+	var locations = layout.locations
+	var map_state_data = map_controller.map_state
+
+	if positions.is_empty():
+		var empty_lbl = Label.new()
+		empty_lbl.text = "地图数据不可用"
+		return empty_lbl
+
+	var min_x = 0
+	var max_x = 0
+	var min_y = 0
+	var max_y = 0
+	for grid_pos in positions.values():
+		min_x = mini(min_x, grid_pos.x)
+		max_x = maxi(max_x, grid_pos.x)
+		min_y = mini(min_y, grid_pos.y)
+		max_y = maxi(max_y, grid_pos.y)
+
+	var ov_btn_w := int(120 * zoom)
+	var ov_btn_h := int(40 * zoom)
+	var ov_gap_x := int(80 * zoom)
+	var ov_gap_y := int(60 * zoom)
+	var font_size := maxi(int(13 * zoom), 8)
+
+	var grid_w = max_x - min_x + 1
+	var grid_h = max_y - min_y + 1
+	var canvas_w = grid_w * (ov_btn_w + ov_gap_x) + ov_gap_x
+	var canvas_h = grid_h * (ov_btn_h + ov_gap_y) + ov_gap_y
+
+	var canvas = Control.new()
+	canvas.custom_minimum_size = Vector2(canvas_w, canvas_h)
+
+	var grid_offset = Vector2(
+		-min_x * (ov_btn_w + ov_gap_x) + ov_gap_x / 2,
+		-min_y * (ov_btn_h + ov_gap_y) + ov_gap_y / 2
+	)
+
+	var current_id = map_state_data.current_location_id
+	var visited_ids = map_state_data.visited_locations
+
+	var drawn_pairs := []
+	for conn in connections:
+		var from_grid = positions.get(conn.from)
+		var to_grid = positions.get(conn.to)
+		if from_grid == null or to_grid == null:
+			continue
+		var pkey = conn.from + ":" + conn.to
+		var rkey = conn.to + ":" + conn.from
+		if drawn_pairs.has(pkey) or drawn_pairs.has(rkey):
+			continue
+		drawn_pairs.append(pkey)
+
+		var from_pixel = Vector2(from_grid) * Vector2(ov_btn_w + ov_gap_x, ov_btn_h + ov_gap_y) + grid_offset + Vector2(ov_btn_w / 2, ov_btn_h / 2)
+		var to_pixel = Vector2(to_grid) * Vector2(ov_btn_w + ov_gap_x, ov_btn_h + ov_gap_y) + grid_offset + Vector2(ov_btn_w / 2, ov_btn_h / 2)
+
+		var line = Line2D.new()
+		line.points = [from_pixel, to_pixel]
+		line.width = maxf(1.0, 2.0 * zoom)
+		line.default_color = Color(0.35, 0.35, 0.45, 0.5)
+		canvas.add_child(line)
+
+	for loc_id in positions:
+		var grid_pos = positions[loc_id]
+		var pixel_pos = Vector2(grid_pos) * Vector2(ov_btn_w + ov_gap_x, ov_btn_h + ov_gap_y) + grid_offset
+
+		var loc_data = locations.get(loc_id, {})
+		var is_visited = visited_ids.has(loc_id)
+		var is_current = loc_id == current_id
+
+		var bg = ColorRect.new()
+		bg.size = Vector2(ov_btn_w, ov_btn_h)
+		bg.position = pixel_pos
+		if is_current:
+			bg.color = Color(0.3, 0.25, 0.1, 0.9)
+		elif is_visited:
+			bg.color = Color(0.12, 0.12, 0.2, 0.85)
+		else:
+			bg.color = Color(0.08, 0.08, 0.12, 0.6)
+		canvas.add_child(bg)
+
+		var border = ColorRect.new()
+		border.size = Vector2(ov_btn_w, ov_btn_h)
+		border.position = pixel_pos
+		border.color = Color.TRANSPARENT
+		if is_current:
+			border.color = Color(1, 0.8, 0.2, 0.8)
+		elif is_visited:
+			border.color = Color(0.4, 0.4, 0.5, 0.3)
+		else:
+			border.color = Color(0.2, 0.2, 0.25, 0.2)
+		canvas.add_child(border)
+
+		var lbl = Label.new()
+		if is_visited:
+			lbl.text = loc_data.get("name", loc_id)
+		else:
+			lbl.text = "???"
+		lbl.position = pixel_pos + Vector2(6, (ov_btn_h - font_size) / 2)
+		lbl.add_theme_font_size_override("font_size", font_size)
+		if is_current:
+			lbl.add_theme_color_override("font_color", Color(1, 0.85, 0.3))
+		elif is_visited:
+			lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+		else:
+			lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.45))
+		canvas.add_child(lbl)
+
+	canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child in canvas.get_children():
+		if child is Control:
+			child.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	return canvas
+
+
+func _compute_fit_zoom(layout: Dictionary, avail_w: int, avail_h: int) -> float:
+	var positions = layout.positions
+	if positions.is_empty():
+		return 1.0
+	var min_x = 0
+	var max_x = 0
+	var min_y = 0
+	var max_y = 0
+	for grid_pos in positions.values():
+		if grid_pos.x < 900:
+			min_x = mini(min_x, grid_pos.x)
+			max_x = maxi(max_x, grid_pos.x)
+			min_y = mini(min_y, grid_pos.y)
+			max_y = maxi(max_y, grid_pos.y)
+	var grid_w = max_x - min_x + 1
+	var grid_h = max_y - min_y + 1
+	if grid_w <= 0 or grid_h <= 0:
+		return 1.0
+	var zoom_w = float(avail_w - 40) / float(grid_w * 200)
+	var zoom_h = float(avail_h - 40) / float(grid_h * 100)
+	return clampf(min(zoom_w, zoom_h), 0.25, 2.0)
+
+
+func _compute_overview_layout(valid_ids: Array = []) -> Dictionary:
+	var map_data = map_controller.current_map_data
+	var all_locations = map_data.get("locations", {})
+	var current_id = map_controller.map_state.current_location_id
+	var use_filter = not valid_ids.is_empty()
+
+	if use_filter and not valid_ids.has(current_id):
+		if valid_ids.is_empty():
+			return {"positions": {}, "connections": [], "locations": {}}
+		current_id = valid_ids[0]
+
+	var positions := {}
+	var connections := []
+	var enqueued := []
+	var queue := []
+
+	if all_locations.has(current_id):
+		queue.push_back([current_id, Vector2i(0, 0)])
+		enqueued.append(current_id)
+
+	var dir_grid := {
+		"north": Vector2i(0, -1),
+		"south": Vector2i(0, 1),
+		"east": Vector2i(1, 0),
+		"west": Vector2i(-1, 0),
+		"north_east": Vector2i(1, -1),
+		"north_west": Vector2i(-1, -1),
+		"south_east": Vector2i(1, 1),
+		"south_west": Vector2i(-1, 1)
+	}
+
+	while queue.size() > 0:
+		var entry = queue.pop_front()
+		var lid = entry[0]
+		var gpos = entry[1]
+
+		if positions.has(lid):
+			continue
+		positions[lid] = gpos
+
+		var loc_data = all_locations.get(lid, {})
+		var conns = loc_data.get("connections", {})
+
+		for dname in conns:
+			var tid = conns[dname]
+			if use_filter and not valid_ids.has(tid):
+				continue
+			var goff = dir_grid.get(dname, Vector2i(0, 0))
+			var tpos = gpos + goff
+
+			connections.append({"from": lid, "to": tid})
+			if not enqueued.has(tid):
+				enqueued.append(tid)
+				queue.push_back([tid, tpos])
+
+	var all_location_ids = valid_ids if use_filter else all_locations.keys()
+	for lid in all_location_ids:
+		if not positions.has(lid):
+			positions[lid] = Vector2i(999, 999)
+
+	return {"positions": positions, "connections": connections, "locations": all_locations}

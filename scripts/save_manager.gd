@@ -176,6 +176,9 @@ func save_map_state() -> bool:
 func save_before_battle(enemy_id: String, map_id: String = "test_map") -> bool:
 	return save_game(GameProgress.IN_BATTLE, {"enemy_id": enemy_id, "map_id": map_id})
 
+func get_cached_map_state() -> Dictionary:
+	return _cached_map_state
+
 func save_game_over() -> bool:
 	return save_game(GameProgress.GAME_OVER)
 

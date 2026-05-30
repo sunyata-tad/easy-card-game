@@ -2,6 +2,13 @@
 	"id": "test_map",
 	"name": "测试场",
 	"start_location": "test_entrance",
+	"regions": [
+		{
+			"id": "test_region",
+			"name": "测试区域",
+			"locations": ["test_entrance", "test_arena", "test_storage", "test_reward_room"]
+		}
+	],
 	"locations": {
 		"test_entrance": {
 			"id": "test_entrance",

@@ -33,7 +33,28 @@ func initialize_new_run() -> void:
 	battles_won = 0
 	total_damage_dealt = 0
 	cards_played = 0
-	
+
+	deck_changed.emit(player_deck)
+	hp_changed.emit(player_current_hp, player_max_hp)
+	stats_changed.emit(player_strength, player_dexterity)
+
+func initialize_run_from_character(character: CharacterData) -> void:
+	player_max_hp = character.get_max_hp()
+	player_current_hp = player_max_hp
+	player_strength = character.get_strength()
+	player_dexterity = character.get_dexterity()
+	gold = 0
+	battles_won = 0
+	total_damage_dealt = 0
+	cards_played = 0
+
+	player_deck.clear()
+	var card_db := CardDatabase.new()
+	for card_id in character.deck_card_ids:
+		var card = card_db.get_card(card_id)
+		if card:
+			player_deck.append(card.duplicate())
+
 	deck_changed.emit(player_deck)
 	hp_changed.emit(player_current_hp, player_max_hp)
 	stats_changed.emit(player_strength, player_dexterity)

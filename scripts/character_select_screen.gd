@@ -144,25 +144,8 @@ func _on_back_pressed():
 	back_to_menu.emit()
 
 func _on_character_selected(character: CharacterData):
-	var card_db = CardDatabase.new()
-	var deck: Array = []
-	for card_id in character.deck_card_ids:
-		var card = card_db.get_card(card_id)
-		if card:
-			deck.append(card.duplicate())
-	
-	var max_hp = character.get_max_hp()
-	var strength = character.get_strength()
-	var dexterity = character.get_dexterity()
-	
-	GameData.player_deck = deck
-	GameData.player_max_hp = max_hp
-	GameData.player_current_hp = max_hp
-	GameData.player_strength = strength
-	GameData.player_dexterity = dexterity
-	
-	print("选择角色: HP=%d, 力量=%d, 敏捷=%d" % [max_hp, strength, dexterity])
-	
+	GameData.initialize_run_from_character(character)
+	print("选择角色: HP=%d, 力量=%d, 敏捷=%d" % [character.get_max_hp(), character.get_strength(), character.get_dexterity()])
 	GameManager.go_to_map("test_map")
 
 func _on_create_new_character():

@@ -14,7 +14,7 @@ var treated_as: Array = []
 func _init(data: Dictionary, upgraded: bool = false):
 	id = data.get("id", "")
 	is_upgraded = upgraded
-	
+
 	if upgraded and data.has("upgrade"):
 		var upgrade_data = data.upgrade
 		name = upgrade_data.get("name", data.name + "+")
@@ -24,7 +24,7 @@ func _init(data: Dictionary, upgraded: bool = false):
 		name = data.get("name", "")
 		description = data.get("description", "")
 		effects = data.get("effects", [])
-	
+
 	type = data.get("type", "attack")
 	rarity = data.get("rarity", "common")
 	target_type = data.get("target_type", "single_enemy")
