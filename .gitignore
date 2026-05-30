@@ -20,6 +20,7 @@ Thumbs.db
 
 # Tool-specific
 .claude/
+.arts/
 
 # IDE specific
 .vscode/
