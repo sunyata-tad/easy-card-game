@@ -2,7 +2,7 @@
 	"id": "破甲",
 	"name": "破甲",
 	"type": "attack",
-	"description": "本回合攻击无视护甲，临时伤害+3",
+	"description": "本回合攻击无视护甲，获得3点临时力量",
 	"rarity": "uncommon",
 	"target_type": "self",
 	"tags": ["Attack"],
@@ -19,7 +19,7 @@
 	],
 	"upgrade": {
 		"name": "破甲+",
-		"description": "本回合攻击无视护甲，临时伤害+5",
+		"description": "本回合攻击无视护甲，获得5点临时力量",
 		"effects": [
 			{
 				"effect_type": "ignore_block",

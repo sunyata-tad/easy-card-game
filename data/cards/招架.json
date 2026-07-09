@@ -2,7 +2,7 @@
 	"id": "招架",
 	"name": "招架",
 	"type": "skill",
-	"description": "获得5点护甲，攻击被完全挡住时反弹等量伤害",
+	"description": "获得5点护甲，进入招架姿态",
 	"rarity": "uncommon",
 	"target_type": "self",
 	"tags": ["Skill"],
@@ -19,7 +19,7 @@
 	],
 	"upgrade": {
 		"name": "招架+",
-		"description": "获得8点护甲，攻击被完全挡住时反弹等量伤害",
+		"description": "获得8点护甲，进入招架姿态",
 		"effects": [
 			{
 				"effect_type": "counter_stance",

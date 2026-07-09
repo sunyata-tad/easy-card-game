@@ -17,6 +17,8 @@ var _player_stats_panel: HBoxContainer = null
 var _player_buff_bar: HBoxContainer = null
 var drag_arrow: DragArrow = null
 
+static var _buff_db: Dictionary = {}
+
 var _card_select_active: bool = false
 var _card_select_min: int = 0
 var _card_select_max: int = 1
@@ -690,60 +692,39 @@ func _get_buff_tooltip(buff_id: String, stacks: int, duration: int) -> String:
 		result += "\n永久"
 	return result
 
+func _load_buff_db() -> void:
+	if not _buff_db.is_empty():
+		return
+	var file = FileAccess.open("res://data/buffs.json", FileAccess.READ)
+	if file:
+		var json = JSON.parse_string(file.get_as_text())
+		if json and json.has("buffs"):
+			_buff_db = json["buffs"]
+		file.close()
+
+func _get_buff_data(buff_id: String) -> Dictionary:
+	_load_buff_db()
+	return _buff_db.get(buff_id, {})
+
 func _get_buff_description(buff_id: String, stacks: int) -> String:
-	match buff_id:
-		"strength":
-			return "力量 %d\n攻击伤害 +%d" % [stacks, stacks]
-		"dexterity":
-			return "敏捷 %d\n每回合获得 %d 护甲" % [stacks, stacks]
-		"temp_strength":
-			return "临时力量 %d\n本回合攻击伤害 +%d" % [stacks, stacks]
-		"stored_power":
-			return "蓄力 %d\n下回合攻击伤害 +%d" % [stacks, stacks]
-		"skip_attack":
-			return "蓄势\n本回合不进行自动攻击"
-		"ignore_block":
-			return "破甲\n攻击无视敌方护甲"
-		"counter_stance":
-			return "招架\n受到攻击时反击等额伤害"
-		"weak":
-			return "虚弱\n造成的伤害 ×0.75"
-		"vulnerable":
-			return "易伤\n受到的伤害 ×1.5"
-		"poison":
-			return "中毒 %d\n每回合结束受到 %d 伤害" % [stacks, stacks]
-		"regen":
-			return "再生 %d\n每回合开始恢复 %d 生命" % [stacks, stacks]
-		_:
-			return ""
+	var data = _get_buff_data(buff_id)
+	if data.is_empty():
+		return ""
+	var name = data.get("name", buff_id)
+	var desc_template = data.get("description", "")
+	var desc = desc_template.replace("{stacks}", str(stacks))
+	var buff_type = data.get("buff_type", "buff")
+	var type_label = "[增益]" if buff_type == "buff" else "[减益]" if buff_type == "debuff" else ""
+	return "%s %s\n%s" % [type_label, name, desc] if type_label != "" else "%s\n%s" % [name, desc]
 
 func _get_buff_symbol(buff_id: String) -> String:
-	match buff_id:
-		"strength": return "⚔"
-		"dexterity": return "🛡"
-		"weak": return "痿"
-		"vulnerable": return "弱"
-		"poison": return "☠"
-		"temp_strength": return "⚡"
-		"skip_attack": return "蓄"
-		"ignore_block": return "破"
-		"counter_stance": return "架"
-		"stored_power": return "力"
-		_: return "●"
+	var data = _get_buff_data(buff_id)
+	return data.get("symbol", "●")
 
 func _get_buff_color(buff_id: String) -> Color:
-	match buff_id:
-		"strength": return Color(1, 0.5, 0.2)
-		"dexterity": return Color(0.3, 0.7, 1)
-		"weak": return Color(0.7, 0.7, 0.3)
-		"vulnerable": return Color(0.9, 0.4, 0.9)
-		"poison": return Color(0.4, 0.8, 0.2)
-		"temp_strength": return Color(1, 0.8, 0.2)
-		"skip_attack": return Color(0.5, 0.8, 0.5)
-		"ignore_block": return Color(1, 0.4, 0.2)
-		"counter_stance": return Color(0.2, 0.8, 0.8)
-		"stored_power": return Color(0.9, 0.7, 0.2)
-		_: return Color(0.7, 0.7, 0.7)
+	var data = _get_buff_data(buff_id)
+	var hex = data.get("color", "#B3B3B3")
+	return Color(hex)
 
 func show_damage_number(target, amount: int) -> void:
 	if amount <= 0:

@@ -2,7 +2,7 @@
 	"id": "斩击",
 	"name": "斩击",
 	"type": "attack",
-	"description": "本回合伤害增加5点",
+	"description": "获得5点临时力量",
 	"rarity": "basic",
 	"target_type": "self",
 	"tags": ["Attack", "Basic"],
@@ -15,7 +15,7 @@
 	],
 	"upgrade": {
 		"name": "斩击+",
-		"description": "本回合伤害增加8点",
+		"description": "获得8点临时力量",
 		"effects": [
 			{
 				"effect_type": "temp_damage_boost",

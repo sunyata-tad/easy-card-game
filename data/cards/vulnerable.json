@@ -2,7 +2,7 @@
 	"id": "vulnerable",
 	"name": "致弱",
 	"type": "skill",
-	"description": "使敌人获得2层易伤",
+	"description": "使1名敌人获得易伤",
 	"rarity": "common",
 	"target_type": "single_enemy",
 	"tags": ["Skill", "Debuff"],
@@ -16,7 +16,7 @@
 	],
 	"upgrade": {
 		"name": "致弱+",
-		"description": "使敌人获得3层易伤",
+		"description": "使1名敌人获得3层易伤",
 		"effects": [
 			{
 				"effect_type": "apply_buff",

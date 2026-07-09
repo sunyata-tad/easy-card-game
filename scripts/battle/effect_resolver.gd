@@ -88,9 +88,7 @@ func _resolve_damage(base_damage: int, source, target) -> Dictionary:
 	
 	var total_damage = base_damage
 	if source is PlayerManager:
-		var strength_buff = source.buff_manager.get_buff_by_id("strength")
-		if strength_buff:
-			total_damage += strength_buff.stacks
+		total_damage += source.get_strength()
 		var temp_buff = source.buff_manager.get_buff_by_id("temp_strength")
 		if temp_buff:
 			total_damage += temp_buff.stacks
@@ -162,14 +160,7 @@ func _resolve_heal(base_heal: int, source, target) -> Dictionary:
 
 func _resolve_damage_boost(value: int, source) -> Dictionary:
 	if source is PlayerManager:
-		var buff = BuffData.new({
-			"id": "strength",
-			"name": "力量",
-			"buff_type": "buff",
-			"duration": -1,
-			"stacks": value
-		})
-		source.buff_manager.apply_buff(buff)
+		source.base_strength += value
 		return {"success": true, "value": value, "new_strength": source.get_strength()}
 	return {"success": false, "value": 0}
 

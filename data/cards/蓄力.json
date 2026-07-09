@@ -2,7 +2,7 @@
 	"id": "蓄力",
 	"name": "蓄力",
 	"type": "skill",
-	"description": "取消本回合攻击，将当前伤害叠加至下回合",
+	"description": "跳过本回合自动攻击，将当前力量存入蓄力",
 	"rarity": "uncommon",
 	"target_type": "self",
 	"tags": ["Skill"],
@@ -19,7 +19,7 @@
 	],
 	"upgrade": {
 		"name": "蓄力+",
-		"description": "取消本回合攻击，将当前伤害叠加至下回合，并抽1张牌",
+		"description": "跳过本回合自动攻击，将当前力量存入蓄力，并抽1张牌",
 		"effects": [
 			{
 				"effect_type": "skip_attack",

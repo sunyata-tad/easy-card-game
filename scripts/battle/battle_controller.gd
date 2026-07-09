@@ -72,26 +72,8 @@ func setup_battle(root_node: Control, initial_deck: Array = [], enemies: Array =
 	
 	player_manager.max_hp = max_hp
 	player_manager.current_hp = current_hp
-	
-	if strength != 0:
-		var str_buff = BuffData.new({
-			"id": "strength",
-			"name": "力量",
-			"buff_type": "buff",
-			"duration": -1,
-			"stacks": strength
-		})
-		player_manager.buff_manager.apply_buff(str_buff)
-	
-	if dexterity != 0:
-		var dex_buff = BuffData.new({
-			"id": "dexterity",
-			"name": "敏捷",
-			"buff_type": "buff",
-			"duration": -1,
-			"stacks": dexterity
-		})
-		player_manager.buff_manager.apply_buff(dex_buff)
+	player_manager.base_strength = strength
+	player_manager.base_dexterity = dexterity
 	
 	for enemy_data in enemies:
 		enemy_system.add_enemy(enemy_data)
@@ -236,8 +218,8 @@ func sync_player_stats_to_gamedata() -> void:
 	if GameData:
 		GameData.player_current_hp = player_manager.current_hp
 		GameData.player_max_hp = player_manager.max_hp
-		GameData.player_strength = player_manager.get_strength()
-		GameData.player_dexterity = player_manager.get_dexterity()
+		GameData.player_strength = player_manager.base_strength
+		GameData.player_dexterity = player_manager.base_dexterity
 
 func _process_turn_end_effects() -> void:
 	_tick_buffs_on_turn_end(player_manager)

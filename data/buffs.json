@@ -1,0 +1,92 @@
+{
+	"buffs": {
+		"strength": {
+			"name": "力量",
+			"symbol": "⚔",
+			"color": "#FF8033",
+			"description": "攻击伤害 +{stacks}",
+			"buff_type": "buff",
+			"modifier_formula": null
+		},
+		"dexterity": {
+			"name": "敏捷",
+			"symbol": "🛡",
+			"color": "#4DB3FF",
+			"description": "每回合获得 {stacks} 护甲",
+			"buff_type": "buff",
+			"modifier_formula": null
+		},
+		"temp_strength": {
+			"name": "临时力量",
+			"symbol": "⚡",
+			"color": "#FFCC33",
+			"description": "攻击伤害 +{stacks}",
+			"buff_type": "buff",
+			"modifier_formula": "damage_add"
+		},
+		"stored_power": {
+			"name": "蓄力",
+			"symbol": "力",
+			"color": "#E6B333",
+			"description": "下回合自动攻击额外造成 {stacks} 伤害",
+			"buff_type": "buff",
+			"modifier_formula": "damage_add"
+		},
+		"skip_attack": {
+			"name": "蓄势",
+			"symbol": "蓄",
+			"color": "#80CC80",
+			"description": "跳过本回合自动攻击",
+			"buff_type": "buff",
+			"modifier_formula": null
+		},
+		"ignore_block": {
+			"name": "破甲",
+			"symbol": "破",
+			"color": "#FF6633",
+			"description": "本回合攻击无视敌方护甲",
+			"buff_type": "buff",
+			"modifier_formula": null
+		},
+		"counter_stance": {
+			"name": "招架",
+			"symbol": "架",
+			"color": "#33CCCC",
+			"description": "被攻击时，护甲抵消的伤害反弹给攻击者",
+			"buff_type": "buff",
+			"modifier_formula": null
+		},
+		"weak": {
+			"name": "虚弱",
+			"symbol": "痿",
+			"color": "#B3B34D",
+			"description": "造成的伤害 ×0.75",
+			"buff_type": "debuff",
+			"modifier_formula": "damage_mult_025"
+		},
+		"vulnerable": {
+			"name": "易伤",
+			"symbol": "弱",
+			"color": "#E666E6",
+			"description": "受到的伤害 ×1.5",
+			"buff_type": "debuff",
+			"modifier_formula": "damage_taken_mult_05"
+		},
+		"poison": {
+			"name": "中毒",
+			"symbol": "☠",
+			"color": "#66CC33",
+			"description": "每回合结束受到 {stacks} 伤害",
+			"buff_type": "debuff",
+			"modifier_formula": null
+		},
+		"regen": {
+			"name": "再生",
+			"symbol": "+",
+			"color": "#33CC66",
+			"description": "每回合开始恢复 {stacks} 生命",
+			"buff_type": "buff",
+			"modifier_formula": null
+		}
+	}
+}

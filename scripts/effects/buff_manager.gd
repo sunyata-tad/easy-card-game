@@ -9,20 +9,45 @@ signal buffs_changed()
 
 var DURATION_STACK_BUFFS: Array = ["weak", "vulnerable"]
 
-var MODIFIER_FORMULAS: Dictionary = {
-	"strength": func(stacks: int) -> Dictionary: return {"damage_add": float(stacks)},
-	"dexterity": func(stacks: int) -> Dictionary: return {"block_add": float(stacks)},
-	"weak": func(_stacks: int) -> Dictionary: return {"damage_mult": 0.75},
-	"vulnerable": func(_stacks: int) -> Dictionary: return {"damage_taken_mult": 1.5},
-	"temp_strength": func(stacks: int) -> Dictionary: return {"damage_add": float(stacks)},
-	"skip_attack": func(_stacks: int) -> Dictionary: return {},
-	"ignore_block": func(_stacks: int) -> Dictionary: return {},
-	"counter_stance": func(_stacks: int) -> Dictionary: return {},
-	"stored_power": func(stacks: int) -> Dictionary: return {"damage_add": float(stacks)},
+static var _buff_db: Dictionary = {}
+static var _modifier_formula_builders: Dictionary = {
+	"damage_add": func(stacks: int) -> Dictionary: return {"damage_add": float(stacks)},
+	"block_add": func(stacks: int) -> Dictionary: return {"block_add": float(stacks)},
+	"damage_mult_025": func(_stacks: int) -> Dictionary: return {"damage_mult": 0.75},
+	"damage_taken_mult_05": func(_stacks: int) -> Dictionary: return {"damage_taken_mult": 1.5},
 }
 
+var MODIFIER_FORMULAS: Dictionary = {}
+
 func _init():
-	pass
+	_load_buff_db()
+	_build_modifier_formulas()
+
+func _load_buff_db() -> void:
+	if not _buff_db.is_empty():
+		return
+	var file = FileAccess.open("res://data/buffs.json", FileAccess.READ)
+	if file:
+		var json = JSON.parse_string(file.get_as_text())
+		if json and json.has("buffs"):
+			_buff_db = json["buffs"]
+		file.close()
+
+func _get_buff_data(buff_id: String) -> Dictionary:
+	if _buff_db.is_empty():
+		_load_buff_db()
+	return _buff_db.get(buff_id, {})
+
+func _build_modifier_formulas() -> void:
+	if not MODIFIER_FORMULAS.is_empty():
+		return
+	for buff_id in _buff_db:
+		var data = _buff_db[buff_id]
+		var formula_key = data.get("modifier_formula")
+		if formula_key != null and _modifier_formula_builders.has(formula_key):
+			MODIFIER_FORMULAS[buff_id] = _modifier_formula_builders[formula_key]
+		else:
+			MODIFIER_FORMULAS[buff_id] = func(_stacks: int) -> Dictionary: return {}
 
 func apply_buff(buff: BuffData) -> void:
 	var existing = get_buff_by_id(buff.id)

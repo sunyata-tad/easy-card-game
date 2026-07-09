@@ -3,6 +3,8 @@ class_name PlayerManager
 var current_hp: int
 var max_hp: int
 var block: int = 0
+var base_strength: int = 0
+var base_dexterity: int = 0
 var buff_manager: BuffManager
 var hook_chain: HookChain
 var selected_target_index: int = 0
@@ -25,21 +27,23 @@ func _init(initial_max_hp: int = 80):
 
 func get_strength() -> int:
 	var buff = buff_manager.get_buff_by_id("strength")
-	return buff.stacks if buff else 0
+	var buff_val = buff.stacks if buff else 0
+	return base_strength + buff_val
 
 func get_dexterity() -> int:
 	var buff = buff_manager.get_buff_by_id("dexterity")
-	return buff.stacks if buff else 0
+	var buff_val = buff.stacks if buff else 0
+	return base_dexterity + buff_val
 
 func get_stored_power() -> int:
 	var buff = buff_manager.get_buff_by_id("stored_power")
 	return buff.stacks if buff else 0
 
 func get_total_damage() -> int:
-	return int(buff_manager.get_flat_add("damage"))
+	return base_strength + int(buff_manager.get_flat_add("damage"))
 
 func get_total_block() -> int:
-	return int(buff_manager.get_flat_add("block"))
+	return base_dexterity + int(buff_manager.get_flat_add("block"))
 
 func set_selected_target(index: int) -> void:
 	selected_target_index = index
