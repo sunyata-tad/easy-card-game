@@ -5,6 +5,7 @@ var current_hp: int
 var max_hp: int
 var block: int = 0
 var buff_manager: BuffManager
+var hook_chain: HookChain
 var is_dead: bool = false
 var current_intent: Dictionary = {}
 
@@ -18,7 +19,8 @@ func _init(enemy_data: EnemyData):
 	data = enemy_data
 	max_hp = enemy_data.max_hp
 	current_hp = max_hp
-	buff_manager = BuffManager.new()
+	hook_chain = HookChain.new()
+	buff_manager = BuffManager.new(hook_chain)
 
 func take_damage(amount: int, ignore_target_block: bool = false) -> int:
 	if amount <= 0 or is_dead:

@@ -59,9 +59,6 @@ func setup_battle(root_node: Control, initial_deck: Array = [], enemies: Array =
 	ui_controller.player_manager = player_manager
 	_connect_ui_signals()
 	
-	if initial_deck.is_empty():
-		initial_deck = card_database.load_starter_deck()
-	
 	card_system.initialize_deck(initial_deck)
 	effect_resolver.card_system = card_system
 	

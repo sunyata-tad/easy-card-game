@@ -82,37 +82,45 @@ func resolve_effect(effect: Dictionary, source, target = null) -> Dictionary:
 	effect_resolved.emit(effect_type_str, result)
 	return result
 
+func _get_hook_chain(source) -> HookChain:
+	if source is PlayerManager:
+		return source.hook_chain
+	if source is EnemyUnit:
+		return source.hook_chain
+	return null
+
 func _resolve_damage(base_damage: int, source, target) -> Dictionary:
 	if target == null:
 		return {"success": false, "value": 0}
 	
-	var total_damage = base_damage
-	if source is PlayerManager:
-		total_damage += source.get_strength()
-		var temp_buff = source.buff_manager.get_buff_by_id("temp_strength")
-		if temp_buff:
-			total_damage += temp_buff.stacks
+	var ctx: Dictionary = {}
+	var hc = _get_hook_chain(source)
 	
-	var damage_mult: float = 1.0
-	if source is PlayerManager:
-		damage_mult = source.buff_manager.get_mult("damage")
-		total_damage = int(source.hook_chain.trigger("calc_attack_damage", total_damage))
-	elif source.has_method("get") and source.get("buff_manager"):
-		total_damage += int(source.buff_manager.get_flat_add("damage"))
-		damage_mult = source.buff_manager.get_mult("damage")
-	
-	var final_damage = int(total_damage * damage_mult)
-	
-	var should_ignore_block = false
-	if source is PlayerManager:
-		should_ignore_block = source.buff_manager.has_buff("ignore_block")
+	var total = base_damage
+	if hc:
+		hc.trigger("on_attack_start", total, ctx)
+		var hit_count = max(ctx.get("hit_count", 1), 1)
+		for i in range(hit_count):
+			var hit_value = hc.trigger("calc_attack_damage", total, ctx)
+			hit_value = hc.trigger("calc_attack_mult", hit_value, ctx)
+			var hit_ctx = {"damage": hit_value, "hit_index": i}
+			hc.trigger("on_attack_hit", hit_value, hit_ctx)
+			if hit_ctx.get("counter_damage", 0) > 0 and target is EnemyUnit:
+				target.take_damage(hit_ctx.counter_damage)
+			elif target is PlayerManager:
+				target.take_damage(hit_value)
+			elif target is EnemyUnit:
+				target.take_damage(hit_value, ctx.get("ignore_block", false))
+		hc.trigger("on_attack_end", 0, ctx)
+		damage_dealt.emit(target, total)
+		return {"success": true, "value": total, "target": target}
 	
 	if target is PlayerManager:
-		var actual = target.take_damage(final_damage)
+		var actual = target.take_damage(total)
 		damage_dealt.emit(target, actual)
 		return {"success": true, "value": actual, "target": target}
 	elif target is EnemyUnit:
-		var actual = target.take_damage(final_damage, should_ignore_block)
+		var actual = target.take_damage(total)
 		damage_dealt.emit(target, actual)
 		return {"success": true, "value": actual, "target": target}
 	
@@ -202,7 +210,7 @@ func _resolve_store_damage(source) -> Dictionary:
 		var stored_buff = source.buff_manager.get_buff_by_id("stored_power")
 		if stored_buff:
 			stored_buff.add_stacks(current)
-			source.buff_manager.recalculate_modifiers(stored_buff)
+			source.buff_manager.apply_buff(stored_buff)
 		else:
 			var new_buff = BuffData.new({
 				"id": "stored_power",

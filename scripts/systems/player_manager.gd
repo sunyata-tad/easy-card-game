@@ -22,8 +22,8 @@ signal counter_damage(amount: int)
 func _init(initial_max_hp: int = 80):
 	max_hp = initial_max_hp
 	current_hp = max_hp
-	buff_manager = BuffManager.new()
 	hook_chain = HookChain.new()
+	buff_manager = BuffManager.new(hook_chain)
 
 func get_strength() -> int:
 	var buff = buff_manager.get_buff_by_id("strength")
