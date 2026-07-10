@@ -26,8 +26,7 @@ func take_damage(amount: int, ignore_target_block: bool = false) -> int:
 	if amount <= 0 or is_dead:
 		return 0
 	
-	var damage_mult = buff_manager.get_mult("damage_taken")
-	var actual_damage = int(amount * damage_mult)
+	var actual_damage = int(hook_chain.trigger("on_damage_taken", amount, {}))
 	
 	if not ignore_target_block and block > 0:
 		if block >= actual_damage:

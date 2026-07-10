@@ -3,6 +3,8 @@ class_name EffectResolver
 var card_database: CardDatabase
 var buff_database
 var card_system: CardSystem = null
+var _temp_attack_boost: int = 0
+var _temp_hook_ids: Array = []
 
 signal effect_resolved(effect_type: int, result: Dictionary)
 signal damage_dealt(target, amount: int)
@@ -97,12 +99,16 @@ func _resolve_damage(base_damage: int, source, target) -> Dictionary:
 	var hc = _get_hook_chain(source)
 	
 	var total = base_damage
+	if source is PlayerManager:
+		total += source.base_strength
 	if hc:
 		hc.trigger("on_attack_start", total, ctx)
 		var hit_count = max(ctx.get("hit_count", 1), 1)
 		for i in range(hit_count):
-			var hit_value = hc.trigger("calc_attack_damage", total, ctx)
+			var hit_value = hc.trigger("calc_attack_base", total, ctx)
 			hit_value = hc.trigger("calc_attack_mult", hit_value, ctx)
+			hit_value = hc.trigger("calc_attack_damage", hit_value, ctx)
+			hit_value = hc.trigger("calc_attack_final", hit_value, ctx)
 			var hit_ctx = {"damage": hit_value, "hit_index": i}
 			hc.trigger("on_attack_hit", hit_value, hit_ctx)
 			if hit_ctx.get("counter_damage", 0) > 0 and target is EnemyUnit:
@@ -174,15 +180,10 @@ func _resolve_damage_boost(value: int, source) -> Dictionary:
 
 func _resolve_temp_damage_boost(value: int, source) -> Dictionary:
 	if source is PlayerManager:
-		var buff = BuffData.new({
-			"id": "temp_strength",
-			"name": "临时力量",
-			"buff_type": "buff",
-			"duration": 1,
-			"stacks": value,
-			"trigger_timing": "on_turn_end_remove"
-		})
-		source.buff_manager.apply_buff(buff)
+		_temp_attack_boost += value
+		var hook_id = "temp_atk_%d" % _temp_hook_ids.size()
+		source.hook_chain.register("calc_attack_base", _make_add_hook(value), 5, hook_id)
+		_temp_hook_ids.append(hook_id)
 		return {"success": true, "value": value}
 	return {"success": false, "value": 0}
 
@@ -202,11 +203,8 @@ func _resolve_skip_attack(_value: int, source) -> Dictionary:
 
 func _resolve_store_damage(source) -> Dictionary:
 	if source is PlayerManager:
-		var current = source.get_strength()
-		var temp_buff = source.buff_manager.get_buff_by_id("temp_strength")
-		if temp_buff:
-			current += temp_buff.stacks
-			source.buff_manager.remove_buff("temp_strength")
+		var current = source.get_strength() + _temp_attack_boost
+		clear_temp_hooks(source)
 		var stored_buff = source.buff_manager.get_buff_by_id("stored_power")
 		if stored_buff:
 			stored_buff.add_stacks(current)
@@ -381,6 +379,20 @@ func _resolve_discard_random(count: int, source) -> Dictionary:
 				discarded_count += 1
 		return {"success": discarded_count > 0, "value": discarded_count}
 	return {"success": false, "value": 0}
+
+func _make_add_hook(amount: int) -> Callable:
+	var _amount = amount
+	return func(value: Variant, _ctx: Dictionary) -> Variant:
+		if value is int or value is float:
+			return value + _amount
+		return value
+
+func clear_temp_hooks(source) -> void:
+	if source and source.hook_chain:
+		for hook_id in _temp_hook_ids:
+			source.hook_chain.unregister("calc_attack_base", hook_id)
+	_temp_hook_ids.clear()
+	_temp_attack_boost = 0
 
 func _resolve_shuffle_discard_to_draw(source) -> Dictionary:
 	if source.has_method("get") and source.get("card_system"):

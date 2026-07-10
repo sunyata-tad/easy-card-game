@@ -70,6 +70,19 @@ func go_to_character_select() -> void:
 func go_to_character_creation() -> void:
 	change_scene(GameScene.CHARACTER_CREATION)
 
+func go_to_endless_map() -> void:
+	var data: Dictionary = {"map_id": "endless", "endless_mode": true}
+	change_scene(GameScene.MAP, data)
+
+func go_to_test_battle() -> void:
+	var enemy_db = EnemyDatabase.new()
+	var enemy = enemy_db.get_enemy("test_debuffer")
+	if enemy:
+		GameData.initialize_new_run()
+		GameData.player_strength = 5
+		GameData.player_dexterity = 5
+		start_battle([enemy])
+
 func go_to_map(map_id: String = "test_map", map_state: Dictionary = {}) -> void:
 	var data: Dictionary = {"map_id": map_id}
 	if not map_state.is_empty():

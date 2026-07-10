@@ -3,9 +3,11 @@ class_name BuffManager
 var buffs: Array = []
 var hook_chain: HookChain = null
 
-const HOOK_ADD: String = "calc_attack_damage"
+const HOOK_BASE: String = "calc_attack_base"
 const HOOK_MULT: String = "calc_attack_mult"
-const HOOK_DAMAGE_TAKEN_MULT: String = "calc_damage_taken_mult"
+const HOOK_ADDITION: String = "calc_attack_damage"
+const HOOK_FINAL_MULT: String = "calc_attack_final"
+const HOOK_DAMAGE_TAKEN: String = "on_damage_taken"
 const HOOK_BLOCK: String = "calc_attack_block"
 const HOOK_ATTACK_START: String = "on_attack_start"
 const HOOK_ATTACK_HIT: String = "on_attack_hit"
@@ -29,17 +31,17 @@ func _register_buff_hook(buff: BuffData) -> void:
 		return
 	match buff.id:
 		"strength":
-			hook_chain.register(HOOK_ADD, _make_add_hook(buff.stacks), 10, _hook_id("strength"))
+			hook_chain.register(HOOK_ADDITION, _make_add_hook(buff.stacks), 10, _hook_id("strength"))
 		"dexterity":
 			hook_chain.register(HOOK_BLOCK, _make_add_hook(buff.stacks), 10, _hook_id("dexterity"))
 		"temp_strength":
-			hook_chain.register(HOOK_ADD, _make_add_hook(buff.stacks), 5, _hook_id("temp_strength"))
+			hook_chain.register(HOOK_BASE, _make_add_hook(buff.stacks), 5, _hook_id("temp_strength"))
 		"stored_power":
-			hook_chain.register(HOOK_ADD, _make_add_hook(buff.stacks), 5, _hook_id("stored_power"))
+			hook_chain.register(HOOK_ADDITION, _make_add_hook(buff.stacks), 5, _hook_id("stored_power"))
 		"weak":
-			hook_chain.register(HOOK_MULT, _make_mult_hook(0.75), 20, _hook_id("weak"))
+			hook_chain.register(HOOK_FINAL_MULT, _make_mult_hook(0.75), 20, _hook_id("weak"))
 		"vulnerable":
-			hook_chain.register(HOOK_DAMAGE_TAKEN_MULT, _make_mult_hook(1.5), 20, _hook_id("vulnerable"))
+			hook_chain.register(HOOK_DAMAGE_TAKEN, _make_mult_hook(1.5), 20, _hook_id("vulnerable"))
 		"skip_attack":
 			hook_chain.register(HOOK_ATTACK_START, _skip_attack_hook, 100, _hook_id("skip_attack"))
 		"ignore_block":
@@ -58,7 +60,7 @@ func _make_mult_hook(ratio: float) -> Callable:
 	var _ratio = ratio
 	return func(value: Variant, _ctx: Dictionary) -> Variant:
 		if value is int or value is float:
-			return int(value * _ratio)
+			return maxi(1, int(value * _ratio))
 		return value
 
 func _skip_attack_hook(value: Variant, ctx: Dictionary) -> Variant:
@@ -79,24 +81,32 @@ func _unregister_buff_hook(buff_id: String) -> void:
 		return
 	match buff_id:
 		"strength", "dexterity", "temp_strength", "stored_power", "weak", "vulnerable", "skip_attack", "ignore_block", "counter_stance":
-			hook_chain.unregister(HOOK_ADD, _hook_id(buff_id))
+			hook_chain.unregister(HOOK_BASE, _hook_id(buff_id))
+			hook_chain.unregister(HOOK_ADDITION, _hook_id(buff_id))
 			hook_chain.unregister(HOOK_BLOCK, _hook_id(buff_id))
 			hook_chain.unregister(HOOK_MULT, _hook_id(buff_id))
-			hook_chain.unregister(HOOK_DAMAGE_TAKEN_MULT, _hook_id(buff_id))
+			hook_chain.unregister(HOOK_FINAL_MULT, _hook_id(buff_id))
+			hook_chain.unregister(HOOK_DAMAGE_TAKEN, _hook_id(buff_id))
 			hook_chain.unregister(HOOK_ATTACK_START, _hook_id(buff_id))
 			hook_chain.unregister(HOOK_ATTACK_HIT, _hook_id(buff_id))
 
 func _update_strength_hook(new_stacks: int) -> void:
 	if hook_chain == null:
 		return
-	hook_chain.unregister(HOOK_ADD, _hook_id("strength"))
-	hook_chain.register(HOOK_ADD, _make_add_hook(new_stacks), 10, _hook_id("strength"))
+	hook_chain.unregister(HOOK_ADDITION, _hook_id("strength"))
+	hook_chain.register(HOOK_ADDITION, _make_add_hook(new_stacks), 10, _hook_id("strength"))
+
+func _update_temp_strength_hook(new_stacks: int) -> void:
+	if hook_chain == null:
+		return
+	hook_chain.unregister(HOOK_BASE, _hook_id("temp_strength"))
+	hook_chain.register(HOOK_BASE, _make_add_hook(new_stacks), 5, _hook_id("temp_strength"))
 
 func _update_stored_power_hook(new_stacks: int) -> void:
 	if hook_chain == null:
 		return
-	hook_chain.unregister(HOOK_ADD, _hook_id("stored_power"))
-	hook_chain.register(HOOK_ADD, _make_add_hook(new_stacks), 5, _hook_id("stored_power"))
+	hook_chain.unregister(HOOK_ADDITION, _hook_id("stored_power"))
+	hook_chain.register(HOOK_ADDITION, _make_add_hook(new_stacks), 5, _hook_id("stored_power"))
 
 func apply_buff(buff: BuffData) -> void:
 	var existing = get_buff_by_id(buff.id)
@@ -110,6 +120,8 @@ func apply_buff(buff: BuffData) -> void:
 				existing.duration = buff.duration
 			if buff.id == "strength":
 				_update_strength_hook(existing.stacks)
+			elif buff.id == "temp_strength":
+				_update_temp_strength_hook(existing.stacks)
 			elif buff.id == "stored_power":
 				_update_stored_power_hook(existing.stacks)
 	else:

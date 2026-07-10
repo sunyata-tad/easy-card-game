@@ -537,9 +537,7 @@ func update_player_stats_info(pm: PlayerManager) -> void:
 		child.queue_free()
 	
 	var stored = pm.get_stored_power()
-	var total = pm.get_total_damage()
-	var dmg_mult = pm.buff_manager.get_mult("damage")
-	var effective = int(total * dmg_mult)
+	var effective = pm.get_expected_attack_damage()
 	
 	if stored > 0:
 		var st_lbl = Label.new()
@@ -749,7 +747,8 @@ func show_damage_number(target, amount: int) -> void:
 		damage_label.position = Vector2(50, 0)
 		
 		var tween = root_node.create_tween()
-		tween.tween_property(damage_label, "position:y", -30, 0.5)
+		tween.tween_property(damage_label, "position:y", -20, 1.8)
+		tween.parallel().tween_property(damage_label, "modulate:a", 0.0, 0.3).set_delay(1.5)
 		tween.tween_callback(damage_label.queue_free)
 
 func show_block_number(target, amount: int) -> void:

@@ -228,10 +228,9 @@ func show_damage_number(amount: int):
 	add_child(damage_label)
 	
 	var tween = create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(damage_label, "position:y", -40, 0.6).set_ease(Tween.EASE_OUT)
-	tween.tween_property(damage_label, "modulate:a", 0.0, 0.6)
-	tween.chain().tween_callback(damage_label.queue_free)
+	tween.tween_property(damage_label, "position:y", -20, 1.8)
+	tween.parallel().tween_property(damage_label, "modulate:a", 0.0, 0.3).set_delay(1.5)
+	tween.tween_callback(damage_label.queue_free)
 
 func show_block_number(amount: int):
 	if amount <= 0:
@@ -258,9 +257,9 @@ func _create_buff_bar() -> void:
 	_buff_bar.name = "BuffBar"
 	_buff_bar.add_theme_constant_override("separation", 4)
 	_buff_bar.offset_left = 5.0
-	_buff_bar.offset_top = 95.0
+	_buff_bar.offset_top = 135.0
 	_buff_bar.offset_right = 145.0
-	_buff_bar.offset_bottom = 113.0
+	_buff_bar.offset_bottom = 155.0
 	_buff_bar.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_buff_bar)
 	_update_buff_bar()

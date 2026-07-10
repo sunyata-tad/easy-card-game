@@ -1,0 +1,22 @@
+{
+	"id": "test_debuffer",
+	"name": "测试人偶",
+	"max_hp": 10,
+	"ai_type": "basic",
+	"actions": [
+		{
+			"type": "debuff",
+			"buff_id": "weak",
+			"stacks": 1,
+			"intent_text": "虚弱",
+			"intent_icon": "debuff"
+		},
+		{
+			"type": "attack",
+			"damage": 1,
+			"intent_text": "攻击 1",
+			"intent_icon": "sword"
+		}
+	],
+	"description": "测试用的虚弱训练师"
+}

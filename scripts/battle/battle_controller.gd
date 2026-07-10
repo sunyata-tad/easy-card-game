@@ -260,29 +260,49 @@ func _execute_player_auto_attack() -> void:
 		await get_tree().create_timer(0.2).timeout
 		return
 	
-	var total_damage = player_manager.get_total_damage()
+	var alive_enemies = enemy_system.get_alive_enemies()
+	var target_enemy = player_manager.selected_target
 	
-	if total_damage > 0:
-		total_damage = int(player_manager.hook_chain.trigger("calc_attack_damage", total_damage))
-		
-		var alive_enemies = enemy_system.get_alive_enemies()
-		var target_enemy = player_manager.selected_target
-		
-		if target_enemy == null or not target_enemy.is_alive():
-			if alive_enemies.size() > 0:
-				target_enemy = alive_enemies[0]
-				player_manager.selected_target = target_enemy
-		
-		if target_enemy and target_enemy.is_alive():
-			var damage_mult = player_manager.buff_manager.get_mult("damage")
-			var final_damage = int(total_damage * damage_mult)
-			
-			var actual = target_enemy.take_damage(final_damage, player_manager.buff_manager.has_buff("ignore_block"))
-			ui_controller.update_single_enemy(target_enemy)
-			ui_controller.show_damage_number(target_enemy, actual)
-			await get_tree().create_timer(0.2).timeout
+	if target_enemy == null or not target_enemy.is_alive():
+		if alive_enemies.size() > 0:
+			target_enemy = alive_enemies[0]
+			player_manager.selected_target = target_enemy
+	
+	if target_enemy and target_enemy.is_alive():
+		_perform_attack(player_manager, target_enemy, 0)
+		await get_tree().create_timer(0.2).timeout
 	
 	player_manager.buff_manager.remove_buff("stored_power")
+
+func _perform_attack(source, target, base_damage: int) -> void:
+	if not source or not target:
+		return
+	if source is PlayerManager:
+		base_damage += source.base_strength
+	var hc = source.hook_chain if source.hook_chain else null
+	if not hc:
+		var actual = target.take_damage(base_damage)
+		ui_controller.show_damage_number(target, actual)
+		return
+	
+	var ctx: Dictionary = {}
+	hc.trigger("on_attack_start", base_damage, ctx)
+	var hit_count = max(ctx.get("hit_count", 1), 1)
+	for i in range(hit_count):
+		var hit_value = hc.trigger("calc_attack_base", base_damage, ctx)
+		hit_value = hc.trigger("calc_attack_mult", hit_value, ctx)
+		hit_value = hc.trigger("calc_attack_damage", hit_value, ctx)
+		hit_value = hc.trigger("calc_attack_final", hit_value, ctx)
+		var hit_ctx = {"damage": hit_value, "hit_index": i}
+		hc.trigger("on_attack_hit", hit_value, hit_ctx)
+		if target is EnemyUnit:
+			var actual = target.take_damage(hit_value, ctx.get("ignore_block", false))
+			ui_controller.update_single_enemy(target)
+			ui_controller.show_damage_number(target, actual)
+		elif target is PlayerManager:
+			var actual = target.take_damage(hit_value)
+			ui_controller.show_damage_number(target, actual)
+	hc.trigger("on_attack_end", 0, ctx)
 
 func _tick_buffs_on_turn_end(target) -> void:
 	if target.has_method("get") and target.get("buff_manager"):
@@ -315,13 +335,8 @@ func _execute_enemy_action(enemy: EnemyUnit, action: Dictionary) -> void:
 	match action_type:
 		"attack":
 			var base_damage = action.get("damage", 5)
-			var damage_add = int(enemy.buff_manager.get_flat_add("damage"))
-			var damage_mult = enemy.buff_manager.get_mult("damage")
-			var final_damage = int((base_damage + damage_add) * damage_mult)
-			if final_damage > 0:
-				var actual = player_manager.take_damage(final_damage)
-				_update_player_ui()
-				ui_controller.show_damage_number(player_manager, actual)
+			_perform_attack(enemy, player_manager, base_damage)
+			_update_player_ui()
 		"defend":
 			var base_block = action.get("block", 5)
 			var block_mult = enemy.buff_manager.get_mult("block")

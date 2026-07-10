@@ -74,7 +74,13 @@ func _on_battle_ended(victory: bool):
 		if GameData:
 			GameData.record_battle_won()
 			SaveManager.save_map_state()
-			GameManager.go_to_reward(battle_stats)
+			var save_info = SaveManager.load_game()
+			var additional = save_info.get("additional", {})
+			var endless_layer = additional.get("endless_layer", 0)
+			if endless_layer > 0:
+				GameManager.go_to_map("endless", SaveManager.get_cached_map_state())
+			else:
+				GameManager.go_to_reward(battle_stats)
 		else:
 			_show_victory_screen()
 	else:

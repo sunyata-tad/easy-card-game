@@ -22,6 +22,17 @@ func _setup_buttons():
 	if exit_button:
 		if not exit_button.pressed.is_connected(_on_exit_pressed):
 			exit_button.pressed.connect(_on_exit_pressed)
+	
+	var test_button = get_node_or_null("Button_test")
+	if test_button == null:
+		test_button = Button.new()
+		test_button.name = "Button_test"
+		test_button.text = "测试"
+		test_button.position = Vector2(10, 10)
+		test_button.custom_minimum_size = Vector2(80, 30)
+		add_child(test_button)
+	if not test_button.pressed.is_connected(_on_test_pressed):
+		test_button.pressed.connect(_on_test_pressed)
 
 func _update_continue_button():
 	var continue_button = get_node_or_null("Button_continue")
@@ -49,8 +60,10 @@ func _show_new_game_confirmation():
 func _start_new_game():
 	SaveManager.delete_save()
 	GameData.initialize_new_run()
+	GameData.player_strength = 5
+	GameData.player_dexterity = 5
 	CardPoolManager.initialize_with_starter_cards()
-	GameManager.go_to_character_select()
+	GameManager.go_to_endless_map()
 
 func _on_cancel_new_game():
 	pass
@@ -84,6 +97,9 @@ func _on_continue_pressed() -> void:
 
 func _on_exit_pressed() -> void:
 	get_tree().quit()
+
+func _on_test_pressed() -> void:
+	GameManager.go_to_test_battle()
 
 func _on_button_start_pressed() -> void:
 	_on_start_pressed()

@@ -173,8 +173,8 @@ func apply_game_data(data: Dictionary) -> void:
 func save_map_state() -> bool:
 	return save_game(GameProgress.IN_MAP)
 
-func save_before_battle(enemy_id: String, map_id: String = "test_map") -> bool:
-	return save_game(GameProgress.IN_BATTLE, {"enemy_id": enemy_id, "map_id": map_id})
+func save_before_battle(enemy_id: String, map_id: String = "test_map", endless_layer: int = 0) -> bool:
+	return save_game(GameProgress.IN_BATTLE, {"enemy_id": enemy_id, "map_id": map_id, "endless_layer": endless_layer})
 
 func get_cached_map_state() -> Dictionary:
 	return _cached_map_state

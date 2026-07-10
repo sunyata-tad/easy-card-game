@@ -42,6 +42,14 @@ func get_stored_power() -> int:
 func get_total_damage() -> int:
 	return base_strength + int(buff_manager.get_flat_add("damage"))
 
+func get_expected_attack_damage() -> int:
+	var base = base_strength
+	base = hook_chain.trigger("calc_attack_base", base, {})
+	base = hook_chain.trigger("calc_attack_mult", base, {})
+	base = hook_chain.trigger("calc_attack_damage", base, {})
+	base = hook_chain.trigger("calc_attack_final", base, {})
+	return int(base)
+
 func get_total_block() -> int:
 	return base_dexterity + int(buff_manager.get_flat_add("block"))
 
@@ -53,9 +61,7 @@ func take_damage(amount: int) -> int:
 	if is_dead or amount <= 0:
 		return 0
 	
-	var damage_mult = buff_manager.get_mult("damage_taken")
-	var actual_damage = int(amount * damage_mult)
-	actual_damage = int(hook_chain.trigger("calc_damage_taken", actual_damage, {"source_type": "enemy"}))
+	var actual_damage = int(hook_chain.trigger("on_damage_taken", amount, {"source_type": "enemy"}))
 	
 	if block > 0:
 		if block >= actual_damage:

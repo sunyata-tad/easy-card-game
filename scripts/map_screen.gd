@@ -329,6 +329,8 @@ func _create_log_section() -> Control:
 func receive_data(data: Dictionary) -> void:
 	var map_id = data.get("map_id", "test_map")
 	var map_state = data.get("map_state", {})
+	if data.get("endless_mode", false):
+		map_controller.endless_mode = true
 	if not map_state.is_empty():
 		map_controller.deserialize_state(map_state)
 		var location_data = map_controller.get_current_location_data()
@@ -431,7 +433,13 @@ func _on_interaction_action_pressed(interactable_id: String, action: String):
 	if result.get("success", false):
 		if result.get("trigger_battle", false):
 			var enemy_id = result.get("enemy_id", "")
+			var layer = result.get("layer", 0)
+			if layer > 0 and map_controller.endless_mode:
+				map_controller.mark_layer_cleared(layer)
+				SaveManager.save_before_battle(enemy_id, "endless", layer)
 			battle_requested.emit(enemy_id)
+		elif result.get("open_chest", false):
+			_open_chest_reward(result.get("layer", 0))
 		elif result.get("heal_amount", 0) > 0:
 			var heal_amount = result.heal_amount
 			if GameData:
@@ -462,6 +470,8 @@ func _do_move_animation(direction: int) -> void:
 	if is_animating:
 		return
 	if not map_controller.can_move_to(direction):
+		if map_controller.endless_mode and direction == MapController.Direction.NORTH:
+			map_controller.map_state.add_log("move", "敌人阻拦了你，无法前进！")
 		return
 	is_animating = true
 	
@@ -883,9 +893,46 @@ func _on_deck_add_card(card_id: String, popup: PopupPanel) -> void:
 	var card_db = CardDatabase.new()
 	var card = card_db.get_card(card_id)
 	if card and GameData:
+		var count = 0
+		for c in GameData.player_deck:
+			if c.id == card_id:
+				count += 1
+		if count >= 3:
+			return
 		GameData.add_card_to_deck(card.duplicate())
 		popup.hide()
 		_show_deck_workbench()
+
+func _count_card_in_deck(card_id: String) -> int:
+	if not GameData:
+		return 0
+	var count = 0
+	for c in GameData.player_deck:
+		if c.id == card_id:
+			count += 1
+	return count
+
+func _open_chest_reward(layer: int) -> void:
+	if not GameData:
+		return
+	var card_db = CardDatabase.new()
+	var all_card_ids = card_db.get_all_card_ids()
+	var unlocked_ids = CardPoolManager.get_all_card_ids()
+	
+	var new_card_id = ""
+	for cid in all_card_ids:
+		if not CardPoolManager.has_card(cid):
+			new_card_id = cid
+			CardPoolManager.add_card(cid)
+			break
+	
+	if new_card_id != "":
+		var card_data = card_db.get_card(new_card_id)
+		map_controller.map_state.add_log("chest", "宝箱中发现了新卡牌【%s】！已解锁。" % card_data.name)
+	else:
+		var gold = randi() % 20 + 5
+		GameData.add_gold(gold)
+		map_controller.map_state.add_log("chest", "宝箱中获得了%d金币。" % gold)
 
 func _on_deck_remove_card(card_id: String, popup: PopupPanel) -> void:
 	if not GameData:
