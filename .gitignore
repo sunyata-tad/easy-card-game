@@ -21,6 +21,8 @@ Thumbs.db
 # Tool-specific
 .claude/
 .arts/
+CLAUDE.md
+.clinerules
 
 # IDE specific
 .vscode/

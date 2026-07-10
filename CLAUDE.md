@@ -14,6 +14,12 @@ Godot 4.6 GDScript 回合制卡牌战斗游戏。
 - `PROJECT_STATE.md` — 技术架构与项目状态
 - `.claude/skills/game-designer/SKILL.md` — 游戏策划 skill，记录设计决策
 
+## 语言与提交规范
+- **对话语言**：始终使用简体中文回复
+- **Git Commit Message**：始终使用简体中文，格式为 `<类型>: <中文描述>`
+  - 类型：feat(新功能), fix(修复), refactor(重构), docs(文档), style(样式), chore(杂项)
+  - 示例：`feat: 添加卡牌抽卡动画效果`
+
 ## 工作流程
 1. 编码前先读取 GAME_DESIGN.md 确认实现与设计一致
 2. 策划讨论时使用 game-designer skill 自动记录决策
