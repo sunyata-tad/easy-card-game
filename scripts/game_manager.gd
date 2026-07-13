@@ -76,11 +76,18 @@ func go_to_endless_map() -> void:
 
 func go_to_test_battle() -> void:
 	var enemy_db = EnemyDatabase.new()
-	var enemy = enemy_db.get_enemy("test_debuffer")
+	var enemy = enemy_db.get_enemy("test_dummy")
 	if enemy:
 		GameData.initialize_new_run()
 		GameData.player_strength = 5
 		GameData.player_dexterity = 5
+		var card_db = CardDatabase.new()
+		GameData.player_deck = card_db.create_deck([
+			{"card_id": "蓄力", "count": 6},
+			{"card_id": "蓄势", "count": 6},
+			{"card_id": "斩击", "count": 2},
+			{"card_id": "格挡", "count": 2}
+		])
 		start_battle([enemy])
 
 func go_to_map(map_id: String = "test_map", map_state: Dictionary = {}) -> void:

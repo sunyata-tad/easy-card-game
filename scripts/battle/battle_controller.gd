@@ -12,7 +12,6 @@ var card_database: CardDatabase
 var enemy_database: EnemyDatabase
 
 var pending_card: CardData = null
-var pending_card_node: Control = null
 var is_first_turn: bool = true
 var is_discard_phase: bool = false
 
@@ -38,17 +37,13 @@ func _initialize_systems() -> void:
 
 func _connect_signals() -> void:
 	state_machine.state_enter.connect(_on_state_enter)
-	
 	turn_manager.player_turn_start.connect(_on_player_turn_start)
-	
 	card_system.card_played.connect(_on_card_played)
 	card_system.hand_changed.connect(_on_hand_changed)
 	card_system.deck_count_changed.connect(_on_deck_count_changed)
-	
 	enemy_system.enemy_died.connect(_on_enemy_died)
 	enemy_system.enemy_damaged.connect(_on_enemy_damaged)
 	enemy_system.all_enemies_defeated.connect(_on_all_enemies_defeated)
-	
 	player_manager.hp_changed.connect(_on_player_hp_changed)
 	player_manager.block_changed.connect(_on_player_block_changed)
 	player_manager.player_died.connect(_on_player_died)
@@ -58,27 +53,18 @@ func setup_battle(root_node: Control, initial_deck: Array = [], enemies: Array =
 	ui_controller = UIController.new(root_node)
 	ui_controller.player_manager = player_manager
 	_connect_ui_signals()
-	
 	card_system.initialize_deck(initial_deck)
 	effect_resolver.card_system = card_system
-	
-	var max_hp = GameData.player_max_hp
-	var current_hp = GameData.player_current_hp
-	var strength = GameData.player_strength
-	var dexterity = GameData.player_dexterity
-	
-	player_manager.max_hp = max_hp
-	player_manager.current_hp = current_hp
-	player_manager.base_strength = strength
-	player_manager.base_dexterity = dexterity
-	
+	player_manager.max_hp = GameData.player_max_hp
+	player_manager.current_hp = GameData.player_current_hp
+	player_manager.base_strength = GameData.player_strength
+	player_manager.base_dexterity = GameData.player_dexterity
 	for enemy_data in enemies:
 		enemy_system.add_enemy(enemy_data)
-	
 	if enemies.is_empty():
-		var test_enemy = enemy_database.get_enemy("test_dummy")
-		if test_enemy:
-			enemy_system.add_enemy(test_enemy)
+		var e = enemy_database.get_enemy("test_dummy")
+		if e:
+			enemy_system.add_enemy(e)
 
 func start_battle() -> void:
 	_update_initial_ui()
@@ -108,22 +94,14 @@ func _check_battle_end_state() -> bool:
 
 func _on_state_enter(state: int) -> void:
 	match state:
-		StateMachine.BattleState.INIT:
-			_on_battle_init()
-		StateMachine.BattleState.DRAW_PHASE:
-			_on_draw_phase()
-		StateMachine.BattleState.PLAYER_TURN:
-			_on_player_turn_phase()
-		StateMachine.BattleState.RESOLVING:
-			_on_resolving_phase()
-		StateMachine.BattleState.ENEMY_TURN:
-			_on_enemy_turn_phase()
-		StateMachine.BattleState.TURN_END:
-			_on_turn_end_phase()
-		StateMachine.BattleState.VICTORY:
-			_on_victory()
-		StateMachine.BattleState.DEFEAT:
-			_on_defeat()
+		StateMachine.BattleState.INIT: _on_battle_init()
+		StateMachine.BattleState.DRAW_PHASE: _on_draw_phase()
+		StateMachine.BattleState.PLAYER_TURN: _on_player_turn_phase()
+		StateMachine.BattleState.RESOLVING: _on_resolving_phase()
+		StateMachine.BattleState.ENEMY_TURN: _on_enemy_turn_phase()
+		StateMachine.BattleState.TURN_END: _on_turn_end_phase()
+		StateMachine.BattleState.VICTORY: _on_victory()
+		StateMachine.BattleState.DEFEAT: _on_defeat()
 
 func _on_battle_init() -> void:
 	turn_manager.reset()
@@ -134,20 +112,24 @@ func _on_draw_phase() -> void:
 	player_manager.reset_block()
 	enemy_system.reset_all_block()
 	player_manager.buff_manager.remove_at_turn_end()
-	
+	effect_resolver.clear_all_temp_hooks(player_manager)
+	if player_manager.pending_stored_damage > 0:
+		var val = player_manager.pending_stored_damage
+		player_manager.pending_stored_damage = 0
+		player_manager.hook_chain.unregister("calc_attack_damage", "_pending_stored")
+		player_manager.hook_chain.register("calc_attack_damage", func(v, _c): return v + val, 5, "_pending_stored")
 	var draw_count = 5 if is_first_turn else 1
 	is_first_turn = false
-	
 	card_system.draw_cards(draw_count)
 	turn_changed.emit(true)
 	_decide_all_enemy_intents()
-	
 	if not _check_battle_end_state():
 		turn_manager.start_new_turn(true)
 		state_machine.change_state(StateMachine.BattleState.PLAYER_TURN)
 
 func _on_player_turn_phase() -> void:
 	ui_controller.set_interactive(true)
+	_update_player_ui()
 	if state_machine.previous_state != StateMachine.BattleState.RESOLVING:
 		ui_controller.show_turn_banner("你的回合")
 
@@ -175,32 +157,22 @@ func _resolve_end_turn() -> void:
 	discard_phase_ended.emit()
 	await _process_turn_end_effects()
 	turn_manager.end_current_turn()
-	
-	if not state_machine.is_battle_active():
+	if not state_machine.is_battle_active() or _check_battle_end_state():
 		return
-	
-	if _check_battle_end_state():
-		return
-	
 	state_machine.change_state(StateMachine.BattleState.DRAW_PHASE)
 
 func confirm_discard_cards(cards_to_discard: Array) -> void:
 	if not is_discard_phase:
 		return
-	
 	for card in cards_to_discard:
 		card_system.discard_specific_card(card)
-	
 	is_discard_phase = false
 	discard_phase_ended.emit()
-	
 	var excess = card_system.hand.size() - CardSystem.MAX_HAND_SIZE
 	if excess > 0:
 		is_discard_phase = true
-		ui_controller.set_interactive(false)
 		discard_phase_started.emit(excess)
 		return
-	
 	await _resolve_end_turn()
 
 func _on_victory() -> void:
@@ -222,17 +194,12 @@ func _process_turn_end_effects() -> void:
 	_tick_buffs_on_turn_end(player_manager)
 	for enemy in enemy_system.get_alive_enemies():
 		_tick_buffs_on_turn_end(enemy)
-	
 	await _execute_player_auto_attack()
-	
 	if _check_battle_end_state():
 		return
-	
 	await _execute_enemy_attacks()
-	
 	if _check_battle_end_state():
 		return
-	
 	player_manager.buff_manager.decrease_durations()
 	player_manager.buff_manager.remove_at_turn_end()
 	for enemy in enemy_system.get_alive_enemies():
@@ -240,9 +207,7 @@ func _process_turn_end_effects() -> void:
 		enemy.buff_manager.remove_at_turn_end()
 
 func _execute_enemy_attacks() -> void:
-	var alive_enemies = enemy_system.get_alive_enemies()
-	
-	for enemy in alive_enemies:
+	for enemy in enemy_system.get_alive_enemies():
 		_execute_single_enemy_turn(enemy)
 		if not player_manager.is_alive():
 			break
@@ -250,64 +215,65 @@ func _execute_enemy_attacks() -> void:
 
 func _execute_player_auto_attack() -> void:
 	var total_block = player_manager.get_total_block()
-	
 	if total_block > 0:
 		player_manager.gain_block(total_block)
 		_update_player_ui()
 		await get_tree().create_timer(0.2).timeout
-	
 	if player_manager.buff_manager.has_buff("skip_attack"):
 		await get_tree().create_timer(0.2).timeout
 		return
-	
-	var alive_enemies = enemy_system.get_alive_enemies()
-	var target_enemy = player_manager.selected_target
-	
-	if target_enemy == null or not target_enemy.is_alive():
-		if alive_enemies.size() > 0:
-			target_enemy = alive_enemies[0]
-			player_manager.selected_target = target_enemy
-	
-	if target_enemy and target_enemy.is_alive():
-		_perform_attack(player_manager, target_enemy, 0)
+	var alive = enemy_system.get_alive_enemies()
+	var target = player_manager.selected_target
+	if target == null or not target.is_alive():
+		if alive.size() > 0:
+			target = alive[0]
+			player_manager.selected_target = target
+	if target and target.is_alive():
+		_perform_attack(player_manager, target, 0)
 		await get_tree().create_timer(0.2).timeout
-	
-	player_manager.buff_manager.remove_buff("stored_power")
+	player_manager.hook_chain.unregister("calc_attack_damage", "_pending_stored")
+	player_manager.pending_stored_damage = 0
 
 func _perform_attack(source, target, base_damage: int) -> void:
 	if not source or not target:
 		return
-	if source is PlayerManager:
-		base_damage += source.base_strength
 	var hc = source.hook_chain if source.hook_chain else null
-	if not hc:
-		var actual = target.take_damage(base_damage)
-		ui_controller.show_damage_number(target, actual)
+	if source is PlayerManager and hc:
+		var ctx: Dictionary = {}
+		hc.trigger("on_attack_start", 0, ctx)
+		var base = hc.trigger("calc_attack_base", source.base_strength, ctx)
+		base = int(hc.trigger("calc_attack_mult", int(base), ctx))
+		var add = hc.trigger("calc_attack_damage", 0, ctx)
+		var raw = int(base) + int(add)
+		var final_dmg = hc.trigger("calc_attack_final", raw, ctx)
+		hc.trigger("on_attack_hit", final_dmg, {"hit_index": 0})
+		if target is EnemyUnit:
+			var actual = target.take_damage(final_dmg, ctx.get("ignore_block", false))
+			ui_controller.update_single_enemy(target)
+			ui_controller.show_damage_number(target, actual)
+		elif target is PlayerManager:
+			target.take_damage(final_dmg)
+		hc.trigger("on_attack_end", 0, ctx)
 		return
-	
-	var ctx: Dictionary = {}
-	hc.trigger("on_attack_start", base_damage, ctx)
-	var hit_count = max(ctx.get("hit_count", 1), 1)
-	for i in range(hit_count):
+	if hc:
+		var ctx: Dictionary = {}
+		hc.trigger("on_attack_start", base_damage, ctx)
 		var hit_value = hc.trigger("calc_attack_base", base_damage, ctx)
 		hit_value = hc.trigger("calc_attack_mult", hit_value, ctx)
 		hit_value = hc.trigger("calc_attack_damage", hit_value, ctx)
 		hit_value = hc.trigger("calc_attack_final", hit_value, ctx)
-		var hit_ctx = {"damage": hit_value, "hit_index": i}
-		hc.trigger("on_attack_hit", hit_value, hit_ctx)
-		if target is EnemyUnit:
-			var actual = target.take_damage(hit_value, ctx.get("ignore_block", false))
-			ui_controller.update_single_enemy(target)
-			ui_controller.show_damage_number(target, actual)
-		elif target is PlayerManager:
+		hc.trigger("on_attack_hit", hit_value, {"hit_index": 0})
+		if target is PlayerManager:
 			var actual = target.take_damage(hit_value)
 			ui_controller.show_damage_number(target, actual)
-	hc.trigger("on_attack_end", 0, ctx)
+		hc.trigger("on_attack_end", 0, ctx)
+		return
+	var actual = target.take_damage(base_damage)
+	ui_controller.show_damage_number(target, actual)
 
 func _tick_buffs_on_turn_end(target) -> void:
 	if target.has_method("get") and target.get("buff_manager"):
-		var effects = target.buff_manager.tick_buffs("on_turn_end")
-		for effect in effects:
+		for effect in target.buff_manager.tick_buffs("on_turn_end"):
 			_apply_tick_effect(target, effect)
 
 func _decide_all_enemy_intents() -> void:
@@ -319,61 +285,43 @@ func _execute_enemy_turns() -> void:
 	state_machine.change_state(StateMachine.BattleState.TURN_END)
 
 func _execute_single_enemy_turn(enemy: EnemyUnit) -> void:
-	if not enemy.is_alive() or enemy.current_intent.is_empty():
+	if not enemy.is_alive() or enemy.current_intent.is_empty() or not player_manager.is_alive():
 		return
-	if not player_manager.is_alive():
-		return
-	
 	_execute_enemy_action(enemy, enemy.current_intent)
 
 func _execute_enemy_action(enemy: EnemyUnit, action: Dictionary) -> void:
-	var action_type = action.get("type", "")
-	
 	if not player_manager.is_alive():
 		return
-	
-	match action_type:
+	match action.get("type", ""):
 		"attack":
-			var base_damage = action.get("damage", 5)
-			_perform_attack(enemy, player_manager, base_damage)
+			_perform_attack(enemy, player_manager, action.get("damage", 5))
 			_update_player_ui()
 		"defend":
-			var base_block = action.get("block", 5)
-			var block_mult = enemy.buff_manager.get_mult("block")
-			var final_block = int(base_block * block_mult)
+			var final_block = int(action.get("block", 5) * enemy.buff_manager.get_mult("block"))
 			if final_block > 0:
 				enemy.gain_block(final_block)
 				ui_controller.update_single_enemy(enemy)
 		"buff":
-			var buff_id = action.get("buff_id", "")
-			var stacks = action.get("stacks", 1)
-			if not buff_id.is_empty():
-				effect_resolver.apply_buff({"buff_id": buff_id, "value": stacks}, enemy)
-				ui_controller.update_single_enemy(enemy)
+			effect_resolver.apply_buff({"buff_id": action.get("buff_id", ""), "value": action.get("stacks", 1)}, enemy)
+			ui_controller.update_single_enemy(enemy)
 		"debuff":
-			var buff_id = action.get("buff_id", "")
-			var stacks = action.get("stacks", 1)
-			if not buff_id.is_empty():
-				effect_resolver.apply_buff({"buff_id": buff_id, "value": stacks}, player_manager)
-				_update_player_ui()
+			effect_resolver.apply_buff({"buff_id": action.get("buff_id", ""), "value": action.get("stacks", 1)}, player_manager)
+			_update_player_ui()
 
 func _on_player_turn_start() -> void:
 	_tick_buffs_on_turn_start(player_manager)
-	
 	for enemy in enemy_system.get_alive_enemies():
 		_tick_buffs_on_turn_start(enemy)
 
 func _tick_buffs_on_turn_start(target) -> void:
 	if target.has_method("get") and target.get("buff_manager"):
-		var effects = target.buff_manager.tick_buffs("on_turn_start")
-		for effect in effects:
+		for effect in target.buff_manager.tick_buffs("on_turn_start"):
 			_apply_tick_effect(target, effect)
 
 func _apply_tick_effect(target, effect: Dictionary) -> void:
 	var effect_type = effect.get("type", "")
 	var value = effect.get("value", 0)
 	var stacks = effect.get("stacks", 1)
-	
 	match effect_type:
 		"damage":
 			if target is PlayerManager:
@@ -389,44 +337,34 @@ func _apply_tick_effect(target, effect: Dictionary) -> void:
 func play_card(card: CardData, target = null) -> bool:
 	if not state_machine.is_player_turn():
 		return false
-	
 	var target_to_use = target
 	if card.target_type == "self":
 		target_to_use = player_manager
 	elif card.target_type == "single_enemy" and target == null:
 		pending_card = card
 		return false
-	
 	if card.target_type == "single_enemy" and target_to_use == null:
 		return false
-	
 	state_machine.change_state(StateMachine.BattleState.RESOLVING)
-	
 	effect_resolver.resolve_effects(card.effects, player_manager, target_to_use)
 	card_system.play_card(card, target_to_use)
 	_update_player_ui()
-	
 	await get_tree().create_timer(0.3).timeout
-	
 	if not state_machine.is_battle_active():
 		return true
-	
 	if not _check_battle_end_state():
 		state_machine.change_state(StateMachine.BattleState.PLAYER_TURN)
-	
 	return true
 
 func end_player_turn() -> void:
 	if not state_machine.is_player_turn():
 		return
-	
 	sync_player_stats_to_gamedata()
 	state_machine.change_state(StateMachine.BattleState.ENEMY_TURN)
 
 func _on_card_played(card: CardData, _target) -> void:
-	if ui_controller.is_card_select_active():
-		return
-	ui_controller.remove_card_from_hand(card)
+	if not ui_controller.is_card_select_active():
+		ui_controller.remove_card_from_hand(card)
 
 func _on_hand_changed(hand: Array) -> void:
 	ui_controller.update_hand_display(hand)
@@ -460,9 +398,9 @@ func _on_player_died() -> void:
 func _on_counter_damage(amount: int) -> void:
 	var target = player_manager.selected_target
 	if target == null or not target.is_alive():
-		var alive_enemies = enemy_system.get_alive_enemies()
-		if alive_enemies.size() > 0:
-			target = alive_enemies[0]
+		for e in enemy_system.get_alive_enemies():
+			target = e
+			break
 	if target and target.is_alive():
 		var actual = target.take_damage(amount)
 		ui_controller.update_single_enemy(target)
@@ -480,14 +418,11 @@ func _update_initial_ui() -> void:
 	_update_player_ui()
 	ui_controller.update_deck_info(card_system.get_draw_pile_count(), card_system.get_discard_pile_count())
 
-func _on_ui_card_clicked(card: CardData, card_node: Control) -> void:
-	if card == null:
-		return
-	
-	if ui_controller.is_card_select_active():
+func _on_ui_card_clicked(card: CardData, _card_node: Control) -> void:
+	if card == null or ui_controller.is_card_select_active():
 		return
 
-func _on_ui_card_released(card: CardData, card_node: Control) -> void:
+func _on_ui_card_released(_card: CardData, _card_node: Control) -> void:
 	pass
 
 func _on_ui_card_played(card: CardData, target) -> void:
@@ -499,21 +434,16 @@ func _on_ui_card_played(card: CardData, target) -> void:
 func _on_ui_card_cancelled(card: CardData) -> void:
 	if pending_card == card:
 		pending_card = null
-		pending_card_node = null
-	
 	ui_controller.clear_target_highlights()
 
 func _on_ui_card_dropped(card: CardData, target) -> void:
 	if card == null:
 		return
-	
 	var card_node = ui_controller.get_card_node(card) if ui_controller else null
-	
 	if target == null:
 		if card_node and card_node.has_method("reset_position"):
 			card_node.reset_position()
 		return
-	
 	if card.target_type == "single_enemy" and target is EnemyUnit:
 		play_card_with_animation(card, target, card_node)
 	elif card.target_type == "single_ally" and target is PlayerManager:
@@ -527,22 +457,16 @@ func play_card_with_animation(card: CardData, target, card_node: Control) -> voi
 		if target:
 			ui_controller.play_card_animation(card, card_node, target)
 		else:
-			var target_pos = Vector2(400, 200)
 			if card_node.has_method("play_play_animation"):
-				card_node.play_play_animation(target_pos)
+				card_node.play_play_animation(Vector2(400, 200))
 		await get_tree().create_timer(0.15).timeout
-	
 	play_card(card, target)
 
 func _on_ui_enemy_selected(enemy: EnemyUnit) -> void:
 	player_manager.selected_target = enemy
 	if pending_card != null:
-		var card_node = pending_card_node
-		if card_node and card_node.has_method("cancel_target_mode"):
-			card_node.cancel_target_mode()
-		play_card_with_animation(pending_card, enemy, card_node)
+		play_card_with_animation(pending_card, enemy, null)
 		pending_card = null
-		pending_card_node = null
 		ui_controller.clear_target_highlights()
 
 func _on_ui_end_turn_clicked() -> void:
