@@ -1,31 +1,42 @@
+## 效果解析器：将卡牌的 effect 字典翻译成实际的游戏操作（伤害/格挡/治疗/抽牌/buff等）。
+## 这是卡牌效果系统的核心，所有卡牌效果的最终执行都经过这个类。
+## Godot 特色：
+## - match "a", "b": 多值匹配同一分支（类似 Python 的 if x in ("a", "b")）
+## - is 关键字检查类型（类似 Python 的 isinstance / Java 的 instanceof）
+## - Dictionary 可以动态添加字段（如 e.buff_id = buff.id），GDScript 中字典是动态类型
 class_name EffectResolver
 
-var card_database: CardDatabase
-var card_system: CardSystem = null
-var _temp_attack_boost: int = 0
-var _temp_hook_ids: Array = []
+var card_database: CardDatabase         ## 卡牌数据库，用于根据卡牌 id 创建卡牌实例
+var card_system: CardSystem = null      ## 卡牌系统引用，用于抽牌/弃牌/消耗等操作
+var _temp_attack_boost: int = 0         ## 累积的临时攻击力加成
+var _temp_hook_ids: Array = []          ## 临时钩子的 id 列表，用于清理
 
-signal effect_resolved(effect_type: int, result: Dictionary)
-signal damage_dealt(target, amount: int)
-signal block_gained(target, amount: int)
-signal healing_done(target, amount: int)
-signal cards_drawn(count: int)
-signal buff_applied(target, buff: BuffData)
+signal effect_resolved(effect_type: int, result: Dictionary)  ## 效果结算完成
+signal damage_dealt(target, amount: int)    ## 造成了伤害
+signal block_gained(target, amount: int)    ## 获得了格挡
+signal healing_done(target, amount: int)    ## 完成了治疗
+signal cards_drawn(count: int)              ## 抽了牌
+signal buff_applied(target, buff: BuffData) ## 施加了 buff
 
 func _init():
 	card_database = CardDatabase.new()
 
+## 连续解析多个效果（一张卡牌可以有多个效果）
 func resolve_effects(effects: Array, source, target = null) -> Array:
 	var results: Array = []
 	for e in effects:
 		results.append(resolve_effect(e, source, target))
 	return results
 
+## 解析单个效果
+## base_stat 字段允许效果值基于玩家属性（力量/敏捷）来计算
 func resolve_effect(effect: Dictionary, source, target = null) -> Dictionary:
 	var effect_type_str = effect.get("effect_type", "")
 	var value = effect.get("value", 0)
 	var result: Dictionary = {"success": false, "value": 0}
 	
+	# 如果效果配置了 base_stat，则从源单位获取对应属性并乘以 multiplier 加到 value 上
+	# 例如 base_stat="strength" multiplier=1.0 表示"基于力量值的伤害"
 	var base_stat = effect.get("base_stat", "")
 	var multiplier = effect.get("multiplier", 1.0)
 	if base_stat != "" and source is PlayerManager:
@@ -34,6 +45,7 @@ func resolve_effect(effect: Dictionary, source, target = null) -> Dictionary:
 		elif base_stat == "dexterity": stat_value = source.get_dexterity()
 		value = value + int(stat_value * multiplier)
 	
+	# 根据效果类型分发到对应的处理方法
 	match effect_type_str:
 		"damage": result = _resolve_damage(value, source, target)
 		"block": result = _resolve_block(value, source, target)
@@ -58,16 +70,21 @@ func resolve_effect(effect: Dictionary, source, target = null) -> Dictionary:
 	effect_resolved.emit(effect_type_str, result)
 	return result
 
+## 获取来源单位的 HookChain
 func _get_hook_chain(source) -> HookChain:
 	if source is PlayerManager: return source.hook_chain
 	if source is EnemyUnit: return source.hook_chain
 	return null
 
+## 结算伤害效果
+## 玩家攻击时经过完整的钩子链：基础 → 倍率 → 加算 → 最终倍率
+## 钩子链上下文的 ignore_block 标记可以跳过目标的格挡
 func _resolve_damage(base_damage: int, source, target) -> Dictionary:
 	if target == null:
 		return {"success": false, "value": 0}
 	var hc = _get_hook_chain(source)
 	
+	# 玩家攻击：使用完整钩子链计算
 	if source is PlayerManager and hc:
 		var ctx: Dictionary = {}
 		hc.trigger("on_attack_start", 0, ctx)
@@ -86,6 +103,7 @@ func _resolve_damage(base_damage: int, source, target) -> Dictionary:
 		damage_dealt.emit(target, final_dmg)
 		return {"success": true, "value": final_dmg, "target": target}
 	
+	# 非玩家单位但有 HookChain（如带 buff 的敌人）
 	if hc:
 		var total = base_damage
 		var ctx: Dictionary = {}
@@ -101,6 +119,7 @@ func _resolve_damage(base_damage: int, source, target) -> Dictionary:
 		damage_dealt.emit(target, hit_value)
 		return {"success": true, "value": hit_value, "target": target}
 	
+	# 简单伤害：无钩子链，直接造成伤害
 	if target is PlayerManager:
 		var actual = target.take_damage(base_damage)
 		damage_dealt.emit(target, actual)
@@ -111,6 +130,7 @@ func _resolve_damage(base_damage: int, source, target) -> Dictionary:
 		return {"success": true, "value": actual, "target": target}
 	return {"success": false, "value": 0}
 
+## 结算格挡效果（目标获得格挡值，受 block_mult 倍率影响）
 func _resolve_block(base_block: int, source, target) -> Dictionary:
 	var block_mult: float = 1.0
 	if target is PlayerManager: block_mult = target.buff_manager.get_mult("block")
@@ -121,6 +141,7 @@ func _resolve_block(base_block: int, source, target) -> Dictionary:
 	elif target is EnemyUnit: target.gain_block(final_block); block_gained.emit(target, final_block)
 	return {"success": true, "value": final_block, "target": target}
 
+## 结算治疗效果
 func _resolve_heal(base_heal: int, source, target) -> Dictionary:
 	var heal_mult: float = 1.0
 	if target is PlayerManager: heal_mult = target.buff_manager.get_mult("heal")
@@ -129,10 +150,12 @@ func _resolve_heal(base_heal: int, source, target) -> Dictionary:
 	elif target is EnemyUnit: var actual = target.heal(final_heal); healing_done.emit(target, actual); return {"success": true, "value": actual, "target": target}
 	return {"success": false, "value": 0}
 
+## 永久攻击力提升（直接修改 base_strength）
 func _resolve_damage_boost(value: int, source) -> Dictionary:
 	if source is PlayerManager: source.base_strength += value; return {"success": true, "value": value}
 	return {"success": false, "value": 0}
 
+## 临时攻击力提升（通过 HookChain 实现，需要时可以清理）
 func _resolve_temp_damage_boost(value: int, source) -> Dictionary:
 	if source is PlayerManager:
 		_temp_attack_boost += value
@@ -142,6 +165,7 @@ func _resolve_temp_damage_boost(value: int, source) -> Dictionary:
 		return {"success": true, "value": value}
 	return {"success": false, "value": 0}
 
+## 跳过攻击：给玩家施加 skip_attack buff，持续到回合结束
 func _resolve_skip_attack(_value: int, source) -> Dictionary:
 	if source is PlayerManager and not source.buff_manager.has_buff("skip_attack"):
 		var buff = BuffData.new({"id": "skip_attack", "name": "蓄势", "buff_type": "buff", "duration": 1, "stacks": 1, "trigger_timing": "on_turn_end_remove"})
@@ -149,8 +173,9 @@ func _resolve_skip_attack(_value: int, source) -> Dictionary:
 		return {"success": true, "value": 1}
 	return {"success": false, "value": 0}
 
+## 存储伤害：走前 3 步钩子管道计算 raw_damage，累加到 pending_stored_damage
+## 用于"蓄力"机制：当前回合存储伤害，下回合额外释放
 func _resolve_store_damage(source) -> Dictionary:
-	## 走前3步管道计算 raw_damage，累加到 pending
 	if source is PlayerManager:
 		var ctx: Dictionary = {}
 		var v = source.base_strength
@@ -163,6 +188,7 @@ func _resolve_store_damage(source) -> Dictionary:
 		return {"success": true, "value": raw, "stored_total": source.pending_stored_damage}
 	return {"success": false, "value": 0}
 
+## 无视格挡：施加 ignore_block buff，攻击时忽略目标的格挡值
 func _resolve_ignore_block(source) -> Dictionary:
 	if source is PlayerManager:
 		var buff = BuffData.new({"id": "ignore_block", "name": "破甲", "buff_type": "buff", "duration": 1, "stacks": 1, "trigger_timing": "on_turn_end_remove"})
@@ -170,6 +196,7 @@ func _resolve_ignore_block(source) -> Dictionary:
 		return {"success": true, "value": 1}
 	return {"success": false, "value": 0}
 
+## 反击架势：施加 counter_stance buff，格挡时对被格挡的伤害进行反击
 func _resolve_counter_stance(source) -> Dictionary:
 	if source is PlayerManager:
 		var buff = BuffData.new({"id": "counter_stance", "name": "招架", "buff_type": "buff", "duration": 1, "stacks": 1, "trigger_timing": "on_turn_end_remove"})
@@ -177,26 +204,31 @@ func _resolve_counter_stance(source) -> Dictionary:
 		return {"success": true, "value": 1}
 	return {"success": false, "value": 0}
 
+## 抽牌效果
 func _resolve_draw(count: int, source) -> Dictionary:
 	if card_system: var drawn = card_system.draw_cards(count); cards_drawn.emit(drawn.size()); return {"success": true, "value": drawn.size()}
 	elif source.has_method("get") and source.get("card_system"): var cs = source.card_system; var drawn = cs.draw_cards(count); return {"success": true, "value": drawn.size()}
 	return {"success": false, "value": 0}
 
+## 从抽牌堆搜索并抽取指定 id 的卡牌
 func _resolve_search_draw(effect: Dictionary, source) -> Dictionary:
 	var cs = card_system
 	if not cs and source.has_method("get") and source.get("card_system"): cs = source.card_system
 	if cs: var card = cs.search_and_draw(effect.get("card_id", "")); return {"success": card != null, "value": 1} if card else {}
 	return {"success": false, "value": 0}
 
+## 从弃牌堆搜索并抽取指定 id 的卡牌到手牌
 func _resolve_search_discard(effect: Dictionary, source) -> Dictionary:
 	var cs = card_system
 	if not cs and source.has_method("get") and source.get("card_system"): cs = source.card_system
 	if cs: var card = cs.search_discard_and_draw(effect.get("card_id", "")); return {"success": card != null, "value": 1} if card else {}
 	return {"success": false, "value": 0}
 
+## 公开的施加 buff 接口
 func apply_buff(effect: Dictionary, target) -> Dictionary:
 	return _resolve_apply_buff(effect, target)
 
+## 施加 buff/debuff 效果（通过 buff_id 查找预设配置创建 BuffData）
 func _resolve_apply_buff(effect: Dictionary, target) -> Dictionary:
 	var buff_id = effect.get("buff_id", effect.get("buff_type", ""))
 	var stacks = effect.get("stacks", effect.get("value", 1))
@@ -207,24 +239,28 @@ func _resolve_apply_buff(effect: Dictionary, target) -> Dictionary:
 	elif target is EnemyUnit: target.apply_buff(buff_data); buff_applied.emit(target, buff_data)
 	return {"success": true, "value": stacks, "buff": buff_data}
 
+## 将指定卡牌加入手牌
 func _resolve_add_card(effect: Dictionary, source) -> Dictionary:
 	var card = card_database.get_card(effect.get("card_id", ""))
 	if card == null: return {"success": false, "value": 0}
 	if source.has_method("get") and source.get("card_system"): source.card_system.add_to_hand(card.duplicate()); return {"success": true, "value": 1}
 	return {"success": false, "value": 0}
 
+## 按标签从抽牌堆搜索并抽取卡牌
 func _resolve_search_draw_by_tag(effect: Dictionary, source) -> Dictionary:
 	if source.has_method("get") and source.get("card_system"):
 		var card = source.card_system.search_and_draw_by_tag(effect.get("target_tag", ""))
 		return {"success": card != null, "value": 1}
 	return {"success": false, "value": 0}
 
+## 按标签从弃牌堆搜索并抽取卡牌
 func _resolve_search_discard_by_tag(effect: Dictionary, source) -> Dictionary:
 	if source.has_method("get") and source.get("card_system"):
 		var card = source.card_system.search_discard_and_draw_by_tag(effect.get("target_tag", ""))
 		return {"success": card != null, "value": 1}
 	return {"success": false, "value": 0}
 
+## 随机消耗手牌
 func _resolve_exhaust_random(count: int, source) -> Dictionary:
 	if source.has_method("get") and source.get("card_system"):
 		var cs = source.card_system; var exhausted = 0
@@ -232,6 +268,7 @@ func _resolve_exhaust_random(count: int, source) -> Dictionary:
 		return {"success": exhausted > 0, "value": exhausted}
 	return {"success": false, "value": 0}
 
+## 随机弃置手牌
 func _resolve_discard_random(count: int, source) -> Dictionary:
 	if source.has_method("get") and source.get("card_system"):
 		var cs = source.card_system; var discarded = 0
@@ -239,6 +276,7 @@ func _resolve_discard_random(count: int, source) -> Dictionary:
 		return {"success": discarded > 0, "value": discarded}
 	return {"success": false, "value": 0}
 
+## 清理所有临时攻击力钩子
 func clear_temp_hooks(source) -> void:
 	if source and source.hook_chain:
 		for hook_id in _temp_hook_ids: source.hook_chain.unregister("calc_attack_base", hook_id)
@@ -248,10 +286,13 @@ func clear_temp_hooks(source) -> void:
 func clear_all_temp_hooks(source) -> void:
 	clear_temp_hooks(source)
 
+## 将弃牌堆洗牌后移回抽牌堆
 func _resolve_shuffle_discard_to_draw(source) -> Dictionary:
 	if source.has_method("get") and source.get("card_system"): source.card_system.manual_shuffle_discard_to_draw(); return {"success": true, "value": 1}
 	return {"success": false, "value": 0}
 
+## 根据 buff_id 创建 BuffData 实例
+## 这是 buff 配置的硬编码版本（也可从 JSON 加载）
 func _create_buff_from_id(buff_id: String, stacks: int = 1) -> BuffData:
 	var configs = {
 		"strength": {"id": "strength", "name": "力量", "buff_type": "buff", "duration": -1, "stacks": stacks},

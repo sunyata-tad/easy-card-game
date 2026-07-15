@@ -1,9 +1,14 @@
+## 卡牌池管理器：管理已解锁的卡牌 ID 列表（持久化到本地 JSON 文件）。
+## 控制游戏中可获得的卡牌范围，解锁后的卡牌才会出现在奖励和商店中。
+## Godot 特色：
+## - user:// 路径指向用户数据目录（类似 Application.persistentDataPath）
+## - JSON.stringify(data, "  ") 将字典转为格式化的 JSON 字符串
 extends Node
 
-const CARD_POOL_PATH := "user://card_pool.json"
-var unlocked_card_ids: Array = []
+const CARD_POOL_PATH := "user://card_pool.json"  ## 卡牌池存档路径
+var unlocked_card_ids: Array = []  ## 已解锁的卡牌 ID 列表
 
-signal card_pool_changed()
+signal card_pool_changed()  ## 卡牌池发生变化时触发
 
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS

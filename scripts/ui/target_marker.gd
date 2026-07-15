@@ -1,7 +1,11 @@
+## 目标标记：在选中的敌人上显示金色半透明方框和剑图标。
+## Godot 特色：
+## - _process(delta) 每帧调用（类似 Unity 的 Update），用于持续更新标记位置
+## - is_instance_valid(node) 检查节点是否还没被释放（避免引用已销毁的节点）
 extends Control
 
-var target_node: Control = null
-var marker_rect: ColorRect = null
+var target_node: Control = null    ## 被标记的目标节点
+var marker_rect: ColorRect = null  ## 标记矩形（半透明金色覆盖层）
 
 func _ready():
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -24,6 +28,7 @@ func _create_border():
 	style_box.set_border_width_all(3)
 	style_box.bg_color = Color(0, 0, 0, 0)
 
+## 每帧更新：将标记位置和大小同步到目标节点
 func _process(_delta):
 	if target_node == null:
 		marker_rect.visible = false
@@ -38,6 +43,7 @@ func _process(_delta):
 	marker_rect.global_position = target_node.global_position
 	marker_rect.size = target_node.size
 	
+	# 创建/更新剑形标签
 	var label = get_node_or_null("TargetLabel")
 	if label == null:
 		label = Label.new()

@@ -1,3 +1,12 @@
+## 地图场景脚本：挂载到 MapScreen.tscn 的根 Control 节点上。
+## 纯代码构建整个地图 UI（位置节点、交互物列表、探索日志、状态面板等），不依赖场景模板。
+## Godot 特色：
+## - 此脚本演示了完全用代码构建复杂 UI 的方式（创建节点→设置属性→添加到父容器）
+## - ScrollContainer 是可滚动的容器（类似 HTML 的 overflow: scroll）
+## - HFlowContainer 是自动换行的水平布局（类似 CSS 的 flex-wrap）
+## - create_tween() 用于节点移动/淡入淡出的动画效果
+## - await get_tree().create_timer(x).timeout 实现延迟等待
+## - is_instance_valid(node) 检查节点是否仍有效
 extends Control
 
 var map_controller: MapController

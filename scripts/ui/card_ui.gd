@@ -1,55 +1,69 @@
+## 卡牌 UI 节点：显示单张卡牌的视觉效果（名称、类型、描述、颜色），并处理拖拽/点击/目标选择交互。
+## Godot 特色：
+## - extends Control 表示继承 UI 控件基类
+## - @onready var x = $Path 在 _ready() 之前自动通过路径查找子节点赋值（类似 Unity 的 GetComponent + Awake）
+## - _gui_input(event) 处理鼠标/键盘输入事件（类似 Unity 的 OnMouseDown + OnMouseUp）
+## - _input(event) 处理全局输入事件（类似 Unity 的 Update 中检测 Input）
+## - accept_event() 阻止事件继续向上传播
 class_name CardUI
 extends Control
 
+## @onready: 在节点进入场景树时自动查找子节点并赋值
 @onready var background: ColorRect = $Background
 @onready var frame: Panel = $Frame
 @onready var name_label: Label = $NameLabel
 @onready var type_label: Label = $TypeLabel
 @onready var desc_label: Label = $DescLabel
 
-var card_data: CardData
-var player_manager: PlayerManager
-var is_hovered: bool = false
-var is_selected: bool = false
-var original_position: Vector2
-var original_scale: Vector2 = Vector2.ONE
-var original_rotation: float = 0.0
+var card_data: CardData               ## 关联的卡牌数据
+var player_manager: PlayerManager     ## 玩家状态引用（用于动态计算伤害预览）
+var is_hovered: bool = false          ## 鼠标是否悬停
+var is_selected: bool = false         ## 是否被选中
+var original_position: Vector2        ## 原始位置（用于放回手牌）
+var original_scale: Vector2 = Vector2.ONE  ## 原始缩放
+var original_rotation: float = 0.0   ## 原始旋转角度
 
-var is_dragging: bool = false
-var drag_start_pos: Vector2
-var is_pressed: bool = false
-var press_tween: Tween = null
-var mouse_inside: bool = true
-var is_awaiting_target: bool = false
-var tooltip_panel: PanelContainer = null
-var drag_exited_hand: bool = false
-var is_select_mode: bool = false
+## 拖拽状态
+var is_dragging: bool = false         ## 是否正在拖拽
+var drag_start_pos: Vector2           ## 拖拽起始位置
+var is_pressed: bool = false          ## 是否被按下
+var press_tween: Tween = null         ## 按下动画的 tween 对象
+var mouse_inside: bool = true         ## 鼠标是否在卡牌区域内
+var is_awaiting_target: bool = false  ## 是否在等待选择目标
+var tooltip_panel: PanelContainer = null   ## 悬停提示面板
+var drag_exited_hand: bool = false    ## 拖拽是否已离开手牌区域
+var is_select_mode: bool = false      ## 是否处于选择模式
 
-signal card_clicked(card: CardData)
-signal card_hovered(card: CardData)
-signal card_unhovered(card: CardData)
-signal drag_started(card: CardData, start_pos: Vector2)
-signal drag_updated(card: CardData, current_pos: Vector2)
-signal drag_ended(card: CardData, end_pos: Vector2)
-signal card_released(card: CardData)
-signal card_cancelled(card: CardData)
-signal target_mode_started(card: CardData)
-signal target_mode_ended(card: CardData)
-signal card_play_requested(card: CardData)
+## 交互信号
+signal card_clicked(card: CardData)                              ## 卡牌被点击
+signal card_hovered(card: CardData)                              ## 鼠标进入
+signal card_unhovered(card: CardData)                            ## 鼠标离开
+signal drag_started(card: CardData, start_pos: Vector2)          ## 开始拖拽
+signal drag_updated(card: CardData, current_pos: Vector2)        ## 拖拽中
+signal drag_ended(card: CardData, end_pos: Vector2)              ## 拖拽结束
+signal card_released(card: CardData)                             ## 卡牌释放
+signal card_cancelled(card: CardData)                            ## 卡牌操作取消
+signal target_mode_started(card: CardData)                       ## 进入目标选择模式
+signal target_mode_ended(card: CardData)                         ## 退出目标选择模式
+signal card_play_requested(card: CardData)                       ## 请求直接打出（无需目标）
 
-const ATTACK_COLOR := Color(0.9, 0.3, 0.3, 1.0)
-const SKILL_COLOR := Color(0.3, 0.5, 0.9, 1.0)
-const POWER_COLOR := Color(0.7, 0.4, 0.9, 1.0)
-const DEFAULT_COLOR := Color(0.8, 0.8, 0.8, 1.0)
+## 卡牌类型对应颜色
+const ATTACK_COLOR := Color(0.9, 0.3, 0.3, 1.0)   ## 攻击（红色）
+const SKILL_COLOR := Color(0.3, 0.5, 0.9, 1.0)    ## 技能（蓝色）
+const POWER_COLOR := Color(0.7, 0.4, 0.9, 1.0)    ## 能力（紫色）
+const DEFAULT_COLOR := Color(0.8, 0.8, 0.8, 1.0)  ## 默认（灰色）
 
+## Godot 生命周期：节点进入场景树时调用
 func _ready():
 	original_position = position
 	_setup_signals()
 
+## 连接鼠标进出信号
 func _setup_signals():
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
 
+## 根据 CardData 设置卡牌显示内容
 func setup(card: CardData, pm: PlayerManager = null):
 	card_data = card
 	player_manager = pm
@@ -68,21 +82,19 @@ func setup(card: CardData, pm: PlayerManager = null):
 	if desc_lbl:
 		desc_lbl.text = _get_display_text()
 	
+	# 根据卡牌类型设置背景颜色
 	if bg:
 		match card.type:
-			"attack":
-				bg.color = ATTACK_COLOR
-			"skill":
-				bg.color = SKILL_COLOR
-			"power":
-				bg.color = POWER_COLOR
-			_:
-				bg.color = DEFAULT_COLOR
+			"attack": bg.color = ATTACK_COLOR
+			"skill": bg.color = SKILL_COLOR
+			"power": bg.color = POWER_COLOR
+			_: bg.color = DEFAULT_COLOR
 	
 	size = Vector2(140, 180)
 	original_position = position
 	original_scale = scale
 
+## 获取卡牌描述文字（如果效果涉及玩家属性则动态计算显示值）
 func _get_display_text() -> String:
 	if card_data == null:
 		return ""
@@ -100,6 +112,7 @@ func _get_display_text() -> String:
 		var base_stat = effect.get("base_stat", "")
 		var multiplier = effect.get("multiplier", 1.0)
 		
+		# 基于属性计算效果值（如"基于力量造成伤害"）
 		if base_stat != "" and player_manager:
 			var stat_value = 0
 			if base_stat == "strength":
@@ -121,14 +134,10 @@ func _set_background_color(type: String):
 		return
 	
 	match type:
-		"attack":
-			background.color = ATTACK_COLOR
-		"skill":
-			background.color = SKILL_COLOR
-		"power":
-			background.color = POWER_COLOR
-		_:
-			background.color = DEFAULT_COLOR
+		"attack": background.color = ATTACK_COLOR
+		"skill": background.color = SKILL_COLOR
+		"power": background.color = POWER_COLOR
+		_: background.color = DEFAULT_COLOR
 
 func _get_type_text(type: String) -> String:
 	match type:
@@ -137,7 +146,9 @@ func _get_type_text(type: String) -> String:
 		"power": return "能力"
 		_: return ""
 
+## 鼠标悬停动画：放大 + 上移 + 高亮
 func _animate_hover(hover: bool):
+	# 按下中/目标选择中/选择模式中跳过悬停动画
 	if is_pressed or is_awaiting_target or is_select_mode:
 		return
 	
@@ -151,6 +162,12 @@ func _animate_hover(hover: bool):
 	tween.tween_property(self, "position:y", target_y, 0.1)
 	tween.tween_property(self, "modulate", target_modulate, 0.1)
 
+## 处理此节点范围内的鼠标输入事件（类似 Unity UI 的 OnPointerDown/Up）
+## 交互逻辑：
+## 1. 左键按下 → 播放按下动画，记录起始位置
+## 2. 鼠标移动超过 10px → 进入拖拽模式
+## 3. 左键释放 → 根据状态决定：点击/拖拽到目标/打出/取消
+## 4. 右键 → 取消当前操作
 func _gui_input(event: InputEvent):
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
@@ -164,7 +181,7 @@ func _gui_input(event: InputEvent):
 					if is_awaiting_target:
 						cancel_target_mode()
 					elif is_select_mode:
-						pass
+						pass  # 选择模式中不处理普通点击
 					else:
 						_animate_press_down()
 				accept_event()
@@ -179,6 +196,7 @@ func _gui_input(event: InputEvent):
 							card_clicked.emit(card_data)
 						is_pressed = false
 					elif is_dragging:
+						# 拖拽中释放：需要目标的卡牌等待拖放，不需要目标的直接打出
 						if _needs_target():
 							end_drag()
 						elif drag_exited_hand:
@@ -187,16 +205,19 @@ func _gui_input(event: InputEvent):
 						else:
 							_cancel_press()
 					elif _needs_target():
+						# 需要目标的卡牌短按 → 进入目标选择模式
 						if mouse_inside:
 							start_target_mode()
 						else:
 							_cancel_press()
 					else:
+						# 普通卡牌短按 = 点击打出
 						if mouse_inside and not is_dragging:
 							card_clicked.emit(card_data)
 						_cancel_press()
 				accept_event()
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+			# 右键取消：取消目标选择模式或取消拖拽
 			if is_pressed or is_awaiting_target:
 				cancel_target_mode()
 				is_pressed = false
@@ -204,11 +225,14 @@ func _gui_input(event: InputEvent):
 				card_cancelled.emit(card_data)
 			accept_event()
 
+## 全局输入事件处理（用于跟踪鼠标移动，即使鼠标离开卡牌区域也能检测）
+## Godot 中 _input 接收所有未被 _gui_input 消费的输入
 func _input(event: InputEvent):
 	if not (is_pressed or is_awaiting_target):
 		return
 	
 	if event is InputEventMouseMotion:
+		# 鼠标移动超过阈值 → 开始拖拽
 		if is_pressed and not is_dragging and not is_awaiting_target and not is_select_mode:
 			var current_pos = get_global_mouse_position()
 			var distance = current_pos.distance_to(drag_start_pos)
@@ -218,11 +242,12 @@ func _input(event: InputEvent):
 		if is_dragging:
 			var global_mouse_pos = get_global_mouse_position()
 			if _needs_target():
-				pass
+				pass  # 需要目标的卡牌不跟随鼠标移动
 			else:
-				global_position = global_mouse_pos - size / 2
+				global_position = global_mouse_pos - size / 2  # 卡牌跟随鼠标
 			drag_updated.emit(card_data, global_mouse_pos)
 			if not _needs_target():
+				# 检查是否拖出放手牌区域
 				drag_exited_hand = not _is_in_hand_area(global_mouse_pos)
 		elif is_awaiting_target:
 			var global_mouse_pos = get_global_mouse_position()
@@ -242,12 +267,14 @@ func _on_mouse_exited():
 	card_unhovered.emit(card_data)
 	_hide_tooltip()
 
+## 判断卡牌是否需要选择目标（single_enemy 或 single_ally 类型）
 func _needs_target() -> bool:
 	if card_data == null:
 		return false
 	var target_type = card_data.target_type
 	return target_type == "single_enemy" or target_type == "single_ally"
 
+## 按下动画：略微放大并上移
 func _animate_press_down():
 	if press_tween and press_tween.is_valid():
 		press_tween.kill()
@@ -260,6 +287,7 @@ func _animate_press_down():
 	if not _needs_target():
 		press_tween.tween_property(self, "position:y", original_position.y - 20, 0.08)
 
+## 释放动画
 func _animate_press_up():
 	if press_tween and press_tween.is_valid():
 		press_tween.kill()
@@ -272,6 +300,7 @@ func _animate_press_up():
 	if not _needs_target():
 		press_tween.tween_property(self, "position:y", original_position.y, 0.1)
 
+## 取消按下状态，恢复原始位置
 func _cancel_press():
 	if press_tween and press_tween.is_valid():
 		press_tween.kill()
@@ -287,6 +316,7 @@ func _cancel_press():
 	press_tween.tween_property(self, "position", original_position, 0.12)
 	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.12)
 
+## 开始拖拽：发射信号，播放拖拽动画
 func start_drag():
 	is_dragging = true
 	drag_exited_hand = false
@@ -301,6 +331,7 @@ func start_drag():
 	press_tween.tween_property(self, "scale", Vector2(1.15, 1.15), 0.08)
 	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.08)
 	
+	# 需要目标的卡牌移到屏幕中央，等待用户选择目标
 	if _needs_target():
 		var vp_size = get_viewport_rect().size
 		var center = Vector2(vp_size.x / 2 - size.x / 2, vp_size.y / 2 - size.y / 2 - 50)

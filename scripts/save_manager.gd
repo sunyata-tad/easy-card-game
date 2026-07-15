@@ -1,16 +1,26 @@
+## 存档管理器：持久化游戏进度到本地 JSON 文件（user://savegame.json）。
+## Godot 特色：
+## - user:// 路径指向用户数据目录（跨平台自动适配）
+## - Time.get_datetime_dict_from_unix_time() 将时间戳转为可读的日期时间字典
+## - DirAccess.remove_absolute() 删除文件
+## - JSON.stringify(data, "  ") 格式化为带缩进的 JSON
 extends Node
 
-const SAVE_PATH := "user://savegame.json"
+const SAVE_PATH := "user://savegame.json"  ## 存档文件路径
 
+## 游戏进度状态枚举
 enum GameProgress {
-	NONE,
-	IN_BATTLE,
-	IN_MAP,
-	GAME_OVER
+	NONE,        ## 无存档
+	IN_BATTLE,   ## 战斗中
+	IN_MAP,      ## 地图探索中
+	GAME_OVER    ## 游戏结束
 }
 
-var _cached_map_state: Dictionary = {}
+var _cached_map_state: Dictionary = {}  ## 缓存的地图状态（用于非当前场景时也能保存）
 
+## 保存游戏
+## @param progress: 当前进度类型
+## @param additional_data: 额外数据（如敌人 id、地图 id 等）
 func save_game(progress: int = GameProgress.IN_MAP, additional_data: Dictionary = {}) -> bool:
 	var save_data := {
 		"version": 2,
@@ -34,6 +44,7 @@ func save_game(progress: int = GameProgress.IN_MAP, additional_data: Dictionary 
 	file.close()
 	return true
 
+## 读取存档
 func load_game() -> Dictionary:
 	if not has_save():
 		return {}
@@ -55,13 +66,16 @@ func load_game() -> Dictionary:
 	var save_data: Dictionary = json.data
 	return save_data
 
+## 检查存档是否存在
 func has_save() -> bool:
 	return FileAccess.file_exists(SAVE_PATH)
 
+## 删除存档
 func delete_save() -> void:
 	if has_save():
 		DirAccess.remove_absolute(SAVE_PATH)
 
+## 获取存档摘要信息（用于 UI 显示）
 func get_save_info() -> Dictionary:
 	if not has_save():
 		return {"exists": false}
@@ -82,10 +96,12 @@ func get_save_info() -> Dictionary:
 		"player_hp": save_data.get("game_data", {}).get("player_current_hp", 0)
 	}
 
+## 序列化 GameData 的当前状态
 func _serialize_game_data() -> Dictionary:
 	if not GameData:
 		return {}
 	
+	# 序列化牌组（每张卡牌单独保存，确保 tags/treated_as 等动态修改能恢复）
 	var deck_data: Array = []
 	for card in GameData.player_deck:
 		deck_data.append({
@@ -109,6 +125,7 @@ func _serialize_game_data() -> Dictionary:
 		"cards_played": GameData.cards_played
 	}
 
+## 序列化地图状态
 func _serialize_map_state() -> Dictionary:
 	var map_screen = _get_map_screen()
 	if map_screen and map_screen.has_method("get_map_state"):
@@ -118,6 +135,7 @@ func _serialize_map_state() -> Dictionary:
 		return state
 	return _cached_map_state
 
+## 获取当前地图场景节点
 func _get_map_screen() -> Node:
 	if not GameManager:
 		return null
@@ -126,6 +144,7 @@ func _get_map_screen() -> Node:
 		return current
 	return null
 
+## 将存档数据恢复到 GameData
 func apply_game_data(data: Dictionary) -> void:
 	if not GameData:
 		return
@@ -141,6 +160,7 @@ func apply_game_data(data: Dictionary) -> void:
 	GameData.total_damage_dealt = game_data.get("total_damage_dealt", 0)
 	GameData.cards_played = game_data.get("cards_played", 0)
 	
+	# 恢复牌组（优先使用存档中的升级/标签数据）
 	var deck_data = game_data.get("player_deck", [])
 	GameData.player_deck.clear()
 	
@@ -170,6 +190,7 @@ func apply_game_data(data: Dictionary) -> void:
 	GameData.gold_changed.emit(GameData.gold)
 	GameData.stats_changed.emit(GameData.player_strength, GameData.player_dexterity)
 
+## 快捷存档方法
 func save_map_state() -> bool:
 	return save_game(GameProgress.IN_MAP)
 
@@ -182,6 +203,7 @@ func get_cached_map_state() -> Dictionary:
 func save_game_over() -> bool:
 	return save_game(GameProgress.GAME_OVER)
 
+## 获取进度描述文字（用于 UI 显示）
 func get_progress_description(progress: int) -> String:
 	match progress:
 		GameProgress.IN_MAP:

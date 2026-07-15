@@ -1,21 +1,23 @@
+## 玩家 UI 节点：显示玩家头像、血条、护甲和 buff 图标。
+## 与 EnemyUI 结构对称，但玩家不需要意图显示，而是有力量/敏捷等属性面板。
 class_name PlayerUI
 extends Control
 
-@onready var player_sprite: TextureRect = $PlayerSprite
-@onready var hp_bar: ProgressBar = $HPBar
-@onready var hp_label: Label = $HPLabel
-@onready var block_label: Label = $BlockLabel
-@onready var buff_container: HBoxContainer = $BuffContainer
+@onready var player_sprite: TextureRect = $PlayerSprite     ## 玩家图片
+@onready var hp_bar: ProgressBar = $HPBar                   ## 血条
+@onready var hp_label: Label = $HPLabel                     ## 血量文字
+@onready var block_label: Label = $BlockLabel               ## 护甲文字
+@onready var buff_container: HBoxContainer = $BuffContainer ## buff 图标容器
 
-var player_manager: PlayerManager
+var player_manager: PlayerManager  ## 玩家状态引用
 
 const HP_BAR_WIDTH := 150.0
 const HP_BAR_HEIGHT := 20.0
 
-static var _buff_db: Dictionary = {}
-var _buff_tooltip_panel: PanelContainer = null
+static var _buff_db: Dictionary = {}          ## buff 数据库缓存
+var _buff_tooltip_panel: PanelContainer = null  ## buff 提示面板
 
-const NO_STACK_BUFFS: Array = ["skip_attack", "ignore_block", "counter_stance"]
+const NO_STACK_BUFFS: Array = ["skip_attack", "ignore_block", "counter_stance"]  ## 不显示层数的 buff
 
 func _ready():
 	_load_buff_db()

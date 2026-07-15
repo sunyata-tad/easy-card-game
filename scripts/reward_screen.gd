@@ -1,9 +1,11 @@
+## 战斗奖励场景脚本：挂载到 RewardScreen.tscn 的根 Control 节点上。
+## 战斗胜利后显示战果统计，提供"返回地图"按钮。
 extends Control
 
-@onready var title_label: Label = $TitleLabel
-@onready var reward_container: VBoxContainer = $ScrollContainer/RewardContainer
+@onready var title_label: Label = $TitleLabel                         ## 标题
+@onready var reward_container: VBoxContainer = $ScrollContainer/RewardContainer  ## 奖励内容容器
 
-var _battle_stats: Dictionary = {}
+var _battle_stats: Dictionary = {}  ## 战斗统计数据（由 receive_data 传入）
 
 func _ready():
 	_setup_ui()
@@ -45,6 +47,7 @@ func _setup_ui():
 	return_btn.pressed.connect(_on_return_to_map)
 	reward_container.add_child(return_btn)
 
+## 保存地图状态并返回地图
 func _on_return_to_map():
 	SaveManager.save_map_state()
 	var cached_state = SaveManager.get_cached_map_state()

@@ -1,27 +1,32 @@
+## 角色数据模型：存储一个角色的全部信息（属性、牌组、特质、物品等）。
+## Godot 特色：
+## - static func 是静态方法，用 CharacterData.deserialize(data) 调用
+## - Time.get_unix_time_from_system() 获取系统时间戳
+## - randi() % N 生成 0~N-1 的随机整数
 class_name CharacterData
 
-var id: String
-var name: String
-var created_time: int
+var id: String                ## 角色唯一 id
+var name: String              ## 角色名
+var created_time: int         ## 创建时间（Unix 时间戳）
 
-var base_stats: Dictionary = {
+var base_stats: Dictionary = {   ## 基础属性（不可被临时 buff 修改的底层值）
 	"max_hp": 80,
 	"strength": 0,
 	"dexterity": 0,
 	"initial_block": 0
 }
 
-var current_stats: Dictionary = {}
+var current_stats: Dictionary = {}  ## 当前属性（升级后的值，覆盖 base_stats）
 
-var deck_card_ids: Array = []
+var deck_card_ids: Array = []  ## 牌组中的卡牌 id 列表
 
-var traits: Array = []
+var traits: Array = []  ## 特质列表（被动能力）
 
-var items: Array = []
+var items: Array = []   ## 物品列表
 
-var battles_won: int = 0
-var total_damage_dealt: int = 0
-var levels_cleared: int = 0
+var battles_won: int = 0          ## 胜利战斗次数
+var total_damage_dealt: int = 0   ## 累计造成伤害
+var levels_cleared: int = 0       ## 已清除层数
 
 func _init(data: Dictionary = {}):
 	id = data.get("id", generate_id())
@@ -43,9 +48,11 @@ func _init(data: Dictionary = {}):
 	total_damage_dealt = data.get("total_damage_dealt", 0)
 	levels_cleared = data.get("levels_cleared", 0)
 
+## 生成唯一 id（时间戳 + 随机数）
 func generate_id() -> String:
 	return "char_" + str(Time.get_unix_time_from_system()) + "_" + str(randi() % 10000)
 
+## 获取实际属性值（优先 current_stats，否则取 base_stats）
 func get_max_hp() -> int:
 	return current_stats.get("max_hp", base_stats.max_hp)
 
@@ -58,6 +65,7 @@ func get_dexterity() -> int:
 func get_initial_block() -> int:
 	return current_stats.get("initial_block", base_stats.initial_block)
 
+## 升级属性
 func upgrade_stat(stat_name: String, amount: int = 1) -> void:
 	if not current_stats.has(stat_name):
 		current_stats[stat_name] = base_stats.get(stat_name, 0)
@@ -100,6 +108,7 @@ func add_item(item_id: String) -> void:
 func remove_item(item_id: String) -> void:
 	items.erase(item_id)
 
+## 序列化角色数据为字典（用于存档）
 func serialize() -> Dictionary:
 	return {
 		"id": id,
@@ -115,5 +124,6 @@ func serialize() -> Dictionary:
 		"levels_cleared": levels_cleared
 	}
 
+## 从字典反序列化创建角色（静态工厂方法）
 static func deserialize(data: Dictionary) -> CharacterData:
 	return CharacterData.new(data)

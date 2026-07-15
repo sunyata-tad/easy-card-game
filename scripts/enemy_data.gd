@@ -1,11 +1,12 @@
+## 敌人数据模型：存储单个敌人的静态配置（来自 JSON）。
 class_name EnemyData
 
-var id: String
-var name: String
-var max_hp: int
-var ai_type: String
-var actions: Array
-var description: String
+var id: String              ## 敌人唯一 id
+var name: String            ## 显示名称
+var max_hp: int             ## 最大血量
+var ai_type: String         ## AI 类型："random"（随机行动）、"pattern"（固定模式）等
+var actions: Array          ## 行动列表，每个元素是 {"type": "attack", "damage": 5} 等
+var description: String     ## 描述文本
 
 func _init(data: Dictionary):
 	id = data.get("id", "")

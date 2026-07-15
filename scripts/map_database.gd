@@ -1,7 +1,8 @@
+## 地图数据库：从 JSON 文件加载所有地图配置，提供按 ID 检索地图/位置/交互物的方法。
 class_name MapDatabase
 
-const MAPS_PATH := "res://data/maps/"
-var _maps: Dictionary = {}
+const MAPS_PATH := "res://data/maps/"  ## 地图 JSON 文件目录
+var _maps: Dictionary = {}  ## 所有地图的原始数据 { map_id: dict }
 
 func _init():
 	_load_all_maps()

@@ -1,28 +1,34 @@
+## 全局游戏数据：作为单例节点持有玩家在当前 run 中的所有状态（血量/属性/牌组/金币等）。
+## Godot 特色：
+## - extends Node 配合全局自动加载（autoload）实现单例模式（类似 Java 的 Singleton）
+## - process_mode = PROCESS_MODE_ALWAYS 确保节点在暂停时仍然运行
 extends Node
 
-var player_deck: Array = []
-var player_max_hp: int = 80
-var player_current_hp: int = 80
-var player_strength: int = 0
-var player_dexterity: int = 0
-var gold: int = 0
-var battles_won: int = 0
-var total_damage_dealt: int = 0
-var cards_played: int = 0
+var player_deck: Array = []       ## 玩家当前牌组
+var player_max_hp: int = 80       ## 最大血量
+var player_current_hp: int = 80   ## 当前血量
+var player_strength: int = 0      ## 力量属性
+var player_dexterity: int = 0     ## 敏捷属性
+var gold: int = 0                 ## 金币
+var battles_won: int = 0          ## 胜利次数
+var total_damage_dealt: int = 0   ## 累计造成伤害
+var cards_played: int = 0         ## 累计打出卡牌数
 
-var card_database: CardDatabase
-var enemy_database: EnemyDatabase
+var card_database: CardDatabase   ## 卡牌数据库
+var enemy_database: EnemyDatabase ## 敌人数据库
 
-signal deck_changed(deck: Array)
-signal hp_changed(current: int, maximum: int)
-signal gold_changed(amount: int)
-signal stats_changed(strength: int, dexterity: int)
+signal deck_changed(deck: Array)                           ## 牌组变化
+signal hp_changed(current: int, maximum: int)              ## 血量变化
+signal gold_changed(amount: int)                           ## 金币变化
+signal stats_changed(strength: int, dexterity: int)        ## 属性变化
 
 func _ready():
+	# 设置为始终运行模式（即使场景切换也不暂停更新）
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	card_database = CardDatabase.new()
 	enemy_database = EnemyDatabase.new()
 
+## 初始化一次新的 run（使用默认初始牌组和属性）
 func initialize_new_run() -> void:
 	player_deck = card_database.load_starter_deck()
 	player_max_hp = 80
@@ -38,6 +44,7 @@ func initialize_new_run() -> void:
 	hp_changed.emit(player_current_hp, player_max_hp)
 	stats_changed.emit(player_strength, player_dexterity)
 
+## 从角色数据初始化 run（用于选角后的开局）
 func initialize_run_from_character(character: CharacterData) -> void:
 	player_max_hp = character.get_max_hp()
 	player_current_hp = player_max_hp
@@ -62,6 +69,7 @@ func initialize_run_from_character(character: CharacterData) -> void:
 func get_deck() -> Array:
 	return player_deck.duplicate()
 
+## 升级指定索引的卡牌（增加伤害/护甲值）
 func upgrade_card_at_index(card_index: int, increase: int = 3) -> bool:
 	if card_index < 0 or card_index >= player_deck.size():
 		return false
@@ -138,6 +146,7 @@ func spend_gold(amount: int) -> bool:
 		return true
 	return false
 
+## 记录战斗统计
 func record_battle_won() -> void:
 	battles_won += 1
 
@@ -159,6 +168,7 @@ func get_battle_stats() -> Dictionary:
 func is_player_alive() -> bool:
 	return player_current_hp > 0
 
+## 牌组内标签检索
 func get_cards_in_deck_by_tag(tag: String) -> Array:
 	var result: Array = []
 	for card in player_deck:
@@ -193,6 +203,7 @@ func has_card_with_tag(tag: String) -> bool:
 			return true
 	return false
 
+## 随机获取一个敌人用于战斗
 func get_random_enemy_for_battle() -> EnemyData:
 	var all_enemies = enemy_database.get_all_enemy_ids()
 	if all_enemies.is_empty():

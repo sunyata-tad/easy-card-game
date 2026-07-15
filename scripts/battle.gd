@@ -1,13 +1,15 @@
+## 战斗场景脚本：挂载到 BattleScene.tscn 的根 Control 节点上。
+## 负责创建 BattleController、接收数据、处理战斗结束和弃牌阶段。
 extends Control
 
-var battle_controller: BattleController
-var battle_stats: Dictionary = {
+var battle_controller: BattleController  ## 战斗核心控制器
+var battle_stats: Dictionary = {         ## 本场战斗统计
 	"damage_dealt": 0,
 	"cards_played": 0
 }
-var character_stats: Dictionary = {}
-var is_initialized: bool = false
-var discard_required_count: int = 0
+var character_stats: Dictionary = {}     ## 角色属性（预留）
+var is_initialized: bool = false         ## 是否已初始化（防止重复初始化）
+var discard_required_count: int = 0      ## 需要弃牌的数量
 
 func _ready():
 	_setup_exit_button()
@@ -17,11 +19,13 @@ func _setup_exit_button():
 	if exit_button:
 		exit_button.pressed.connect(_on_exit_pressed)
 
+## 接收 GameManager.change_scene 传入的数据
 func receive_data(data: Dictionary) -> void:
 	if not is_initialized:
 		is_initialized = true
 		_initialize_battle(data)
 
+## 初始化战斗：创建 BattleController，加载牌组和敌人
 func _initialize_battle(data: Dictionary = {}):
 	battle_controller = BattleController.new()
 	battle_controller.battle_ended.connect(_on_battle_ended)
@@ -44,6 +48,7 @@ func _initialize_battle(data: Dictionary = {}):
 func _on_exit_pressed():
 	_show_exit_confirmation()
 
+## 显示退出确认对话框
 func _show_exit_confirmation():
 	var confirmation = AcceptDialog.new()
 	confirmation.dialog_text = "确定要退出吗？\n当前进度将会保存。"
@@ -62,10 +67,13 @@ func _on_exit_dialog_action(action: String):
 func _on_exit_confirmed():
 	_save_and_exit()
 
+## 保存当前地图状态并返回地图
 func _save_and_exit():
 	SaveManager.save_map_state()
 	GameManager.go_to_map("test_map", SaveManager.get_cached_map_state())
 
+## 战斗结束时：胜利 → 奖励画面 / 失败 → 结束画面
+## Godot 特色：await get_tree().create_timer(0.5).timeout 等待 0.5 秒后继续（类似 Python 的 asyncio.sleep）
 func _on_battle_ended(victory: bool):
 	battle_stats.victory = victory
 
@@ -98,6 +106,7 @@ func _on_turn_changed(is_player_turn: bool):
 	else:
 		print("敌人回合")
 
+## 弃牌阶段：进入卡牌选择模式，让玩家选择要弃掉的牌
 func _on_discard_phase_started(cards_to_discard: int) -> void:
 	discard_required_count = cards_to_discard
 	if battle_controller and battle_controller.ui_controller:

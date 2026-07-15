@@ -1,54 +1,73 @@
+## 战斗 UI 控制器：管理所有战斗界面的显示和交互（手牌布局、拖拽、目标选择、伤害数字、buff 显示等）。
+## Godot 特色：
+## - PackedScene 是可实例化的场景资源（类似 Unity 的 Prefab）
+## - Control 是所有 UI 元素的基类，HBoxContainer / VBoxContainer 是布局容器
+## - static var 是类级别变量（类似 Python 的类变量 / Java 的 static 字段），所有实例共享
+## - create_tween() 创建动画插值对象，用于平滑过渡效果
+## - %s % [args] 格式化字符串（类似 Python 的 %-format）
+## - .call_deferred() 延迟到下一帧执行（确保节点树已就绪）
+## - is_instance_valid(node) 检查节点是否仍有效（未被 queue_free 释放）
 class_name UIController
 
-var root_node: Control
-var card_scene: PackedScene
-var player_manager: PlayerManager = null
+var root_node: Control              ## 战斗场景的根节点
+var card_scene: PackedScene         ## 卡牌 UI 场景（Card.tscn）
+var player_manager: PlayerManager = null  ## 玩家状态引用
 
-var hand_container: Node
-var enemy_container: Node
-var player_area: Node
-var end_turn_button: Button
-var deck_info_node: Node
-var state_display_label: Label = null
-var target_button: Button = null
-var target_marker: Control = null
+## UI 节点引用（从场景中查找获取）
+var hand_container: Node       ## 手牌区域的容器节点
+var enemy_container: Node      ## 敌人区域的容器节点
+var player_area: Node          ## 玩家区域节点
+var end_turn_button: Button    ## 结束回合按钮
+var deck_info_node: Node       ## 牌堆信息节点
+var state_display_label: Label = null  ## 状态提示文字（淡出效果）
+var target_button: Button = null       ## 选择攻击目标按钮
+var target_marker: Control = null      ## 目标标记 UI
 
-var _player_stats_panel: HBoxContainer = null
-var _player_buff_bar: HBoxContainer = null
-var drag_arrow: DragArrow = null
+## 玩家信息面板
+var _player_stats_panel: HBoxContainer = null  ## 属性统计面板
+var _player_buff_bar: HBoxContainer = null     ## buff 图标栏
+var drag_arrow: DragArrow = null               ## 拖拽箭头
 
+## 全局 buff 数据库缓存（从 JSON 加载一次，所有 UIController 实例共享）
 static var _buff_db: Dictionary = {}
 
-var _card_select_active: bool = false
-var _card_select_min: int = 0
-var _card_select_max: int = 1
-var _card_selected_cards: Array = []
-var _card_select_staging: Control = null
-var _card_select_confirm_btn: Button = null
-var _card_select_info_label: Label = null
-var _card_select_callback: Callable = Callable()
+## 卡牌选择模式相关（用于"选择 X 张卡牌"类型的效果）
+var _card_select_active: bool = false        ## 是否处于卡牌选择模式
+var _card_select_min: int = 0               ## 最少选择数量
+var _card_select_max: int = 1               ## 最多选择数量
+var _card_selected_cards: Array = []        ## 已选中的卡牌列表
+var _card_select_staging: Control = null    ## 选择模式 UI 容器
+var _card_select_confirm_btn: Button = null ## 确认按钮
+var _card_select_info_label: Label = null   ## 提示文字
+var _card_select_callback: Callable = Callable()  ## 选择完成后的回调
 
-signal card_select_confirmed(selected_cards: Array)
-var is_dragging: bool = false
-var dragging_card: CardData = null
-var drag_card_node: Control = null
-var last_hand: Array = []
-var is_selecting_target: bool = false
+signal card_select_confirmed(selected_cards: Array)  ## 卡牌选择已确认
 
+## 拖拽状态
+var is_dragging: bool = false             ## 是否正在拖拽
+var dragging_card: CardData = null        ## 正在拖拽的卡牌
+var drag_card_node: Control = null        ## 拖拽中卡牌的 UI 节点
+var last_hand: Array = []                 ## 上一次的手牌列表（用于恢复布局）
+var is_selecting_target: bool = false     ## 是否正在选择攻击目标
+
+## 当前手牌 UI 节点映射 { CardData: Control }
 var current_hand_cards: Dictionary = {}
+## 当前敌人 UI 节点映射 { EnemyUnit: Control }
 var current_enemy_nodes: Dictionary = {}
-var selected_target = null
-var current_target_index: int = 0
+var selected_target = null          ## 当前选中的目标
+var current_target_index: int = 0  ## 当前目标索引
 
-signal card_clicked(card: CardData, card_node: Control)
-signal card_released(card: CardData, card_node: Control)
-signal card_cancelled(card: CardData)
-signal card_dropped(card: CardData, target)
-signal card_played(card: CardData, target)
-signal enemy_selected(enemy: EnemyUnit)
-signal end_turn_clicked()
-signal attack_target_selected(enemy: EnemyUnit)
+## 交互信号
+signal card_clicked(card: CardData, card_node: Control)  ## 卡牌被点击
+signal card_released(card: CardData, card_node: Control) ## 卡牌被释放
+signal card_cancelled(card: CardData)                    ## 卡牌操作取消
+signal card_dropped(card: CardData, target)              ## 卡牌被拖放到目标上
+signal card_played(card: CardData, target)               ## 卡牌被打出
+signal enemy_selected(enemy: EnemyUnit)                  ## 敌人被选中
+signal end_turn_clicked()                                ## 结束回合按钮被点击
+signal attack_target_selected(enemy: EnemyUnit)          ## 攻击目标被选中
 
+## 构造函数：接收战斗场景的根节点，初始化所有 UI
 func _init(root: Control):
 	root_node = root
 	_find_ui_nodes()
@@ -59,6 +78,7 @@ func _init(root: Control):
 	_setup_target_button()
 	_setup_target_marker()
 
+## 创建状态显示标签（用于浮动提示文字）
 func _setup_state_display() -> void:
 	state_display_label = Label.new()
 	state_display_label.name = "StateDisplay"
@@ -72,11 +92,13 @@ func _setup_state_display() -> void:
 	state_display_label.visible = false
 	root_node.add_child(state_display_label)
 
+## 创建拖拽箭头 UI
 func _setup_drag_arrow() -> void:
 	drag_arrow = DragArrow.new()
 	drag_arrow.name = "DragArrow"
 	root_node.add_child(drag_arrow)
 
+## 创建攻击目标选择按钮（放在结束回合按钮上方）
 func _setup_target_button() -> void:
 	if end_turn_button == null:
 		return
@@ -92,18 +114,22 @@ func _setup_target_button() -> void:
 	target_button.pressed.connect(_on_target_button_pressed)
 	root_node.add_child(target_button)
 
+## 创建目标标记 UI（使用 target_marker.gd 脚本）
+## set_script 动态给 Control 节点附加脚本（类似 Python 的运行时添加方法）
 func _setup_target_marker() -> void:
 	target_marker = Control.new()
 	target_marker.name = "TargetMarker"
 	target_marker.set_script(load("res://scripts/ui/target_marker.gd"))
 	root_node.add_child(target_marker)
 
+## 点击目标选择按钮：切换选择模式
 func _on_target_button_pressed() -> void:
 	if is_selecting_target:
 		cancel_target_selection()
 	else:
 		start_target_selection()
 
+## 进入目标选择模式
 func start_target_selection() -> void:
 	is_selecting_target = true
 	highlight_all_enemies()
@@ -114,6 +140,7 @@ func start_target_selection() -> void:
 	
 	show_state_message("请选择攻击目标", 1.0)
 
+## 取消目标选择模式
 func cancel_target_selection() -> void:
 	is_selecting_target = false
 	clear_target_highlights()
@@ -124,12 +151,14 @@ func cancel_target_selection() -> void:
 	
 	show_state_message("已取消", 0.5)
 
+## 高亮所有敌人
 func highlight_all_enemies() -> void:
 	for enemy in current_enemy_nodes:
 		var enemy_node = current_enemy_nodes[enemy]
 		if enemy_node.has_method("set_highlight_for_target"):
 			enemy_node.set_highlight_for_target(true)
 
+## 确认选择攻击目标
 func select_attack_target(enemy: EnemyUnit) -> void:
 	if not is_selecting_target:
 		return
@@ -156,6 +185,7 @@ func select_attack_target(enemy: EnemyUnit) -> void:
 	attack_target_selected.emit(enemy)
 	show_state_message("已选择目标", 0.5)
 
+## 更新目标标记位置
 func update_target_marker(enemy: EnemyUnit) -> void:
 	if target_marker == null:
 		return
@@ -165,6 +195,7 @@ func update_target_marker(enemy: EnemyUnit) -> void:
 		if target_marker.has_method("set_target"):
 			target_marker.call("set_target", enemy_node)
 
+## 清除目标标记
 func clear_target_marker() -> void:
 	if target_marker and target_marker.has_method("clear"):
 		target_marker.call("clear")

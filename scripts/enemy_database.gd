@@ -1,11 +1,14 @@
+## 敌人数据库：从 JSON 文件加载所有敌人配置，提供按 ID 检索敌人的方法。
+## 结构与 CardDatabase 对称。
 class_name EnemyDatabase
 
-const ENEMIES_PATH := "res://data/enemies/"
-var _enemies: Dictionary = {}
+const ENEMIES_PATH := "res://data/enemies/"  ## 敌人 JSON 文件目录
+var _enemies: Dictionary = {}  ## 所有敌人的原始数据 { enemy_id: dict }
 
 func _init():
 	_load_all_enemies()
 
+## 遍历 enemies 目录，加载所有 .json 文件
 func _load_all_enemies() -> void:
 	var dir = DirAccess.open(ENEMIES_PATH)
 	if dir == null:
@@ -26,6 +29,7 @@ func _load_all_enemies() -> void:
 		file_name = dir.get_next()
 	dir.list_dir_end()
 
+## 根据 id 获取敌人数据
 func get_enemy(enemy_id: String) -> EnemyData:
 	if _enemies.has(enemy_id):
 		return EnemyData.new(_enemies[enemy_id])
