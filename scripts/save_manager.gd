@@ -29,7 +29,7 @@ func save_game(progress: int = GameProgress.IN_MAP, additional_data: Dictionary 
 		"game_data": _serialize_game_data(),
 		"map_state": _serialize_map_state(),
 		"enemy_id": additional_data.get("enemy_id", ""),
-		"map_id": additional_data.get("map_id", "test_map"),
+		"map_id": additional_data.get("map_id", "endless"),
 		"additional": additional_data
 	}
 	
@@ -122,7 +122,10 @@ func _serialize_game_data() -> Dictionary:
 		"gold": GameData.gold,
 		"battles_won": GameData.battles_won,
 		"total_damage_dealt": GameData.total_damage_dealt,
-		"cards_played": GameData.cards_played
+		"cards_played": GameData.cards_played,
+		"player_exp": GameData.player_exp,
+		"player_level": GameData.player_level,
+		"player_attribute_points": GameData.player_attribute_points
 	}
 
 ## 序列化地图状态
@@ -159,6 +162,9 @@ func apply_game_data(data: Dictionary) -> void:
 	GameData.battles_won = game_data.get("battles_won", 0)
 	GameData.total_damage_dealt = game_data.get("total_damage_dealt", 0)
 	GameData.cards_played = game_data.get("cards_played", 0)
+	GameData.player_exp = game_data.get("player_exp", 0)
+	GameData.player_level = game_data.get("player_level", 1)
+	GameData.player_attribute_points = game_data.get("player_attribute_points", 0)
 	
 	# 恢复牌组（优先使用存档中的升级/标签数据）
 	var deck_data = game_data.get("player_deck", [])
@@ -194,7 +200,7 @@ func apply_game_data(data: Dictionary) -> void:
 func save_map_state() -> bool:
 	return save_game(GameProgress.IN_MAP)
 
-func save_before_battle(enemy_id: String, map_id: String = "test_map", endless_layer: int = 0) -> bool:
+func save_before_battle(enemy_id: String, map_id: String = "endless", endless_layer: int = 0) -> bool:
 	return save_game(GameProgress.IN_BATTLE, {"enemy_id": enemy_id, "map_id": map_id, "endless_layer": endless_layer})
 
 func get_cached_map_state() -> Dictionary:

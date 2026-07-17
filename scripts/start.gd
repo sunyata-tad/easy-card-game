@@ -89,25 +89,34 @@ func _on_continue_pressed() -> void:
 	SaveManager.apply_game_data(save_data)
 
 	var progress = int(save_data.get("progress", SaveManager.GameProgress.IN_MAP))
-	var map_id = save_data.get("map_id", "test_map")
+	var map_id = save_data.get("map_id", "endless")
 	var map_state = save_data.get("map_state", {})
 	var enemy_id = save_data.get("enemy_id", "")
 
 	match progress:
 		SaveManager.GameProgress.IN_MAP:
-			GameManager.go_to_map(map_id, map_state)
+			if map_id == "endless":
+				GameManager.go_to_endless_map(map_state)
+			else:
+				GameManager.go_to_map(map_id, map_state)
 		SaveManager.GameProgress.IN_BATTLE:
-			GameManager.go_to_map(map_id, map_state)
+			if map_id == "endless":
+				GameManager.go_to_endless_map(map_state)
+			else:
+				GameManager.go_to_map(map_id, map_state)
 		SaveManager.GameProgress.GAME_OVER:
 			GameManager.go_to_game_over(GameData.get_battle_stats())
 		_:
-			GameManager.go_to_map(map_id, map_state)
+			if map_id == "endless":
+				GameManager.go_to_endless_map(map_state)
+			else:
+				GameManager.go_to_map(map_id, map_state)
 
 func _on_exit_pressed() -> void:
 	get_tree().quit()
 
 func _on_test_pressed() -> void:
-	GameManager.go_to_test_battle()
+	GameManager.go_to_test_map()
 
 func _on_button_start_pressed() -> void:
 	_on_start_pressed()

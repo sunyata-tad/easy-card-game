@@ -90,11 +90,29 @@ func go_to_character_creation() -> void:
 	change_scene(GameScene.CHARACTER_CREATION)
 
 ## 跳转到无尽地图模式
-func go_to_endless_map() -> void:
+## @param map_state: 可选，恢复地图状态（用于继续游戏）
+func go_to_endless_map(map_state: Dictionary = {}) -> void:
 	var data: Dictionary = {"map_id": "endless", "endless_mode": true}
+	if not map_state.is_empty():
+		data["map_state"] = map_state
 	change_scene(GameScene.MAP, data)
 
-## 测试战斗：创建一个测试假人敌人，用预设牌组进入战斗
+## 测试地图：预设测试楼层（普通战斗、精英战斗、测试台），不使用存档
+func go_to_test_map() -> void:
+	GameData.initialize_new_run()
+	GameData.player_strength = 5
+	GameData.player_dexterity = 5
+	var card_db = CardDatabase.new()
+	GameData.player_deck = card_db.create_deck([
+		{"card_id": "蓄力", "count": 6},
+		{"card_id": "蓄势", "count": 6},
+		{"card_id": "斩击", "count": 2},
+		{"card_id": "格挡", "count": 2}
+	])
+	var data: Dictionary = {"map_id": "test", "test_mode": true}
+	change_scene(GameScene.MAP, data)
+
+## 测试战斗：创建一个测试假人敌人，用预设牌组进入战斗（保留兼容）
 func go_to_test_battle() -> void:
 	var enemy_db = EnemyDatabase.new()
 	var enemy = enemy_db.get_enemy("test_dummy")

@@ -31,7 +31,7 @@ var status_panel_open: bool = false
 var status_panel_tween: Tween = null
 var _scroll_pending: bool = false
 
-const STATUS_PANEL_HEIGHT := 320
+const STATUS_PANEL_HEIGHT := 420
 
 const BTN_W := 100
 const BTN_H := 36
@@ -338,10 +338,20 @@ func _create_log_section() -> Control:
 func receive_data(data: Dictionary) -> void:
 	var map_id = data.get("map_id", "test_map")
 	var map_state = data.get("map_state", {})
+	if data.get("test_mode", false):
+		map_controller.test_mode = true
 	if data.get("endless_mode", false):
 		map_controller.endless_mode = true
 	if not map_state.is_empty():
+		# 处理战斗存活的敌人和胜利后的楼层清除
+		var survived = map_state.get("survived_battle", false)
+		var alive_list = map_state.get("alive_enemy_ids", [])
+		var cleared_layer = map_state.get("endless_layer_cleared", 0)
 		map_controller.deserialize_state(map_state)
+		if survived:
+			map_controller.remove_dead_enemies(alive_list)
+		if cleared_layer > 0 and map_controller.endless_mode:
+			map_controller.mark_layer_cleared(cleared_layer)
 		var location_data = map_controller.get_current_location_data()
 		if not location_data.is_empty():
 			location_label.text = location_data.get("name", "未知地点")
@@ -352,7 +362,10 @@ func receive_data(data: Dictionary) -> void:
 		if not map_controller.load_map(map_id):
 			push_error("Failed to load map")
 	_refresh_logs()
-	SaveManager.save_map_state()
+	if not map_controller.test_mode:
+		SaveManager.save_map_state()
+	# 连接 GameData 信号实现状态栏实时刷新
+	_refresh_status_on_signal()
 
 func _on_location_changed(location_data: Dictionary):
 	location_label.text = location_data.get("name", "未知地点")
@@ -364,7 +377,8 @@ func _on_location_changed(location_data: Dictionary):
 	if not is_animating:
 		_update_location_grid()
 	_update_interactables()
-	SaveManager.save_map_state()
+	if not map_controller.test_mode:
+		SaveManager.save_map_state()
 
 func _update_interactables():
 	for child in interactables_container.get_children():
@@ -441,12 +455,14 @@ func _on_interaction_action_pressed(interactable_id: String, action: String):
 	
 	if result.get("success", false):
 		if result.get("trigger_battle", false):
-			var enemy_id = result.get("enemy_id", "")
+			var enemy_ids = result.get("enemy_ids", [])
+			if enemy_ids.is_empty():
+				# 兼容旧的单敌人格式
+				var single_id = result.get("enemy_id", "")
+				if single_id != "":
+					enemy_ids = [single_id]
 			var layer = result.get("layer", 0)
-			if layer > 0 and map_controller.endless_mode:
-				map_controller.mark_layer_cleared(layer)
-				SaveManager.save_before_battle(enemy_id, "endless", layer)
-			battle_requested.emit(enemy_id)
+			_start_group_battle(enemy_ids, layer)
 		elif result.get("open_chest", false):
 			_open_chest_reward(result.get("layer", 0))
 		elif result.get("heal_amount", 0) > 0:
@@ -651,6 +667,40 @@ func _on_status_pressed():
 func _on_settings_pressed():
 	_show_settings_dialog()
 
+## 连接 GameData 信号，状态栏打开时实时刷新（静默重建，无动画）
+func _refresh_status_on_signal() -> void:
+	if not GameData:
+		return
+	# 断开旧连接防止重复
+	if GameData.hp_changed.is_connected(_on_game_data_changed):
+		GameData.hp_changed.disconnect(_on_game_data_changed)
+	if GameData.stats_changed.is_connected(_on_game_data_changed):
+		GameData.stats_changed.disconnect(_on_game_data_changed)
+	if GameData.exp_changed.is_connected(_on_game_data_changed):
+		GameData.exp_changed.disconnect(_on_game_data_changed)
+	if GameData.level_changed.is_connected(_on_game_data_changed):
+		GameData.level_changed.disconnect(_on_game_data_changed)
+	if GameData.attribute_points_changed.is_connected(_on_game_data_changed):
+		GameData.attribute_points_changed.disconnect(_on_game_data_changed)
+	if GameData.gold_changed.is_connected(_on_game_data_changed):
+		GameData.gold_changed.disconnect(_on_game_data_changed)
+	
+	# 监听所有相关信号
+	GameData.hp_changed.connect(_on_game_data_changed)
+	GameData.stats_changed.connect(_on_game_data_changed)
+	GameData.exp_changed.connect(_on_game_data_changed)
+	GameData.level_changed.connect(_on_game_data_changed)
+	GameData.attribute_points_changed.connect(_on_game_data_changed)
+	GameData.gold_changed.connect(_on_game_data_changed)
+
+## 状态数据变化时静默刷新（无动画重建）
+func _on_game_data_changed(_a = null, _b = null) -> void:
+	if not status_panel_open:
+		return
+	for child in status_panel_content.get_children():
+		child.queue_free()
+	_build_status_panel_content()
+
 func _create_status_panel() -> void:
 	status_panel = PanelContainer.new()
 	status_panel.anchor_left = 0.0
@@ -720,15 +770,89 @@ func _build_status_panel_content() -> void:
 	
 	_add_panel_separator()
 	
+	if GameData:
+		# 等级和经验条
+		var level_row = HBoxContainer.new()
+		level_row.add_theme_constant_override("separation", 10)
+		
+		var level_label = Label.new()
+		level_label.text = "等级 %d" % GameData.player_level
+		level_label.add_theme_font_size_override("font_size", 16)
+		level_label.add_theme_color_override("font_color", Color(1, 0.85, 0.3))
+		level_row.add_child(level_label)
+		
+		var exp_text = Label.new()
+		var exp_needed = GameData.get_exp_for_next_level()
+		exp_text.text = "经验 %d/%d" % [GameData.player_exp, exp_needed]
+		exp_text.add_theme_font_size_override("font_size", 13)
+		level_row.add_child(exp_text)
+		
+		status_panel_content.add_child(level_row)
+		
+		# 经验条
+		var exp_bar_bg = ColorRect.new()
+		exp_bar_bg.color = Color(0.15, 0.15, 0.2)
+		exp_bar_bg.custom_minimum_size = Vector2(0, 10)
+		status_panel_content.add_child(exp_bar_bg)
+		
+		var exp_bar_fill = ColorRect.new()
+		exp_bar_fill.color = Color(0.3, 0.6, 1.0)
+		exp_bar_fill.custom_minimum_size = Vector2(0, 10)
+		exp_bar_fill.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		var ratio = float(GameData.player_exp) / float(exp_needed) if exp_needed > 0 else 0.0
+		exp_bar_bg.add_child(exp_bar_fill)
+		exp_bar_fill.anchor_right = ratio
+		exp_bar_fill.anchor_bottom = 1.0
+		exp_bar_fill.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		exp_bar_fill.grow_vertical = Control.GROW_DIRECTION_BOTH
+		
+		# 属性点显示
+		var points_row = HBoxContainer.new()
+		points_row.add_theme_constant_override("separation", 8)
+		var points_label = Label.new()
+		points_label.text = "可用属性点：%d" % GameData.player_attribute_points
+		points_label.add_theme_font_size_override("font_size", 14)
+		if GameData.player_attribute_points > 0:
+			points_label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.4))
+		points_row.add_child(points_label)
+		status_panel_content.add_child(points_row)
+	
+	_add_panel_separator()
+	
 	var info_grid = GridContainer.new()
-	info_grid.columns = 4
-	info_grid.add_theme_constant_override("h_separation", 16)
+	info_grid.columns = 6
+	info_grid.add_theme_constant_override("h_separation", 8)
 	info_grid.add_theme_constant_override("v_separation", 6)
 	
 	if GameData:
-		_add_stat_cell(info_grid, "生命", "%d/%d" % [GameData.player_current_hp, GameData.player_max_hp])
-		_add_stat_cell(info_grid, "力量", "%d" % GameData.player_strength)
-		_add_stat_cell(info_grid, "敏捷", "%d" % GameData.player_dexterity)
+		# 生命 + 加点按钮（静默刷新，无动画）
+		_add_stat_label(info_grid, "生命")
+		_add_stat_value_with_btn(info_grid, "%d/%d" % [GameData.player_current_hp, GameData.player_max_hp], func():
+			if GameData.use_attribute_point_hp():
+				for child in status_panel_content.get_children():
+					child.queue_free()
+				_build_status_panel_content()
+		)
+		
+		# 力量 + 加点按钮
+		_add_stat_label(info_grid, "力量")
+		_add_stat_value_with_btn(info_grid, "%d" % GameData.player_strength, func():
+			if GameData.use_attribute_point_strength():
+				for child in status_panel_content.get_children():
+					child.queue_free()
+				_build_status_panel_content()
+		)
+		
+		# 敏捷 + 加点按钮
+		_add_stat_label(info_grid, "敏捷")
+		_add_stat_value_with_btn(info_grid, "%d" % GameData.player_dexterity, func():
+			if GameData.use_attribute_point_dexterity():
+				for child in status_panel_content.get_children():
+					child.queue_free()
+				_build_status_panel_content()
+		)
+		
+		# 其他只读属性
 		_add_stat_cell(info_grid, "金币", "%d" % GameData.gold)
 		_add_stat_cell(info_grid, "胜场", "%d" % GameData.battles_won)
 		_add_stat_cell(info_grid, "卡组", "%d张" % GameData.player_deck.size())
@@ -783,6 +907,34 @@ func _add_stat_cell(grid: GridContainer, stat_name: String, value: String) -> vo
 	value_label.text = value
 	value_label.add_theme_font_size_override("font_size", 15)
 	grid.add_child(value_label)
+
+## 添加属性标签（只读）
+func _add_stat_label(grid: GridContainer, text: String) -> void:
+	var label = Label.new()
+	label.text = text
+	label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.7))
+	label.add_theme_font_size_override("font_size", 13)
+	grid.add_child(label)
+
+## 添加属性值 + 加点按钮（在 GridContainer 中占一列）
+func _add_stat_value_with_btn(grid: GridContainer, value_text: String, on_pressed: Callable) -> void:
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 6)
+	
+	var value_label = Label.new()
+	value_label.text = value_text
+	value_label.add_theme_font_size_override("font_size", 15)
+	hbox.add_child(value_label)
+	
+	if GameData and GameData.player_attribute_points > 0:
+		var add_btn = Button.new()
+		add_btn.text = "+"
+		add_btn.custom_minimum_size = Vector2(24, 24)
+		add_btn.add_theme_font_size_override("font_size", 14)
+		add_btn.pressed.connect(on_pressed)
+		hbox.add_child(add_btn)
+	
+	grid.add_child(hbox)
 
 func _show_deck_workbench() -> void:
 	var popup = PopupPanel.new()
@@ -924,24 +1076,10 @@ func _count_card_in_deck(card_id: String) -> int:
 func _open_chest_reward(layer: int) -> void:
 	if not GameData:
 		return
-	var card_db = CardDatabase.new()
-	var all_card_ids = card_db.get_all_card_ids()
-	var unlocked_ids = CardPoolManager.get_all_card_ids()
-	
-	var new_card_id = ""
-	for cid in all_card_ids:
-		if not CardPoolManager.has_card(cid):
-			new_card_id = cid
-			CardPoolManager.add_card(cid)
-			break
-	
-	if new_card_id != "":
-		var card_data = card_db.get_card(new_card_id)
-		map_controller.map_state.add_log("chest", "宝箱中发现了新卡牌【%s】！已解锁。" % card_data.name)
-	else:
-		var gold = randi() % 20 + 5
-		GameData.add_gold(gold)
-		map_controller.map_state.add_log("chest", "宝箱中获得了%d金币。" % gold)
+	# 宝箱只给金币奖励，卡牌需通过战斗胜利等途径获取
+	var gold = randi() % 20 + 5 + layer * 2  ## 基础5-24金币，随层数递增
+	GameData.add_gold(gold)
+	map_controller.map_state.add_log("chest", "宝箱中获得了%d金币。" % gold)
 
 func _on_deck_remove_card(card_id: String, popup: PopupPanel) -> void:
 	if not GameData:
@@ -1013,6 +1151,31 @@ func _on_battle_request_internal(enemy_id: String):
 	if enemy:
 		SaveManager.save_before_battle(enemy_id, map_controller.map_state.current_map_id)
 		GameManager.start_battle([enemy])
+
+## 启动群体战斗（支持多个敌人ID）
+func _start_group_battle(enemy_ids: Array, layer: int) -> void:
+	if enemy_ids.is_empty():
+		return
+	
+	var enemy_db = EnemyDatabase.new()
+	var enemies: Array = []
+	for eid in enemy_ids:
+		var enemy = enemy_db.get_enemy(eid)
+		if enemy:
+			enemies.append(enemy)
+	
+	if enemies.is_empty():
+		return
+	
+	# 保存战斗前存档（使用第一个敌人ID作为标识）
+	var primary_id = enemy_ids[0] if enemy_ids.size() > 0 else ""
+	var save_map_id = "test" if map_controller.test_mode else "endless"
+	if map_controller.endless_mode:
+		SaveManager.save_before_battle(primary_id, save_map_id, layer)
+	else:
+		SaveManager.save_before_battle(primary_id, map_controller.map_state.current_map_id)
+	
+	GameManager.start_battle(enemies)
 
 func get_map_state() -> Dictionary:
 	return map_controller.serialize_state()

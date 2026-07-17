@@ -13,6 +13,9 @@ var gold: int = 0                 ## 金币
 var battles_won: int = 0          ## 胜利次数
 var total_damage_dealt: int = 0   ## 累计造成伤害
 var cards_played: int = 0         ## 累计打出卡牌数
+var player_exp: int = 0           ## 当前经验值
+var player_level: int = 1         ## 玩家等级
+var player_attribute_points: int = 0  ## 未分配属性点
 
 var card_database: CardDatabase   ## 卡牌数据库
 var enemy_database: EnemyDatabase ## 敌人数据库
@@ -21,6 +24,9 @@ signal deck_changed(deck: Array)                           ## 牌组变化
 signal hp_changed(current: int, maximum: int)              ## 血量变化
 signal gold_changed(amount: int)                           ## 金币变化
 signal stats_changed(strength: int, dexterity: int)        ## 属性变化
+signal exp_changed(current: int, needed: int)              ## 经验值变化
+signal level_changed(level: int)                           ## 等级变化
+signal attribute_points_changed(points: int)               ## 属性点变化
 
 func _ready():
 	# 设置为始终运行模式（即使场景切换也不暂停更新）
@@ -39,10 +45,16 @@ func initialize_new_run() -> void:
 	battles_won = 0
 	total_damage_dealt = 0
 	cards_played = 0
+	player_exp = 0
+	player_level = 1
+	player_attribute_points = 0
 
 	deck_changed.emit(player_deck)
 	hp_changed.emit(player_current_hp, player_max_hp)
 	stats_changed.emit(player_strength, player_dexterity)
+	exp_changed.emit(player_exp, get_exp_for_next_level())
+	level_changed.emit(player_level)
+	attribute_points_changed.emit(player_attribute_points)
 
 ## 从角色数据初始化 run（用于选角后的开局）
 func initialize_run_from_character(character: CharacterData) -> void:
@@ -54,6 +66,9 @@ func initialize_run_from_character(character: CharacterData) -> void:
 	battles_won = 0
 	total_damage_dealt = 0
 	cards_played = 0
+	player_exp = 0
+	player_level = 1
+	player_attribute_points = 0
 
 	player_deck.clear()
 	var card_db := CardDatabase.new()
@@ -202,6 +217,55 @@ func has_card_with_tag(tag: String) -> bool:
 		if card.has_tag(tag):
 			return true
 	return false
+
+## 获取升到下一级所需经验值（公式：等级 × 100）
+func get_exp_for_next_level() -> int:
+	return player_level * 100
+
+## 获得经验值（溢出自动升级）
+func gain_exp(amount: int) -> void:
+	player_exp += amount
+	var needed = get_exp_for_next_level()
+	while player_exp >= needed:
+		player_exp -= needed
+		player_level += 1
+		player_attribute_points += 1
+		needed = get_exp_for_next_level()
+		level_changed.emit(player_level)
+		attribute_points_changed.emit(player_attribute_points)
+	exp_changed.emit(player_exp, needed)
+	level_changed.emit(player_level)
+
+## 使用1点属性点增加力量
+func use_attribute_point_strength() -> bool:
+	if player_attribute_points <= 0:
+		return false
+	player_attribute_points -= 1
+	player_strength += 1
+	attribute_points_changed.emit(player_attribute_points)
+	stats_changed.emit(player_strength, player_dexterity)
+	return true
+
+## 使用1点属性点增加敏捷
+func use_attribute_point_dexterity() -> bool:
+	if player_attribute_points <= 0:
+		return false
+	player_attribute_points -= 1
+	player_dexterity += 1
+	attribute_points_changed.emit(player_attribute_points)
+	stats_changed.emit(player_strength, player_dexterity)
+	return true
+
+## 使用1点属性点增加5点最大血量
+func use_attribute_point_hp() -> bool:
+	if player_attribute_points <= 0:
+		return false
+	player_attribute_points -= 1
+	player_max_hp += 5
+	player_current_hp += 5
+	attribute_points_changed.emit(player_attribute_points)
+	hp_changed.emit(player_current_hp, player_max_hp)
+	return true
 
 ## 随机获取一个敌人用于战斗
 func get_random_enemy_for_battle() -> EnemyData:
