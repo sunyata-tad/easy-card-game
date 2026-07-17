@@ -53,12 +53,20 @@ func take_damage(amount: int, ignore_target_block: bool = false) -> int:
 	current_hp = maxi(current_hp - actual_damage, 0)
 	hp_changed.emit(current_hp, max_hp)
 	enemy_damaged.emit(actual_damage)
-	
+
+	# 死亡判定：通过钩子链允许阻止死亡（实现"生命归零不会死亡"等效果）
 	if current_hp <= 0:
-		is_dead = true
-		clear_intent()
-		enemy_died.emit()
-	
+		var death_ctx: Dictionary = {"can_die": true, "source_type": "damage"}
+		hook_chain.trigger("before_death", actual_damage, death_ctx)
+		if death_ctx.get("can_die", true):
+			is_dead = true
+			clear_intent()
+			enemy_died.emit()
+		else:
+			# 阻止死亡：保留 1 点血量
+			current_hp = 1
+			hp_changed.emit(current_hp, max_hp)
+
 	return actual_damage
 
 ## 获得格挡值

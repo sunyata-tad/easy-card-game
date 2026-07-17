@@ -81,16 +81,25 @@ func _connect_ui_signals() -> void:
 	ui_controller.enemy_selected.connect(_on_ui_enemy_selected)
 	ui_controller.end_turn_clicked.connect(_on_ui_end_turn_clicked)
 
+## 检查战斗是否结束（可被 HookChain 拦截修改）
+## 通过 player_manager.hook_chain 的 "check_battle_end" 钩子实现自定义结束条件
 func _check_battle_end_state() -> bool:
 	if not state_machine.is_battle_active():
 		return true
+	# 钩子上下文：允许外部修改结束判定逻辑
+	var ctx: Dictionary = {"should_end": false, "result": "", "reason": ""}
 	if enemy_system.is_all_defeated():
-		state_machine.change_state(StateMachine.BattleState.VICTORY)
-		return true
+		ctx.should_end = true; ctx.result = "victory"; ctx.reason = "all_enemies_defeated"
 	elif not player_manager.is_alive():
+		ctx.should_end = true; ctx.result = "defeat"; ctx.reason = "player_dead"
+	player_manager.hook_chain.trigger("check_battle_end", 0, ctx)
+	if not ctx.should_end:
+		return false
+	if ctx.result == "victory":
+		state_machine.change_state(StateMachine.BattleState.VICTORY)
+	elif ctx.result == "defeat":
 		state_machine.change_state(StateMachine.BattleState.DEFEAT)
-		return true
-	return false
+	return true
 
 func _on_state_enter(state: int) -> void:
 	match state:
@@ -144,7 +153,7 @@ func _on_enemy_turn_phase() -> void:
 	await _execute_enemy_turns()
 
 func _on_turn_end_phase() -> void:
-	var excess = card_system.hand.size() - CardSystem.MAX_HAND_SIZE
+	var excess = card_system.hand.size() - card_system.max_hand_size
 	if excess > 0:
 		is_discard_phase = true
 		ui_controller.set_interactive(false)
@@ -168,7 +177,7 @@ func confirm_discard_cards(cards_to_discard: Array) -> void:
 		card_system.discard_specific_card(card)
 	is_discard_phase = false
 	discard_phase_ended.emit()
-	var excess = card_system.hand.size() - CardSystem.MAX_HAND_SIZE
+	var excess = card_system.hand.size() - card_system.max_hand_size
 	if excess > 0:
 		is_discard_phase = true
 		discard_phase_started.emit(excess)

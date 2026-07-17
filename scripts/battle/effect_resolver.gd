@@ -1,15 +1,24 @@
 ## 效果解析器：将卡牌的 effect 字典翻译成实际的游戏操作（伤害/格挡/治疗/抽牌/buff等）。
 ## 这是卡牌效果系统的核心，所有卡牌效果的最终执行都经过这个类。
-## Godot 特色：
-## - match "a", "b": 多值匹配同一分支（类似 Python 的 if x in ("a", "b")）
-## - is 关键字检查类型（类似 Python 的 isinstance / Java 的 instanceof）
-## - Dictionary 可以动态添加字段（如 e.buff_id = buff.id），GDScript 中字典是动态类型
+##
+## ========== 可扩展架构说明 ==========
+## 效果处理器采用"字典注册模式"：effect_type → 处理函数的映射表。
+## - 内置效果在 _init() 中通过 _register_default_handlers() 注册
+## - 新增效果只需写一个签名为 func(effect: Dictionary, source, target) -> Dictionary 的函数，
+##   然后调用 register_effect_handler("新效果名", 处理函数) 即可，无需修改 resolve_effect()
+## - 处理器可通过注册表互相调用，实现"复合效果"（如"先施加力量buff，再造成基于力量的伤害"）
+##
+## 旧版使用 match 硬编码分发，现已改为查表分发，向后兼容所有现有卡牌。
 class_name EffectResolver
 
 var card_database: CardDatabase         ## 卡牌数据库，用于根据卡牌 id 创建卡牌实例
 var card_system: CardSystem = null      ## 卡牌系统引用，用于抽牌/弃牌/消耗等操作
 var _temp_attack_boost: int = 0         ## 累积的临时攻击力加成
 var _temp_hook_ids: Array = []          ## 临时钩子的 id 列表，用于清理
+
+## 效果处理器注册表：{ "effect_type": Callable }
+## Callable 签名为 func(effect: Dictionary, source, target) -> Dictionary
+var _handlers: Dictionary = {}
 
 signal effect_resolved(effect_type: int, result: Dictionary)  ## 效果结算完成
 signal damage_dealt(target, amount: int)    ## 造成了伤害
@@ -20,6 +29,29 @@ signal buff_applied(target, buff: BuffData) ## 施加了 buff
 
 func _init():
 	card_database = CardDatabase.new()
+	_register_default_handlers()
+
+## ========== 注册表管理 ==========
+
+## 注册一个新的效果处理器
+## @param effect_type: 效果类型字符串，在卡牌 JSON 中的 effect_type 字段使用
+## @param handler: 处理函数，签名为 func(effect: Dictionary, source, target) -> Dictionary
+##
+## 示例：注册一个"对全体敌人施加易伤"的复合效果
+##   resolver.register_effect_handler("aoe_vulnerable", func(e, s, t):
+##       for enemy in enemy_system.get_alive_enemies():
+##           resolver.resolve_effect({"effect_type": "apply_debuff", "buff_id": "vulnerable", "value": e.get("value", 1)}, s, enemy)
+##       return {"success": true, "value": e.get("value", 0)})
+func register_effect_handler(effect_type: String, handler: Callable) -> void:
+	_handlers[effect_type] = handler
+
+## 检查是否存在指定类型的效果处理器
+func has_handler(effect_type: String) -> bool:
+	return _handlers.has(effect_type)
+
+## 获取所有已注册的效果类型列表
+func get_registered_effect_types() -> Array:
+	return _handlers.keys()
 
 ## 连续解析多个效果（一张卡牌可以有多个效果）
 func resolve_effects(effects: Array, source, target = null) -> Array:
@@ -28,13 +60,13 @@ func resolve_effects(effects: Array, source, target = null) -> Array:
 		results.append(resolve_effect(e, source, target))
 	return results
 
-## 解析单个效果
+## 解析单个效果（核心分发逻辑）
 ## base_stat 字段允许效果值基于玩家属性（力量/敏捷）来计算
 func resolve_effect(effect: Dictionary, source, target = null) -> Dictionary:
 	var effect_type_str = effect.get("effect_type", "")
 	var value = effect.get("value", 0)
 	var result: Dictionary = {"success": false, "value": 0}
-	
+
 	# 如果效果配置了 base_stat，则从源单位获取对应属性并乘以 multiplier 加到 value 上
 	# 例如 base_stat="strength" multiplier=1.0 表示"基于力量值的伤害"
 	var base_stat = effect.get("base_stat", "")
@@ -43,30 +75,15 @@ func resolve_effect(effect: Dictionary, source, target = null) -> Dictionary:
 		var stat_value = 0
 		if base_stat == "strength": stat_value = source.get_strength()
 		elif base_stat == "dexterity": stat_value = source.get_dexterity()
-		value = value + int(stat_value * multiplier)
-	
-	# 根据效果类型分发到对应的处理方法
-	match effect_type_str:
-		"damage": result = _resolve_damage(value, source, target)
-		"block": result = _resolve_block(value, source, target)
-		"heal": result = _resolve_heal(value, source, target)
-		"damage_boost": result = _resolve_damage_boost(value, source)
-		"temp_damage_boost": result = _resolve_temp_damage_boost(value, source)
-		"skip_attack": result = _resolve_skip_attack(value, source)
-		"store_damage": result = _resolve_store_damage(source)
-		"ignore_block": result = _resolve_ignore_block(source)
-		"counter_stance": result = _resolve_counter_stance(source)
-		"draw": result = _resolve_draw(value, source)
-		"search_draw": result = _resolve_search_draw(effect, source)
-		"search_discard": result = _resolve_search_discard(effect, source)
-		"search_draw_by_tag": result = _resolve_search_draw_by_tag(effect, source)
-		"search_discard_by_tag": result = _resolve_search_discard_by_tag(effect, source)
-		"exhaust_random": result = _resolve_exhaust_random(value, source)
-		"discard_random": result = _resolve_discard_random(value, source)
-		"shuffle_discard_to_draw": result = _resolve_shuffle_discard_to_draw(source)
-		"apply_buff", "apply_debuff": result = _resolve_apply_buff(effect, target)
-		"add_card_to_hand": result = _resolve_add_card(effect, source)
-	
+		# 写回 effect 字典，确保闭包通过 effect.get("value") 能拿到修正后的值
+		effect["value"] = value + int(stat_value * multiplier)
+
+	# 查表分发：所有处理器统一签名为 func(effect: Dictionary, source, target) -> Dictionary
+	if _handlers.has(effect_type_str):
+		result = _handlers[effect_type_str].call(effect, source, target)
+	else:
+		push_warning("EffectResolver: Unknown effect type: " + effect_type_str)
+
 	effect_resolved.emit(effect_type_str, result)
 	return result
 
@@ -304,3 +321,68 @@ func _create_buff_from_id(buff_id: String, stacks: int = 1) -> BuffData:
 	}
 	if configs.has(buff_id): return BuffData.new(configs[buff_id].duplicate(true))
 	return null
+
+## ========== 默认处理器注册 ==========
+## 将所有内置效果注册到 _handlers 字典。
+## 新增效果时只需在此函数中添加一行 register_effect_handler() 调用，无需修改 resolve_effect()。
+##
+## 处理器函数签名分两种：
+## 1. 旧版（2-3参数）：func(value, source[, target]) -> Dictionary  — 仅接收 value 和 source/target
+## 2. 新版（3+参数）：func(effect: Dictionary, source, target) -> Dictionary — 接收完整 effect 字典
+##    新版推荐，因为可以读取 effect 中的任何自定义字段（如 buff_id、card_id、target_tag 等）
+func _register_default_handlers() -> void:
+	## 所有处理器通过闭包统一签名为 func(effect: Dictionary, source, target) -> Dictionary
+	## 闭包内部负责从 effect 中提取 value，并用正确的参数数量调用旧版处理函数
+
+	# === 战斗效果（value, source, target） ===
+	register_effect_handler("damage", func(e, s, t): return _resolve_damage(e.get("value", 0), s, t))
+	register_effect_handler("block",  func(e, s, t): return _resolve_block(e.get("value", 0), s, t))
+	register_effect_handler("heal",   func(e, s, t): return _resolve_heal(e.get("value", 0), s, t))
+
+	# === 攻击力提升（value, source） ===
+	register_effect_handler("damage_boost",      func(e, s, _t): return _resolve_damage_boost(e.get("value", 0), s))
+	register_effect_handler("temp_damage_boost", func(e, s, _t): return _resolve_temp_damage_boost(e.get("value", 0), s))
+
+	# === 机制效果（value, source）或（source） ===
+	register_effect_handler("skip_attack",    func(e, s, _t): return _resolve_skip_attack(e.get("value", 0), s))
+	register_effect_handler("store_damage",   func(_e, s, _t): return _resolve_store_damage(s))
+	register_effect_handler("ignore_block",   func(_e, s, _t): return _resolve_ignore_block(s))
+	register_effect_handler("counter_stance", func(_e, s, _t): return _resolve_counter_stance(s))
+
+	# === 卡牌操作（value, source）或（source） ===
+	register_effect_handler("draw",          func(e, s, _t): return _resolve_draw(e.get("value", 0), s))
+	register_effect_handler("shuffle_discard_to_draw", func(_e, s, _t): return _resolve_shuffle_discard_to_draw(s))
+
+	# === 搜索/检索（effect, source）—— 原生即接收 effect 字典 ===
+	register_effect_handler("search_draw",           func(e, s, _t): return _resolve_search_draw(e, s))
+	register_effect_handler("search_discard",        func(e, s, _t): return _resolve_search_discard(e, s))
+	register_effect_handler("search_draw_by_tag",    func(e, s, _t): return _resolve_search_draw_by_tag(e, s))
+	register_effect_handler("search_discard_by_tag", func(e, s, _t): return _resolve_search_discard_by_tag(e, s))
+
+	# === Buff/Debuff（effect, target） ===
+	register_effect_handler("apply_buff",   func(e, _s, t): return _resolve_apply_buff(e, t))
+	register_effect_handler("apply_debuff", func(e, _s, t): return _resolve_apply_buff(e, t))
+
+	# === 手牌操作（value, source）或（effect, source） ===
+	register_effect_handler("exhaust_random",  func(e, s, _t): return _resolve_exhaust_random(e.get("value", 0), s))
+	register_effect_handler("discard_random",  func(e, s, _t): return _resolve_discard_random(e.get("value", 0), s))
+	register_effect_handler("add_card_to_hand", func(e, s, _t): return _resolve_add_card(e, s))
+
+	## ========== 扩展指南 ==========
+	## 在此处添加你的自定义效果处理器，示例：
+	##
+	##   # 复合效果：对全体敌人造成伤害
+	##   register_effect_handler("aoe_damage", func(effect: Dictionary, source, _target) -> Dictionary:
+	##       var total = 0
+	##       for enemy in source.get("enemy_system", {}).get_alive_enemies() if source.has_method("get"):
+	##           pass  # 需要从外部传入 enemy_system 引用
+	##       return {"success": false, "value": 0}
+	##   )
+	##
+	##   # 基于当前格挡值造成伤害的反击
+	##   register_effect_handler("block_bash", func(effect: Dictionary, source, target) -> Dictionary:
+	##       if not (source is PlayerManager and target is EnemyUnit):
+	##           return {"success": false, "value": 0}
+	##       var block_damage = source.block
+	##       return resolve_effect({"effect_type": "damage", "value": block_damage}, source, target)
+	##   )

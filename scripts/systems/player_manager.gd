@@ -83,7 +83,15 @@ func take_damage(amount: int) -> int:
 			actual_damage -= block; block = 0; block_changed.emit(block)
 	current_hp = maxi(current_hp - actual_damage, 0)
 	hp_changed.emit(current_hp, max_hp); player_damaged.emit(actual_damage)
-	if current_hp <= 0: is_dead = true; player_died.emit()
+	# 死亡判定：通过钩子链允许阻止死亡
+	if current_hp <= 0:
+		var death_ctx: Dictionary = {"can_die": true}
+		hook_chain.trigger("before_death", actual_damage, death_ctx)
+		if death_ctx.get("can_die", true):
+			is_dead = true; player_died.emit()
+		else:
+			current_hp = 1
+			hp_changed.emit(current_hp, max_hp)
 	return actual_damage
 
 ## 获得格挡值

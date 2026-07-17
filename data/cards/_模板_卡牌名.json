@@ -1,0 +1,165 @@
+{
+	"_comment": "========== 卡牌 JSON 模板 ==========",
+	"_comment_fields": {
+		"id": "卡牌唯一标识（文件名应与 id 一致），必须唯一",
+		"name": "卡牌显示名称",
+		"type": "卡牌类型：attack(攻击,红色) / skill(技能,蓝色) / power(能力,紫色)",
+		"description": "描述文字，支持 {key} 占位符，会被 effect 中 scaling_key 对应的 value 替换",
+		"rarity": "稀有度：basic(基础) / common(普通) / uncommon(罕见) / rare(稀有) / epic(史诗)",
+		"target_type": "目标类型：self(自身) / single_enemy(单个敌人) / single_ally(单个友方) / all_enemies(全体敌人)",
+		"tags": "标签数组，用于卡牌检索和流派归类",
+		"treated_as": "视为标签（被视为某标签但不真正拥有），通常留空",
+		"effects": "效果数组，每张卡牌可以有多个效果",
+		"upgrade": "升级后的数据（可选），结构和普通卡牌相同，只覆盖需要变化的字段"
+	},
+
+	"_comment_extensibility": "========== 可扩展架构 ==========",
+	"_comment_extensibility_text": "效果系统采用'字典注册模式'，详见 scripts/battle/effect_resolver.gd",
+	"_comment_how_to_add_effect": [
+		"1. 写一个处理函数: func my_handler(effect: Dictionary, source, target) -> Dictionary",
+		"2. 在 _register_default_handlers() 中添加: register_effect_handler('my_effect', Callable(self, 'my_handler'))",
+		"3. 卡牌 JSON 中使用: { \"effect_type\": \"my_effect\", \"value\": 10, ... }",
+		"",
+		"复合效果示例（无需写新函数，直接组合内置效果即可）:",
+		"  '获得3点力量，然后造成基于力量的伤害' → 两个 effect 依次执行:",
+		"  [{\"effect_type\": \"apply_buff\", \"buff_id\": \"strength\", \"value\": 3},",
+		"   {\"effect_type\": \"damage\", \"base_stat\": \"strength\", \"multiplier\": 1.0}]"
+	],
+
+	"_comment_effects": "========== 可用的 effect_type ==========",
+	"_comment_effect_types": {
+		"damage": {
+			"说明": "造成伤害",
+			"参数": "value: 基础伤害值。可选 base_stat(strength/dexterity) + multiplier 基于属性计算",
+			"示例": "{\"effect_type\": \"damage\", \"value\": 8} 或 {\"effect_type\": \"damage\", \"base_stat\": \"strength\", \"multiplier\": 1.0}"
+		},
+		"block": {
+			"说明": "获得护甲",
+			"参数": "value: 护甲值。可选 base_stat + multiplier",
+			"示例": "{\"effect_type\": \"block\", \"value\": 5} 或 {\"effect_type\": \"block\", \"base_stat\": \"dexterity\", \"multiplier\": 1.0}"
+		},
+		"heal": {
+			"说明": "恢复生命值",
+			"参数": "value: 回复量"
+		},
+		"temp_damage_boost": {
+			"说明": "本回合临时攻击力提升（加在基础攻击力上）",
+			"参数": "value: 提升值"
+		},
+		"damage_boost": {
+			"说明": "永久攻击力提升（直接增加 base_strength）",
+			"参数": "value: 提升值"
+		},
+		"skip_attack": {
+			"说明": "跳过本回合自动攻击（用于蓄力机制）",
+			"参数": "value: 固定填 1"
+		},
+		"store_damage": {
+			"说明": "存储本回合伤害到下回合（配合 skip_attack 使用）",
+			"参数": "value: 固定填 0"
+		},
+		"ignore_block": {
+			"说明": "本回合攻击无视目标护甲",
+			"参数": "value: 固定填 1"
+		},
+		"counter_stance": {
+			"说明": "进入反击架势，本回合格挡时将格挡的伤害值反击给目标",
+			"参数": "value: 固定填 1"
+		},
+		"draw": {
+			"说明": "抽牌",
+			"参数": "value: 抽牌数量"
+		},
+		"search_draw": {
+			"说明": "从抽牌堆搜索指定卡牌并加入手牌",
+			"参数": "card_id: 要搜索的卡牌id"
+		},
+		"search_discard": {
+			"说明": "从弃牌堆搜索指定卡牌并加入手牌",
+			"参数": "card_id: 要搜索的卡牌id"
+		},
+		"search_draw_by_tag": {
+			"说明": "从抽牌堆按标签搜索卡牌并加入手牌",
+			"参数": "target_tag: 标签名"
+		},
+		"search_discard_by_tag": {
+			"说明": "从弃牌堆按标签搜索卡牌并加入手牌",
+			"参数": "target_tag: 标签名"
+		},
+		"exhaust_random": {
+			"说明": "随机消耗手牌",
+			"参数": "value: 消耗数量"
+		},
+		"discard_random": {
+			"说明": "随机弃置手牌",
+			"参数": "value: 弃置数量"
+		},
+		"shuffle_discard_to_draw": {
+			"说明": "将弃牌堆洗牌后移回抽牌堆（无需参数）"
+		},
+		"apply_buff": {
+			"说明": "施加增益效果",
+			"参数": "buff_id: buff的id (strength/dexterity/weak/vulnerable/poison/regen等), value: 层数"
+		},
+		"apply_debuff": {
+			"说明": "施加减益效果（与 apply_buff 走同一逻辑）",
+			"参数": "buff_id: buff的id, value: 层数"
+		},
+		"add_card_to_hand": {
+			"说明": "将指定卡牌加入手牌（不经过抽牌流程）",
+			"参数": "card_id: 卡牌id"
+		}
+	},
+
+	"_comment_buff_ids": "========== 可用的 buff_id ==========",
+	"_comment_buffs": {
+		"strength": "力量：攻击时附加层数点伤害（永久）",
+		"dexterity": "敏捷：获得护甲时附加层数点护甲（永久）",
+		"weak": "虚弱：造成的最终伤害 ×0.75（持续2回合）",
+		"vulnerable": "易伤：受到的伤害 ×1.5（持续2回合）",
+		"poison": "中毒：每回合结束时受到层数点伤害",
+		"regen": "再生：每回合开始时恢复层数点生命",
+		"temp_strength": "临时力量：在基础攻击力阶段增加（一次性）"
+	},
+
+	"_comment_description_placeholder": "========== description 占位符用法 ==========",
+	"_comment_placeholder_example": "如果 effect 中有 \"scaling_key\": \"damage\" 且 value 为 5，则 description 中的 {damage} 会被替换为显示'5'",
+	"_comment_placeholder_example2": "例如: \"description\": \"造成 {damage} 点伤害\" + 对应 effect 中 \"scaling_key\": \"damage\" → 显示为 \"造成 5 点伤害\"",
+
+	"_comment_example": "========== 以下是一个完整示例 ==========",
+
+	"id": "模板示例",
+	"name": "模板示例",
+	"type": "attack",
+	"description": "造成 {dmg} 点伤害，获得3点护甲",
+	"rarity": "common",
+	"target_type": "single_enemy",
+	"tags": ["Attack", "Basic"],
+	"treated_as": [],
+	"effects": [
+		{
+			"effect_type": "damage",
+			"value": 6,
+			"scaling_key": "dmg"
+		},
+		{
+			"effect_type": "block",
+			"value": 3
+		}
+	],
+	"upgrade": {
+		"name": "模板示例+",
+		"description": "造成 {dmg} 点伤害，获得5点护甲",
+		"effects": [
+			{
+				"effect_type": "damage",
+				"value": 9,
+				"scaling_key": "dmg"
+			},
+			{
+				"effect_type": "block",
+				"value": 5
+			}
+		]
+	}
+}

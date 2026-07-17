@@ -6,8 +6,10 @@
 ## - .pick_random() 随机选取一个元素
 class_name CardSystem
 
-## 手牌上限
-const MAX_HAND_SIZE: int = 10
+## 手牌上限（默认 10，可被卡牌效果/被动修改）
+var max_hand_size: int = 10
+## 默认手牌上限（用于重置）
+const DEFAULT_MAX_HAND_SIZE: int = 10
 
 var draw_pile: Array = []     ## 抽牌堆（牌库）
 var hand: Array = []          ## 手牌（当前可用的卡牌）
@@ -275,7 +277,7 @@ func count_cards_in_hand_with_tag(tag: String) -> int:
 
 ## 回合结束时弃置超出上限的手牌
 func end_turn_discard() -> void:
-	while hand.size() > MAX_HAND_SIZE:
+	while hand.size() > max_hand_size:
 		var card = hand.pop_back()
 		discard_pile.append(card)
 		card_discarded.emit(card)
