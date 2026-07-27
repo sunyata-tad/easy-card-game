@@ -1171,9 +1171,9 @@ func _start_group_battle(enemy_ids: Array, layer: int) -> void:
 	var primary_id = enemy_ids[0] if enemy_ids.size() > 0 else ""
 	var save_map_id = "test" if map_controller.test_mode else "endless"
 	if map_controller.endless_mode:
-		SaveManager.save_before_battle(primary_id, save_map_id, layer)
+		SaveManager.save_before_battle(primary_id, save_map_id, layer, map_controller.test_mode)
 	else:
-		SaveManager.save_before_battle(primary_id, map_controller.map_state.current_map_id)
+		SaveManager.save_before_battle(primary_id, map_controller.map_state.current_map_id, 0)
 	
 	GameManager.start_battle(enemies)
 

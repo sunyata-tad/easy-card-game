@@ -69,9 +69,10 @@ func _on_exit_confirmed():
 
 ## 保存当前地图状态并返回地图
 func _save_and_exit():
-	SaveManager.save_map_state()
 	var save_info = SaveManager.load_game()
 	var map_id = save_info.get("map_id", "endless")
+	var additional = save_info.get("additional", {})
+	var is_test = additional.get("is_test_mode", false)
 	var cached = SaveManager.get_cached_map_state()
 	
 	# 记录战斗中存活的敌人（用于回到地图后删除已死敌人的交互物）
@@ -85,10 +86,15 @@ func _save_and_exit():
 			cached["survived_battle"] = true
 			SaveManager._cached_map_state = cached
 	
+	# 测试模式下不保存，直接返回测试地图
+	if is_test:
+		GameManager.go_to_map("test", SaveManager.get_cached_map_state())
+		return
+	
+	SaveManager.save_map_state()
 	GameManager.go_to_map(map_id, SaveManager.get_cached_map_state())
 
-## 战斗结束时：胜利 → 奖励画面 / 失败 → 结束画面
-## Godot 特色：await get_tree().create_timer(0.5).timeout 等待 0.5 秒后继续（类似 Python 的 asyncio.sleep）
+## 战斗结束时：胜利 → 地图 / 失败 → 结束画面
 func _on_battle_ended(victory: bool):
 	battle_stats.victory = victory
 
@@ -96,6 +102,9 @@ func _on_battle_ended(victory: bool):
 		await get_tree().create_timer(0.5).timeout
 		if GameData:
 			GameData.record_battle_won()
+			var cached = SaveManager.get_cached_map_state()
+			var is_test = cached.get("test_mode", false)
+			
 			# 战斗胜利获得经验：普通层30 + 层数×5，Boss层额外+50
 			var save_info = SaveManager.load_game()
 			var additional = save_info.get("additional", {})
@@ -106,14 +115,22 @@ func _on_battle_ended(victory: bool):
 					exp_gain += 50  ## Boss层额外奖励
 				GameData.gain_exp(exp_gain)
 				print("获得 %d 经验值（第%d层）" % [exp_gain, endless_layer])
-			SaveManager.save_map_state()
+			
+			# 胜利后标记楼层已清除（在返回地图前）
 			if endless_layer > 0:
-				# 胜利后标记楼层已清除（在返回地图前）
-				var cached = SaveManager.get_cached_map_state()
 				if not cached.is_empty():
 					cached["endless_layer_cleared"] = endless_layer
 					SaveManager._cached_map_state = cached
-				GameManager.go_to_map("endless", SaveManager.get_cached_map_state())
+			
+			# 确定返回的地图ID
+			var return_map_id = "test" if is_test else "endless"
+			
+			# 测试模式下不存档
+			if not is_test:
+				SaveManager.save_map_state()
+			
+			if endless_layer > 0:
+				GameManager.go_to_map(return_map_id, SaveManager.get_cached_map_state())
 			else:
 				GameManager.go_to_reward(battle_stats)
 		else:

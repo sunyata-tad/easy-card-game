@@ -400,6 +400,10 @@ func _endless_move(direction: Direction) -> bool:
 	var target_id = "layer_" + str(target_layer)
 	if not _endless_nodes.has(target_id):
 		if target_layer > current_layer_num:
+			# 测试模式下禁止动态生成楼层，只能探索预设楼层
+			if test_mode:
+				map_state.add_log("move", "测试地图仅限3层，无法继续前进。")
+				return false
 			_generate_layer_node(target_layer)
 			var south_id = "layer_" + str(target_layer - 1)
 			if _endless_nodes.has(south_id):
