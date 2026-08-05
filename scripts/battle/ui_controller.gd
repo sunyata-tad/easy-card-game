@@ -268,71 +268,47 @@ func update_hand_display(hand: Array) -> void:
 		_clear_hand()
 		return
 	
+	# 计算可用容器宽度（防止未就绪时算出负值）
 	var container_width: float = 800.0
 	if hand_container and hand_container.get_parent():
-		container_width = hand_container.get_parent().size.x - hand_container.position.x - 50
+		var parent_width = hand_container.get_parent().size.x
+		if parent_width > 0:
+			container_width = maxf(parent_width - hand_container.position.x - 50.0, 100.0)
 	
-	var new_positions = {}
-	var new_rotations = {}
-	
-	for i in range(hand_size):
-		var card = hand[i]
-		var card_data = HandLayoutPresets.get_card_position(i, hand_size, container_width)
-		new_positions[card] = card_data.position
-		new_rotations[card] = card_data.rotation
-	
+	# 先移除已不在手牌的卡牌节点
 	for card in current_hand_cards.keys():
 		if not hand.has(card):
 			var node = current_hand_cards[card]
 			node.queue_free()
 			current_hand_cards.erase(card)
 	
-	for i in range(hand_size):
+	# 确定性布局：按实际手牌数量一次性计算位置并立即生效，
+	# 避免增量 tween 在连续 hand_changed（如抽 2 张只抽到 1 张）时产生位置残留/错乱
+	for i in hand_size:
 		var card = hand[i]
-		var card_node: Control
+		var layout = HandLayoutPresets.get_card_position(i, hand_size, container_width)
 		
-		if current_hand_cards.has(card):
-			card_node = current_hand_cards[card]
-		else:
+		var card_node = current_hand_cards.get(card)
+		if card_node == null:
 			card_node = _create_card_node(card)
-			if card_node:
-				hand_container.add_child(card_node)
-				current_hand_cards[card] = card_node
-				_setup_card_interaction(card_node, card)
+			if card_node == null:
+				continue
+			hand_container.add_child(card_node)
+			current_hand_cards[card] = card_node
+			_setup_card_interaction(card_node, card)
 		
-		if card_node and new_positions.has(card):
-			var target_pos = new_positions[card]
-			var target_rotation = new_rotations[card]
-			
-			var should_animate = true
-			if card_node.has_method("is_in_target_mode") and card_node.is_in_target_mode():
-				should_animate = false
-			if card_node.has_method("is_dragging_card") and card_node.is_dragging_card():
-				should_animate = false
-			
-			if should_animate:
-				_animate_card_to_position(card_node, target_pos, target_rotation)
-			
-			if card_node.has_method("set_original_position"):
-				card_node.call("set_original_position", target_pos)
-			if "original_rotation" in card_node:
-				card_node.original_rotation = target_rotation
-
-func _animate_card_to_position(card_node: Control, target_pos: Vector2, target_rotation: float) -> void:
-	var current_pos = card_node.position
-	var current_rotation = card_node.rotation_degrees
-	
-	if current_pos.distance_to(target_pos) < 1.0 and abs(current_rotation - target_rotation) < 0.5:
-		card_node.position = target_pos
-		card_node.rotation_degrees = target_rotation
-		return
-	
-	var tween = root_node.create_tween()
-	tween.set_parallel(true)
-	tween.set_ease(Tween.EASE_OUT)
-	tween.set_trans(Tween.TRANS_QUAD)
-	tween.tween_property(card_node, "position", target_pos, 0.25)
-	tween.tween_property(card_node, "rotation_degrees", target_rotation, 0.25)
+		# 拖拽中 / 选目标中的卡牌保持原状，不参与重排
+		if (card_node.has_method("is_in_target_mode") and card_node.is_in_target_mode()) or (card_node.has_method("is_dragging_card") and card_node.is_dragging_card()):
+			continue
+		
+		# 位置立即到位（不用增量 tween），并同步原始位置参考供动画还原
+		card_node.position = layout.position
+		card_node.rotation_degrees = layout.rotation
+		card_node.modulate.a = 1.0
+		if card_node.has_method("set_original_position"):
+			card_node.call("set_original_position", layout.position)
+		if "original_rotation" in card_node:
+			card_node.original_rotation = layout.rotation
 
 func _clear_hand() -> void:
 	for card_node in current_hand_cards.values():

@@ -43,6 +43,7 @@ var current_layer: int = 0
 var max_layer_reached: int = 0
 var _endless_nodes: Dictionary = {}
 var _endless_interactables: Dictionary = {}
+var _endless_seed: int = 0  ## 无尽模式楼层生成的随机种子（决定每局楼层类型，随存档持久化）
 
 signal location_changed(location_data: Dictionary)
 signal interactable_selected(interactable_data: Dictionary)
@@ -169,13 +170,14 @@ func _init_endless() -> bool:
 	max_layer_reached = 0
 	_endless_nodes.clear()
 	_endless_interactables.clear()
+	_endless_seed = randi()  ## 新开无尽局：随机种子（决定楼层类型分布）
 	
 	_endless_nodes["layer_0"] = {
 		"id": "layer_0",
 		"name": "营地",
 		"description": "旅程的起点。从这里向北出发，迎接无尽的挑战。",
 		"connections": {"north": "layer_1"},
-		"interactables": ["endless_camp_rest", "endless_camp_table"]
+		"interactables": ["endless_camp_table"]
 	}
 	_endless_interactables["endless_camp_table"] = {
 		"id": "endless_camp_table",
@@ -184,17 +186,6 @@ func _init_endless() -> bool:
 		"type": "deck_view",
 		"states": {
 			"default": {"interactions": ["查看卡组"], "description": "在这里可以编辑你的卡组。"}
-		}
-	}
-	_endless_interactables["endless_camp_rest"] = {
-		"id": "endless_camp_rest",
-		"name": "休息营地",
-		"description": "在这里可以回复生命值，准备迎接新的挑战。",
-		"type": "heal",
-		"heal_amount": 0,
-		"states": {
-			"default": {"interactions": ["休息"], "description": "在这里休息可以恢复生命值。"},
-			"used": {"interactions": [], "description": "你刚刚休息过了。"}
 		}
 	}
 	
@@ -215,7 +206,7 @@ enum EndlessLayerType {
 func _determine_layer_type(layer: int) -> EndlessLayerType:
 	if layer % 10 == 0:
 		return EndlessLayerType.BOSS
-	var roll = randi() % 100
+	var roll = _seeded_roll(layer)
 	if roll < 50:
 		return EndlessLayerType.NORMAL
 	elif roll < 70:
@@ -224,6 +215,12 @@ func _determine_layer_type(layer: int) -> EndlessLayerType:
 		return EndlessLayerType.ELITE
 	else:
 		return EndlessLayerType.EVENT
+
+## 基于局种子 + 层数的确定性伪随机：同局内同一层类型稳定，战斗前后重建楼层时不会漂移
+func _seeded_roll(layer: int) -> int:
+	var h = (_endless_seed + layer * 7919) % 1000003
+	h = (h * 48271) % 2147483647
+	return h % 100
 
 func _select_normal_enemy(layer: int, enemy_db: EnemyDatabase) -> String:
 	var all = enemy_db.get_all_enemy_ids()
@@ -288,7 +285,6 @@ func _generate_layer_node(layer: int) -> void:
 			var enemy_db = EnemyDatabase.new()
 			var enemy_ids: Array = _select_boss_enemies(layer, enemy_db)
 			var list: Array = []
-			node_data["name"] = "第%d层 · Boss" % layer
 			node_data["description"] = "前方传来一阵强大的压迫感——Boss正在等待着你！"
 			node_data["enemy_ids"] = enemy_ids.duplicate()
 			for i in enemy_ids.size():
@@ -334,7 +330,6 @@ func _generate_layer_node(layer: int) -> void:
 			var enemy_db = EnemyDatabase.new()
 			var enemy_ids: Array = _select_elite_enemies(layer, enemy_db)
 			var list: Array = []
-			node_data["name"] = "第%d层 · 精英" % layer
 			node_data["description"] = "空气中弥漫着危险的气息……一群精英敌人出现了！"
 			node_data["enemy_ids"] = enemy_ids.duplicate()
 			for i in enemy_ids.size():
@@ -348,7 +343,6 @@ func _generate_layer_node(layer: int) -> void:
 			node_data["interactables"] = list
 		
 		EndlessLayerType.EVENT:
-			node_data["name"] = "第%d层 · 事件" % layer
 			node_data["description"] = "这里似乎隐藏着什么东西……（事件尚未实装）"
 			var iid = "endless_empty_" + str(layer)
 			node_data["interactables"] = [iid]
@@ -388,8 +382,8 @@ func _normal_move(direction: Direction) -> bool:
 	return true
 
 func _endless_move(direction: Direction) -> bool:
-	var current_id = map_state.current_location_id
-	var current_layer_num = int(current_id.replace("layer_", ""))
+	## 用 current_layer 字段作为层数计数（不依赖楼层 id 命名，支持后续非顺序命名）
+	var current_layer_num = current_layer
 	var target_layer = current_layer_num
 	if direction == Direction.NORTH:
 		target_layer = current_layer_num + 1
@@ -461,7 +455,8 @@ func _endless_get_grid() -> Array:
 	for i in 9:
 		grid.append({"id": "", "name": "", "reachable": false, "has_connection": false})
 	var current_id = map_state.current_location_id
-	var current_layer_num = int(current_id.replace("layer_", ""))
+	## 用 current_layer 字段作为层数计数（不依赖楼层 id 命名）
+	var current_layer_num = current_layer
 	var north_id = "layer_" + str(current_layer_num + 1)
 	var n_data = _endless_nodes.get(north_id, {})
 	grid[1] = {"id": north_id, "name": n_data.get("name", "第%d层" % (current_layer_num + 1)), "reachable": true, "has_connection": true, "is_current": false}
@@ -733,6 +728,7 @@ func serialize_state() -> Dictionary:
 		state["endless_mode"] = true
 		state["current_layer"] = current_layer
 		state["max_layer_reached"] = max_layer_reached
+		state["endless_seed"] = _endless_seed
 	return state
 
 func deserialize_state(data: Dictionary) -> void:
@@ -748,6 +744,7 @@ func deserialize_state(data: Dictionary) -> void:
 	elif data.get("endless_mode", false):
 		endless_mode = true
 		_init_endless()
+		_endless_seed = data.get("endless_seed", _endless_seed)  ## 用存档种子恢复，保证楼层类型与原局一致
 		current_layer = data.get("current_layer", 0)
 		max_layer_reached = data.get("max_layer_reached", 0)
 		for layer in range(1, max_layer_reached + 1):
