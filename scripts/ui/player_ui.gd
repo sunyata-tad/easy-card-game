@@ -11,9 +11,6 @@ extends Control
 
 var player_manager: PlayerManager  ## 玩家状态引用
 
-const HP_BAR_WIDTH := 150.0
-const HP_BAR_HEIGHT := 20.0
-
 static var _buff_db: Dictionary = {}          ## buff 数据库缓存
 var _buff_tooltip_panel: PanelContainer = null  ## buff 提示面板
 
@@ -94,23 +91,6 @@ func _animate_block_gained(amount: int):
 	tween.tween_property(block_popup, "position:y", 70, 0.5)
 	tween.tween_property(block_popup, "modulate:a", 0.0, 0.5)
 	tween.chain().tween_callback(block_popup.queue_free)
-
-func show_heal_number(amount: int):
-	if amount <= 0:
-		return
-	
-	var heal_label = Label.new()
-	heal_label.text = "+%d" % amount
-	heal_label.add_theme_color_override("font_color", Color.GREEN)
-	heal_label.add_theme_font_size_override("font_size", 24)
-	heal_label.position = Vector2(60, 50)
-	add_child(heal_label)
-	
-	var tween = create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(heal_label, "position:y", 20, 0.6)
-	tween.tween_property(heal_label, "modulate:a", 0.0, 0.6)
-	tween.chain().tween_callback(heal_label.queue_free)
 
 func _update_buff_bar() -> void:
 	if buff_container == null or player_manager == null:

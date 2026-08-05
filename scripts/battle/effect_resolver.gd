@@ -13,8 +13,7 @@ class_name EffectResolver
 
 var card_database: CardDatabase         ## 卡牌数据库，用于根据卡牌 id 创建卡牌实例
 var card_system: CardSystem = null      ## 卡牌系统引用，用于抽牌/弃牌/消耗等操作
-var _temp_attack_boost: int = 0         ## 累积的临时攻击力加成
-var _temp_hook_ids: Array = []          ## 临时钩子的 id 列表，用于清理
+var _temp_hook_ids: Array = []          ## 临时攻击力钩子的 id 列表，用于清理
 
 ## 效果处理器注册表：{ "effect_type": Callable }
 ## Callable 签名为 func(effect: Dictionary, source, target) -> Dictionary
@@ -109,7 +108,6 @@ func _resolve_damage(base_damage: int, source, target) -> Dictionary:
 		base = int(hc.trigger("calc_attack_mult", int(base), ctx))
 		var add = hc.trigger("calc_attack_damage", 0, ctx)
 		var raw = int(base) + int(add)
-		source.damage_final_mult = 1.0
 		var final_dmg = hc.trigger("calc_attack_final", raw, ctx)
 		hc.trigger("on_attack_hit", final_dmg, {"hit_index": 0})
 		if target is EnemyUnit:
@@ -175,7 +173,6 @@ func _resolve_damage_boost(value: int, source) -> Dictionary:
 ## 临时攻击力提升（通过 HookChain 实现，需要时可以清理）
 func _resolve_temp_damage_boost(value: int, source) -> Dictionary:
 	if source is PlayerManager:
-		_temp_attack_boost += value
 		var hook_id = "temp_atk_%d" % _temp_hook_ids.size()
 		source.hook_chain.register("calc_attack_base", func(v, _c): return v + value, 5, hook_id)
 		_temp_hook_ids.append(hook_id)
@@ -298,7 +295,6 @@ func clear_temp_hooks(source) -> void:
 	if source and source.hook_chain:
 		for hook_id in _temp_hook_ids: source.hook_chain.unregister("calc_attack_base", hook_id)
 	_temp_hook_ids.clear()
-	_temp_attack_boost = 0
 
 func clear_all_temp_hooks(source) -> void:
 	clear_temp_hooks(source)

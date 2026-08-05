@@ -38,9 +38,3 @@ func end_current_turn() -> void:
 		player_turn_end.emit()
 	else:
 		enemy_turn_end.emit()
-
-func get_turn_count() -> int:
-	return turn_count
-
-func is_player_turn() -> bool:
-	return is_player_active

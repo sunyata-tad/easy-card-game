@@ -782,21 +782,11 @@ func show_damage_number(target, amount: int) -> void:
 		tween.parallel().tween_property(damage_label, "modulate:a", 0.0, 0.3).set_delay(1.5)
 		tween.tween_callback(damage_label.queue_free)
 
-func show_block_number(target, amount: int) -> void:
-	if amount <= 0:
-		return
-
 func remove_card_from_hand(card: CardData) -> void:
 	if current_hand_cards.has(card):
 		var node = current_hand_cards[card]
 		node.queue_free()
 		current_hand_cards.erase(card)
-
-func highlight_playable_cards(playable: Array) -> void:
-	for card in current_hand_cards:
-		var node = current_hand_cards[card]
-		if node:
-			node.modulate = Color.WHITE if card in playable else Color(0.5, 0.5, 0.5)
 
 func set_interactive(enabled: bool) -> void:
 	for card_node in current_hand_cards.values():

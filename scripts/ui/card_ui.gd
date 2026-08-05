@@ -18,7 +18,6 @@ extends Control
 var card_data: CardData               ## 关联的卡牌数据
 var player_manager: PlayerManager     ## 玩家状态引用（用于动态计算伤害预览）
 var is_hovered: bool = false          ## 鼠标是否悬停
-var is_selected: bool = false         ## 是否被选中
 var original_position: Vector2        ## 原始位置（用于放回手牌）
 var original_scale: Vector2 = Vector2.ONE  ## 原始缩放
 var original_rotation: float = 0.0   ## 原始旋转角度
@@ -287,19 +286,6 @@ func _animate_press_down():
 	if not _needs_target():
 		press_tween.tween_property(self, "position:y", original_position.y - 20, 0.08)
 
-## 释放动画
-func _animate_press_up():
-	if press_tween and press_tween.is_valid():
-		press_tween.kill()
-	
-	press_tween = create_tween()
-	press_tween.set_parallel(true)
-	press_tween.tween_property(self, "scale", original_scale, 0.1)
-	press_tween.tween_property(self, "modulate", Color.WHITE, 0.1)
-	
-	if not _needs_target():
-		press_tween.tween_property(self, "position:y", original_position.y, 0.1)
-
 ## 取消按下状态，恢复原始位置
 func _cancel_press():
 	if press_tween and press_tween.is_valid():
@@ -354,28 +340,6 @@ func end_drag():
 	drag_ended.emit(card_data, end_pos)
 	drag_updated.emit(card_data, end_pos)
 
-func _animate_click():
-	var tween = create_tween()
-	tween.tween_property(self, "scale", Vector2(0.95, 0.95), 0.05)
-	tween.tween_property(self, "scale", original_scale, 0.1)
-
-func set_highlight(enabled: bool):
-	modulate = Color.WHITE if enabled else Color(0.5, 0.5, 0.5, 1.0)
-
-func set_selected(selected: bool):
-	is_selected = selected
-	if selected:
-		modulate = Color(1.2, 1.2, 1.0, 1.0)
-	else:
-		modulate = Color.WHITE
-
-func play_discard_animation(target_pos: Vector2):
-	var tween = create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(self, "position", target_pos, 0.25)
-	tween.tween_property(self, "modulate:a", 0.0, 0.25)
-	tween.tween_callback(queue_free)
-
 func play_play_animation(target_pos: Vector2, callback: Callable = Callable()):
 	var start_pos = position
 	var tween = create_tween()
@@ -387,16 +351,6 @@ func play_play_animation(target_pos: Vector2, callback: Callable = Callable()):
 	if callback.is_valid():
 		tween.tween_callback(callback)
 	tween.tween_callback(queue_free)
-
-func play_draw_animation(start_pos: Vector2):
-	position = start_pos
-	modulate.a = 0.0
-	scale = Vector2(0.7, 0.7)
-	
-	var tween = create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(self, "modulate:a", 1.0, 0.12)
-	tween.tween_property(self, "scale", original_scale, 0.12)
 
 func reset_position():
 	_hide_tooltip()

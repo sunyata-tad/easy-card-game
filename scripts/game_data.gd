@@ -134,22 +134,6 @@ func increase_max_hp(amount: int) -> void:
 	player_current_hp += amount
 	hp_changed.emit(player_current_hp, player_max_hp)
 
-func increase_strength(amount: int) -> void:
-	player_strength += amount
-	stats_changed.emit(player_strength, player_dexterity)
-
-func increase_dexterity(amount: int) -> void:
-	player_dexterity += amount
-	stats_changed.emit(player_strength, player_dexterity)
-
-func set_player_stats(max_hp: int, current_hp: int, strength: int, dexterity: int) -> void:
-	player_max_hp = max_hp
-	player_current_hp = current_hp
-	player_strength = strength
-	player_dexterity = dexterity
-	hp_changed.emit(player_current_hp, player_max_hp)
-	stats_changed.emit(player_strength, player_dexterity)
-
 func add_gold(amount: int) -> void:
 	gold += amount
 	gold_changed.emit(gold)

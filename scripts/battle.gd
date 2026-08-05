@@ -7,9 +7,7 @@ var battle_stats: Dictionary = {         ## 本场战斗统计
 	"damage_dealt": 0,
 	"cards_played": 0
 }
-var character_stats: Dictionary = {}     ## 角色属性（预留）
 var is_initialized: bool = false         ## 是否已初始化（防止重复初始化）
-var discard_required_count: int = 0      ## 需要弃牌的数量
 
 func _ready():
 	_setup_exit_button()
@@ -152,7 +150,6 @@ func _on_turn_changed(is_player_turn: bool):
 
 ## 弃牌阶段：进入卡牌选择模式，让玩家选择要弃掉的牌
 func _on_discard_phase_started(cards_to_discard: int) -> void:
-	discard_required_count = cards_to_discard
 	if battle_controller and battle_controller.ui_controller:
 		battle_controller.ui_controller.enter_card_select_mode(
 			"弃牌阶段：选择至多 %d 张牌弃掉" % cards_to_discard,

@@ -52,6 +52,3 @@ func get_interactable(map_id: String, interactable_id: String) -> Dictionary:
 	if interactables.has(interactable_id):
 		return interactables[interactable_id]
 	return {}
-
-func get_all_map_ids() -> Array:
-	return _maps.keys()

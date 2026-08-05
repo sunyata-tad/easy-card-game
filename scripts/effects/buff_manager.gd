@@ -51,9 +51,6 @@ func _register_buff_hook(buff: BuffData) -> void:
 		"dexterity":
 			# 敏捷：在格挡计算阶段增加格挡值，增加量 = 层数
 			hook_chain.register(HOOK_BLOCK, func(v, _c): return v + buff.stacks, 10, _hook_id("dexterity"))
-		"temp_strength":
-			# 临时力量：在基础攻击力阶段增加，优先级低于普通力量（用于一次性增益）
-			hook_chain.register(HOOK_BASE, func(v, _c): return v + buff.stacks, 5, _hook_id("temp_strength"))
 		"weak":
 			# 虚弱：最终伤害 × 0.75，至少为 1
 			hook_chain.register(HOOK_FINAL_MULT, func(v, _c): return maxi(1, int(v * 0.75)), 20, _hook_id("weak"))
@@ -89,12 +86,6 @@ func _update_strength_hook(new_stacks: int) -> void:
 	hook_chain.unregister(HOOK_ADDITION, _hook_id("strength"))
 	hook_chain.register(HOOK_ADDITION, func(v, _c): return v + new_stacks, 10, _hook_id("strength"))
 
-## 更新临时力量 buff 的钩子
-func _update_temp_strength_hook(new_stacks: int) -> void:
-	if hook_chain == null: return
-	hook_chain.unregister(HOOK_BASE, _hook_id("temp_strength"))
-	hook_chain.register(HOOK_BASE, func(v, _c): return v + new_stacks, 5, _hook_id("temp_strength"))
-
 ## 应用一个 buff 到当前单位
 ## 已有同类型 buff 时：DURATION_STACK_BUFFS 类型的叠加持续时间，其他类型叠加层数
 func apply_buff(buff: BuffData) -> void:
@@ -109,7 +100,6 @@ func apply_buff(buff: BuffData) -> void:
 			if buff.duration > 0 and existing.duration < buff.duration: existing.duration = buff.duration
 			# 层数变化后需要重建钩子（因为回调闭包捕获了旧的值）
 			if buff.id == "strength": _update_strength_hook(existing.stacks)
-			elif buff.id == "temp_strength": _update_temp_strength_hook(existing.stacks)
 	else:
 		# 新的 buff：先深拷贝一份再存储，避免外部修改影响内部状态
 		var new_buff = buff.duplicate(); buffs.append(new_buff); _register_buff_hook(new_buff)

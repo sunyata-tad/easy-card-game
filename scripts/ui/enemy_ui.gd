@@ -1,7 +1,6 @@
 class_name EnemyUI
 extends Control
 
-@onready var enemy_sprite: TextureRect = $EnemySprite
 @onready var name_label: Label = $NameLabel
 @onready var hp_bar: ProgressBar = $HPBar
 @onready var hp_label: Label = $HPLabel
@@ -9,13 +8,11 @@ extends Control
 
 var enemy_unit: EnemyUnit
 var player_manager: PlayerManager = null
-var is_selected: bool = false
 var original_scale: Vector2 = Vector2.ONE
 
 signal enemy_clicked(enemy: EnemyUnit)
 signal enemy_selected(enemy: EnemyUnit)
 
-const SELECTED_COLOR := Color(1.5, 1.5, 1.0, 1.0)
 const NORMAL_COLOR := Color.WHITE
 const DEAD_COLOR := Color(0.5, 0.5, 0.5, 0.5)
 
@@ -200,13 +197,6 @@ func _gui_input(event: InputEvent):
 			enemy_selected.emit(enemy_unit)
 		accept_event()
 
-func set_selected(selected: bool):
-	is_selected = selected
-	if selected:
-		modulate = SELECTED_COLOR
-	else:
-		modulate = NORMAL_COLOR
-
 func set_highlight_for_target(valid: bool):
 	if valid:
 		modulate = Color(1.2, 1.0, 0.8, 1.0)
@@ -231,24 +221,6 @@ func show_damage_number(amount: int):
 	tween.tween_property(damage_label, "position:y", -20, 1.8)
 	tween.parallel().tween_property(damage_label, "modulate:a", 0.0, 0.3).set_delay(1.5)
 	tween.tween_callback(damage_label.queue_free)
-
-func show_block_number(amount: int):
-	if amount <= 0:
-		return
-	
-	var block_label_temp = Label.new()
-	block_label_temp.text = "+%d 护甲" % amount
-	block_label_temp.add_theme_color_override("font_color", Color.CYAN)
-	block_label_temp.add_theme_font_size_override("font_size", 20)
-	block_label_temp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	block_label_temp.position = Vector2(40, 80)
-	add_child(block_label_temp)
-	
-	var tween = create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(block_label_temp, "position:y", 40, 0.5)
-	tween.tween_property(block_label_temp, "modulate:a", 0.0, 0.5)
-	tween.chain().tween_callback(block_label_temp.queue_free)
 
 var _buff_bar: HBoxContainer = null
 

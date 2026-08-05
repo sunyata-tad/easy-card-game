@@ -16,22 +16,6 @@
 			"buff_type": "buff",
 			"modifier_formula": null
 		},
-		"temp_strength": {
-			"name": "临时力量",
-			"symbol": "⚡",
-			"color": "#FFCC33",
-			"description": "攻击伤害 +{stacks}",
-			"buff_type": "buff",
-			"modifier_formula": "damage_add"
-		},
-		"stored_power": {
-			"name": "蓄力",
-			"symbol": "力",
-			"color": "#E6B333",
-			"description": "下回合自动攻击额外造成 {stacks} 伤害",
-			"buff_type": "buff",
-			"modifier_formula": "damage_add"
-		},
 		"skip_attack": {
 			"name": "蓄势",
 			"symbol": "蓄",

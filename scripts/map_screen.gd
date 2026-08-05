@@ -22,7 +22,6 @@ var location_info_panel: VBoxContainer
 
 var node_container: Control
 var active_nodes: Dictionary = {}
-var map_offset: Vector2 = Vector2.ZERO
 var is_animating: bool = false
 
 var status_panel: PanelContainer

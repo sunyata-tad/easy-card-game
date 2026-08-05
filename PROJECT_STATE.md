@@ -1,15 +1,16 @@
 # 卡牌游戏项目状态文档
 
-> 最后更新：2026-05-31
+> 最后更新：2026-08-05（全面核查代码后重写，同步死代码剪枝结果）
 > 项目路径：`D:/游戏开发/项目文件/card`
-> 引擎：Godot 4.x + GDScript
+> 引擎：Godot 4.6（Forward Plus）
+> 语言：GDScript（数据驱动，JSON 配置）
 > 命名约定：snake_case
 
 ---
 
 ## 1. 项目概述
 
-回合制卡牌战斗游戏，类似Slay the Spire。玩家通过卡牌操控属性和牌堆，每回合自动攻击（力量为基础伤害），战斗间有地图探索、奖励选择、存档系统。
+回合制卡牌战斗 + 文字地图探索。玩家通过卡牌操控属性和牌堆，每回合自动攻击（力量为基础伤害），战斗间有地图探索、角色成长、存档系统。当前主线为**无尽模式**（营地 + 向北逐层推进），另有测试地图。
 
 ---
 
@@ -17,424 +18,328 @@
 
 ### 2.1 卡牌设计
 - **负面效果可重合**，正面效果各自独立
-- 卡牌升级：upgrade JSON已定义，但**游戏内无触发途径**
+- 卡牌升级：upgrade JSON 已定义、`GameData.upgrade_card_at_index()` 已实现，但**游戏内无触发途径**
+- 卡牌效果采用**字典注册模式**：`effect_resolver.register_effect_handler("效果名", 处理函数)` 注册，新增效果无需改分发逻辑
 
-### 2.2 战斗模型
-- **自动攻击**：力量永久基础伤害，每回合自动结算
-- 卡牌用于调节属性和操控牌堆，不是唯一伤害来源
+### 2.2 伤害模型（当前实际）
+- **自动攻击**：基础力量（`base_strength`）每回合自动结算
+- **裸属性 + buff 修正并存**：
+  - `PlayerManager.base_strength / base_dexterity / pending_stored_damage`（裸属性）
+  - `get_strength() = base_strength + strength buff.stacks`
+  - 临时攻击力通过 `calc_attack_base` 钩子（`temp_atk_%d`）注入，`clear_temp_hooks()` 清理
+  - 蓄力通过 `pending_stored_damage` 字段 + `_pending_stored` 钩子（见 4.4）
 
 ### 2.3 抽牌机制
-- **游戏王模式**：开局抽5，每回合抽1
-- 不自动弃手牌，手牌>10时玩家选择弃牌
-- 弃牌上限 = hand.size()-10，区间[0, max]
-- **不自动洗牌**（需卡牌效果手动触发）
+- **游戏王模式**：开局抽 5，每回合抽 1
+- 不自动弃手牌，手牌 > 10 时玩家选择弃牌
+- 弃牌上限 = hand.size() - max_hand_size
+- **不自动洗牌**（需卡牌效果触发 `manual_shuffle_discard_to_draw`）
 
 ### 2.4 弃牌流程
-- 点击结束回合 → 弃牌检查 → 弃牌选择模式 → 确认 → 敌人回合结算
+- 点击结束回合 → 弃牌检查 → 弃牌选择模式（卡牌选择 UI）→ 确认 → 敌人回合结算
 
 ### 2.5 卡牌交互
 - **非指向性卡**：拖出手牌区打出
-- **指向性卡**：拖拽时移到屏幕中央+箭头选目标
-- **选择模式**：点击卡牌上移到画面中央标记选中，再次点击取消
+- **指向性卡**（single_enemy/single_ally）：拖拽移到屏幕中央 + 箭头选目标；也可短按进入目标模式
+- **选择模式**（如弃牌）：顶部选择栏，点击标记选中、确认/跳过
 
 ### 2.6 效果与属性体系
-- **所有持续性效果统一为buff**，由buff_manager管理
-- **所有属性统一为buff**：strength/dexterity/stored_power全是buff，PlayerManager无裸属性
+- **持续性效果统一为 buff**，由 `BuffManager` 管理，通过 `HookChain` 注入伤害计算
+- **持久属性为裸属性**（base_strength/base_dexterity），与 buff 修正叠加
+- **临时一次性效果**（temp_damage_boost/蓄力）用钩子 + 状态字段，不再伪装成 buff
 
-### 2.7 buff衰减
-- stack_decay字段可自定义衰减规则
-- 支持的衰减事件：on_turn_end（掉N层）、on_turn_end_pct（百分比掉层）、on_attacked、on_card_played等
-- 通过decay_on_event(event)通用触发
-- **当前所有buff均为空字典=永续不衰减，留待逐个配置**
+### 2.7 buff 衰减
+- `stack_decay` 字段可自定义衰减规则，`decay_on_event(event)` 通用触发
+- 支持事件：on_turn_end（掉 N 层）、on_turn_end_pct（百分比掉层）等
+- ⚠️ **当前多数 buff 的 stack_decay 为空字典（永续不衰减），留待逐个配置**
 
-### 2.8 无层数buff
+### 2.8 无层数 buff
 - NO_STACK_BUFFS = ["skip_attack", "ignore_block", "counter_stance"]
-- buff栏只显示符号不显示数字，stacks固定为1
+- buff 栏只显示符号不显示数字，stacks 固定为 1
 
 ---
 
 ## 3. 架构与文件结构
 
-### 3.1 目录结构
+### 3.1 目录结构（2026-08-05，ai/ 空目录已删除）
+
 ```
 card/
-├── scenes/                    # Godot场景文件
-│   ├── main.tscn              # 主入口
-│   ├── start.tscn             # 主菜单
-│   ├── BattleScene.tscn       # 战斗场景
-│   ├── Card.tscn              # 卡牌UI场景
-│   ├── EnemyUI.tscn           # 敌人UI场景
-│   ├── MapScreen.tscn         # 地图场景
-│   ├── RewardScreen.tscn      # 奖励场景
-│   ├── GameOverScreen.tscn    # 游戏结束场景
-│   ├── CharacterSelectScreen.tscn
-│   └── CharacterCreationScreen.tscn
-├── scripts/                   # GDScript脚本
+├── scenes/                    # Godot 场景（.tscn）
+│   ├── main.tscn / start.tscn # 主入口 / 主菜单
+│   ├── BattleScene.tscn / Card.tscn / EnemyUI.tscn
+│   ├── MapScreen.tscn / RewardScreen.tscn / GameOverScreen.tscn
+│   └── CharacterSelectScreen.tscn / CharacterCreationScreen.tscn
+├── scripts/
 │   ├── battle/                # 战斗系统
-│   │   ├── battle_controller.gd
-│   │   ├── effect_resolver.gd
-│   │   ├── ui_controller.gd
-│   │   ├── state_machine.gd
-│   │   └── turn_manager.gd
-│   ├── systems/               # 游戏系统
-│   │   ├── player_manager.gd
-│   │   ├── enemy_unit.gd
-│   │   ├── card_system.gd
-│   │   └── enemy_system.gd
+│   │   ├── battle_controller.gd   # 战斗总控
+│   │   ├── effect_resolver.gd     # 卡牌效果解析（字典注册模式）
+│   │   ├── ui_controller.gd       # 战斗 UI 控制
+│   │   ├── state_machine.gd       # 状态机
+│   │   └── turn_manager.gd        # 回合管理
+│   ├── systems/               # 核心系统
+│   │   ├── player_manager.gd      # 玩家战斗单位（裸属性 + hook）
+│   │   ├── enemy_unit.gd          # 敌人战斗单位
+│   │   ├── card_system.gd         # 抽/弃/洗/消耗牌逻辑
+│   │   └── enemy_system.gd        # 敌人群体管理
 │   ├── effects/               # 效果系统
-│   │   ├── buff_manager.gd
-│   │   ├── buff_data.gd
-│   │   └── hook_chain.gd
-│   ├── ui/                    # UI组件
-│   │   ├── card_ui.gd
-│   │   ├── enemy_ui.gd
-│   │   ├── player_ui.gd
-│   │   ├── hand_layout_presets.gd
-│   │   ├── drag_arrow.gd
-│   │   └── target_marker.gd
-│   ├── battle.gd              # 战斗场景入口
-│   ├── game_manager.gd        # 全局场景管理
-│   ├── game_data.gd           # 全局数据存储（Autoload）
-│   ├── card_data.gd           # 卡牌数据类
-│   ├── card_database.gd       # 卡牌数据库
-│   ├── enemy_data.gd          # 敌人数据类
-│   ├── enemy_database.gd      # 敌人数据库
-│   ├── save_manager.gd        # 存档管理
-│   ├── map_controller.gd      # 地图控制器
-│   ├── map_screen.gd          # 地图场景
-│   ├── map_database.gd        # 地图数据库
-│   ├── map_state.gd           # 地图状态
-│   ├── reward_screen.gd       # 奖励场景
-│   ├── game_over_screen.gd    # 游戏结束场景
-│   ├── start.gd               # 主菜单
-│   ├── character_data.gd      # 角色数据
-│   ├── character_manager.gd   # 角色管理
-│   ├── character_select_screen.gd
-│   └── character_creation_screen.gd
-└── data/                      # JSON数据
-    ├── cards/                 # 卡牌定义
-    │   ├── 斩击.json
-    │   ├── 格挡.json
-    │   ├── 蓄力.json
-    │   ├── 蓄势.json
-    │   ├── 破甲.json
-    │   ├── 招架.json
-    │   └── vulnerable.json
+│   │   ├── buff_manager.gd        # Buff 生命周期
+│   │   ├── buff_data.gd           # Buff 数据模型
+│   │   └── hook_chain.gd          # 钩子链（责任链）
+│   ├── ui/                    # UI 组件
+│   │   ├── card_ui.gd / enemy_ui.gd / player_ui.gd
+│   │   ├── hand_layout_presets.gd / drag_arrow.gd / target_marker.gd
+│   ├── battle.gd              # 战斗场景入口（接收敌人、经验结算、退出保存）
+│   ├── game_manager.gd        # 全局场景管理（Autoload）
+│   ├── game_data.gd           # 全局数据（Autoload）
+│   ├── save_manager.gd        # 存档管理（Autoload）
+│   ├── card_pool_manager.gd   # 永久卡池（Autoload）
+│   ├── character_manager.gd   # 角色管理（Autoload）
+│   ├── card_data.gd / card_database.gd
+│   ├── enemy_data.gd / enemy_database.gd
+│   ├── map_controller.gd / map_screen.gd / map_database.gd / map_state.gd
+│   ├── reward_screen.gd / game_over_screen.gd / start.gd
+│   ├── character_data.gd / character_select_screen.gd / character_creation_screen.gd
+└── data/                      # JSON 数据
+    ├── cards/                 # 卡牌定义（含 _模板_卡牌名.json）
     ├── enemies/               # 敌人定义
-    │   ├── test_dummy.json
-    │   ├── 石甲卫兵.json
-    │   ├── 暗影刺客.json
-    │   └── 腐化法师.json
-    ├── decks.json             # 初始卡组
-    ├── tags.json              # 标签定义
-    └── maps/
-        └── test_map.json
+    ├── maps/                  # 地图（test_map.json）
+    ├── decks.json / buffs.json / tags.json
 ```
 
-### 3.2 场景流程
+### 3.2 Autoload 注册（project.godot）
+
+| Autoload | 脚本 | 职责 |
+|----------|------|------|
+| GameManager | game_manager.gd | 场景切换、流程控制 |
+| GameData | game_data.gd | 当前 run 状态（血量/属性/牌组/金币/经验） |
+| SaveManager | save_manager.gd | 存档（user://savegame.json） |
+| CharacterManager | character_manager.gd | 角色持久化（user://characters.json） |
+| CardPoolManager | card_pool_manager.gd | 永久卡池（user://card_pool.json） |
+
+### 3.3 场景流程与模式
+
 ```
-主菜单(start) → 角色选择 → 角色创建 → 地图(MapScreen) → 战斗(BattleScene) → 奖励(RewardScreen)
-                                                                    ↓
-                                                              游戏结束(GameOverScreen)
+主菜单(start)
+  ├─ 新游戏 → 清存档 + 初始化(GameData) + 解锁初始卡池 → 无尽地图(营地)
+  ├─ 继续游戏 → apply_game_data → 按存档 progress 跳转（无尽地图/战斗后地图）
+  └─ 测试按钮 → 测试地图（3层：营地/普通战斗/精英战斗）
+无尽地图(MapScreen) → 战斗(BattleScene) → 胜利(经验/标记清层) → 返回无尽地图（或 Reward）
+                              └─ 失败 → 游戏结束(GameOverScreen)
 ```
 
-GameManager场景枚举：MAIN_MENU, CHARACTER_SELECT, CHARACTER_CREATION, MAP, BATTLE, REWARD, GAME_OVER
+GameManager 场景枚举：MAIN_MENU, CHARACTER_SELECT, CHARACTER_CREATION, MAP, BATTLE, REWARD, GAME_OVER
 
 ---
 
 ## 4. 核心系统详解
 
-### 4.1 状态机 (StateMachine)
+### 4.1 状态机（StateMachine）
 
-状态枚举：INIT → DRAW_PHASE → PLAYER_TURN → RESOLVING → ENEMY_TURN → TURN_END → VICTORY/DEFEAT
+状态枚举：INIT, DRAW_PHASE, PLAYER_TURN, RESOLVING, ENEMY_TURN, TURN_END, VICTORY, DEFEAT
 
-合法转换：
+合法转换（非法转换被 push_error 拒绝）：
 - INIT → DRAW_PHASE
 - DRAW_PHASE → PLAYER_TURN, VICTORY, DEFEAT
 - PLAYER_TURN → RESOLVING, ENEMY_TURN, VICTORY, DEFEAT
 - RESOLVING → PLAYER_TURN, ENEMY_TURN, VICTORY, DEFEAT
 - ENEMY_TURN → TURN_END, VICTORY, DEFEAT
-- TURN_END → DRAW_PHASE, ENEMY_TURN, VICTORY, DEFEAT
+- TURN_END → DRAW_PHASE, VICTORY, DEFEAT
+- VICTORY / DEFEAT → 终态
 
-关键字段：`previous_state`（用于判断是否从RESOLVING进入PLAYER_TURN，控制回合提示显示）
+关键字段/方法：`previous_state`（控制回合提示显示）、`is_player_turn()`、`is_enemy_turn()`、`is_resolving()`、`is_battle_active()`
+信号：state_changed / state_enter / state_exit
+战斗结束可被 `check_battle_end` 钩子拦截修改（自定义结束条件）
 
-### 4.2 战斗流程 (BattleController)
+### 4.2 战斗流程（BattleController）
 
 ```
 setup_battle() → start_battle()
-  → INIT → DRAW_PHASE(抽牌,决定意图) → PLAYER_TURN
-  → 玩家操作(打出卡牌→RESOLVING→PLAYER_TURN循环)
+  → INIT → DRAW_PHASE(注册蓄力钩子,抽牌,决定意图) → PLAYER_TURN
+  → 玩家操作(打出卡牌→RESOLVING→PLAYER_TURN 循环)
   → 结束回合 → ENEMY_TURN → TURN_END
   → _process_turn_end_effects():
-      1. tick_buffs_on_turn_end (毒/再生等)
-      2. _execute_player_auto_attack (获取护甲,判断skip_attack,计算伤害,攻击,清除stored_power)
-      3. _execute_enemy_attacks (逐个执行敌人行动)
-      4. decrease_durations + remove_at_turn_end
+      1. tick_buffs_on_turn_end（毒/再生等，玩家+敌人）
+      2. _execute_player_auto_attack（获取护甲,判断 skip_attack,计算伤害,攻击,清除 _pending_stored 钩子）
+      3. _execute_enemy_attacks（逐个执行敌人行动）
+      4. decrease_durations + remove_at_turn_end（玩家+敌人）
   → DRAW_PHASE(下回合)
 ```
 
 关键细节：
-- setup_battle从GameData读取strength/dexterity创建初始buff
-- sync_player_stats_to_gamedata从buff_manager写回GameData
-- skip_attack时仍获取dexterity护甲，只跳过攻击
-- auto_attack后执行`remove_buff("stored_power")`清除蓄力
+- setup_battle 从 GameData 读取 `player_max_hp/player_current_hp/player_strength/player_dexterity` 初始化 PlayerManager
+- sync_player_stats_to_gamedata 将 base_strength/base_dexterity 写回 GameData
+- skip_attack 时仍获取 dexterity 护甲，只跳过自动攻击
+- 蓄力释放：DRAW_PHASE 注册 `_pending_stored` 钩子到 calc_attack_damage；auto_attack 后 unregister + 清零
 
-### 4.3 BuffManager modifier体系
+### 4.3 伤害计算链条（必须遵守，防双算）
 
-MODIFIER_FORMULAS定义：
-| buff_id | modifier公式 | 说明 |
-|---------|-------------|------|
-| strength | damage_add=float(stacks) | 永久加伤害 |
-| dexterity | block_add=float(stacks) | 永久加护甲 |
-| temp_strength | damage_add=float(stacks) | 临时加伤害 |
-| stored_power | damage_add=float(stacks) | 蓄力伤害 |
-| weak | damage_mult=0.75 | 伤害乘算 |
-| vulnerable | damage_taken_mult=1.5 | 受伤乘算 |
-| skip_attack | {} | 无modifier |
-| ignore_block | {} | 无modifier |
-| counter_stance | {} | 无modifier |
-
-DURATION_STACK_BUFFS = ["weak", "vulnerable"]：叠加延长duration而非stacks
-
-关键方法：
-- `get_flat_add(stat)`: 累加所有xxx_add modifier值（不乘stacks，因MODIFIER_FORMULAS已包含）
-- `get_mult(stat)`: 累乘所有xxx_mult modifier值
-- `apply_buff()`: 已存在→add_stacks+recalculate；不存在→duplicate+recalculate+append
-- `recalculate_modifiers()`: 根据MODIFIER_FORMULAS重新计算buff.modifiers
-- `decrease_durations()`: 处理duration递减+stack_decay衰减+过期移除
-- `decay_on_event(event)`: 通用事件触发衰减
-
-### 4.4 伤害计算链条
-
-**卡牌伤害（effect_resolver._resolve_damage）：**
+**攻击流程（PlayerManager 攻击，effect_resolver._resolve_damage / battle_controller._perform_attack 共用）：**
 ```
-total = base_damage + strength + temp_strength  （不加stored_power）
-total × damage_mult(weak)
-→ target.take_damage(final_damage)
-    → final_damage × damage_taken_mult(vulnerable)  （由take_damage内部统一处理）
+hc.trigger("on_attack_start", 0, ctx)          # 可设 skip_attack / ignore_block 标记
+base = hc.trigger("calc_attack_base", base_strength, ctx)    # 临时力量钩子(temp_atk)在此
+base = int(hc.trigger("calc_attack_mult", int(base), ctx))
+add = hc.trigger("calc_attack_damage", 0, ctx)               # 蓄力 _pending_stored 钩子在此
+raw = int(base) + int(add)
+final_dmg = hc.trigger("calc_attack_final", raw, ctx)        # weak ×0.75
+hc.trigger("on_attack_hit", final_dmg, {"hit_index": 0})
+target.take_damage(final_dmg, ctx.get("ignore_block", false))
+hc.trigger("on_attack_end", 0, ctx)
 ```
 
-**自动攻击伤害（battle_controller._execute_player_auto_attack）：**
+**take_damage 内部（玩家/敌人对称）：**
 ```
-total = get_total_damage() = get_flat_add("damage")  （含strength+temp_strength+stored_power）
-total × damage_mult(weak)
-→ target.take_damage(final_damage)
-    → final_damage × damage_taken_mult(vulnerable)
+actual = hook_chain.trigger("on_damage_taken", amount, {...})   # vulnerable ×1.5
+格挡抵消（除非 ignore_target_block）
+扣血 → hp_changed
+if hp <= 0: hook_chain.trigger("before_death", ...)             # 可阻止死亡（保 1 血）
 ```
 
 **关键规则：**
-- effect_resolver不再外部乘damage_taken_mult（避免双算）
-- stored_power只参与auto_attack，不参与卡牌伤害
-- auto_attack后执行remove_buff("stored_power")
+- vulnerable 只在 take_damage 内部的 on_damage_taken 处理（单一责任方，防双算）
+- weak 在 calc_attack_final 处理；ignore_block 通过 ctx 传给 take_damage 第二参
+- 蓄力只参与 auto_attack 的 calc_attack_damage 阶段，不参与卡牌伤害
 
-### 4.5 PlayerManager便捷方法
+### 4.4 蓄力机制（store_damage，pending_stored_damage 方案）
 
-| 方法 | 实现 |
-|------|------|
-| get_strength() | buff_manager.get_buff_by_id("strength").stacks |
-| get_dexterity() | buff_manager.get_buff_by_id("dexterity").stacks |
-| get_stored_power() | buff_manager.get_buff_by_id("stored_power").stacks |
-| get_total_damage() | int(buff_manager.get_flat_add("damage")) |
-| get_total_block() | int(buff_manager.get_flat_add("block")) |
-
-### 4.6 EffectResolver效果类型
-
-| effect_type | 处理函数 | 说明 |
-|-------------|---------|------|
-| damage | _resolve_damage | 对目标造成伤害 |
-| block | _resolve_block | 给目标加护甲 |
-| heal | _resolve_heal | 治疗 |
-| damage_boost | _resolve_damage_boost | 永久力量+value |
-| temp_damage_boost | _resolve_temp_damage_boost | 临时力量(duration=1, on_turn_end_remove) |
-| skip_attack | _resolve_skip_attack | 蓄势buff(duration=1, on_turn_end_remove) |
-| store_damage | _resolve_store_damage | 蓄力：当前力量+临时力量→stored_power，移除temp_strength |
-| ignore_block | _resolve_ignore_block | 破甲buff(duration=1, on_turn_end_remove) |
-| counter_stance | _resolve_counter_stance | 招架buff(duration=1, on_turn_end_remove) |
-| draw | _resolve_draw | 抽牌 |
-| apply_buff / apply_debuff | _resolve_apply_buff | 应用buff（兼容buff_type和buff_id字段） |
-| add_card_to_hand | _resolve_add_card | 添加卡牌到手牌 |
-| search_draw | _resolve_search_draw | 搜索抽牌堆并抽牌 |
-| search_discard | _resolve_search_discard | 搜索弃牌堆并抽牌 |
-| search_draw_by_tag | _resolve_search_draw_by_tag | 按标签搜索抽牌堆 |
-| search_discard_by_tag | _resolve_search_discard_by_tag | 按标签搜索弃牌堆 |
-| exhaust_random | _resolve_exhaust_random | 随机消耗手牌 |
-| discard_random | _resolve_discard_random | 随机弃掉手牌 |
-| shuffle_discard_to_draw | _resolve_shuffle_discard_to_draw | 手动洗牌 |
-
-### 4.7 store_damage（蓄力）详细逻辑
-
-```gdscript
-func _resolve_store_damage(source):
-    current = source.get_strength()           # 永久力量
-    temp = source.buff_manager.get_buff_by_id("temp_strength")
-    if temp:
-        current += temp.stacks                 # 加上临时力量
-        source.buff_manager.remove_buff("temp_strength")  # 移除临时力量
-    stored = source.buff_manager.get_buff_by_id("stored_power")
-    if stored:
-        stored.add_stacks(current)             # 累加到已有蓄力
-        recalculate_modifiers(stored)
-    else:
-        create new stored_power buff           # 首次蓄力
+**存储（effect_resolver._resolve_store_damage）：**
+```
+v = base_strength
+v = hook_chain.trigger("calc_attack_base", v, ctx)    # 含临时力量钩子
+v = int(hook_chain.trigger("calc_attack_mult", v, ctx))
+add = hook_chain.trigger("calc_attack_damage", 0, ctx)
+raw = v + add
+clear_temp_hooks(source)          # 清除临时攻击力钩子
+source.pending_stored_damage += raw
 ```
 
-### 4.8 地图系统 (MapScreen)
-
-#### 设计决策与失败历史
-
-**核心需求**：纯文本地图，地点以文本框表示，连线表示通路。动态创建/删除节点，当前地点始终在屏幕中央，移动动画连续丝滑。
-
-**失败尝试（3次）**：
-1. **预创建按钮方案**：导致位置重置时"瞬移"（动画后位置与逻辑映射不一致）
-2. **移动按钮位置方案**：动画后调用`_layout_buttons()`重置位置导致瞬移
-3. **临时副本方案**：副本移动后原按钮仍需重置位置，同样瞬移
-4. **根本问题**：预创建按钮的索引与物理位置映射在动画后不一致
-
-**成功方案 — 动态节点**：
-- 不预创建按钮，根据需要动态生成位置按钮
-- 移动时不改变节点位置，而是通过偏移量计算新节点位置
-- 旧节点淡出后删除，新节点在正确位置创建并淡入
-
-#### map_screen.gd 关键结构
-
-```gdscript
-var node_container: Control
-var active_nodes: Dictionary = {}  # {location_id: {btn: Button, base_pos: Vector2}}
-var map_offset: Vector2 = Vector2.ZERO
-var is_animating: bool = false
-
-const BTN_W := 100
-const BTN_H := 36
-const GAP_X := 40
-const GAP_Y := 30
+**释放（battle_controller._on_draw_phase）：**
+```
+if pending_stored_damage > 0:
+    val = pending_stored_damage; pending_stored_damage = 0
+    hook_chain.register("calc_attack_damage", func(v,_c): return v+val, 5, "_pending_stored")
 ```
 
-#### 新增：地图总览函数（_on_map_overview_pressed）
+⚠️ **BUG-2 未完全修复**：`pending_stored_damage += raw` 每次蓄力累加 base_strength，`clear_temp_hooks` 只清临时钩子。同回合打多张蓄力 → base 重复累加（strength=5 打 2 张蓄力 → pending=10）。**蓄力功能可能被移除/重做（见 8.1）**
 
-| 函数 | 说明 |
-|------|------|
-| `_on_map_overview_pressed()` | 弹出世界地图PopupPanel，两级视图（世界列表→区域详情）|
-| `_get_regions()` | 从 current_map_data 的 "regions" 字段获取区域数据 |
-| `_build_overview_map(layout, zoom)` | 根据布局数据构建可视化画布（ColorRect+Label+Line2D）|
-| `_compute_fit_zoom(layout, avail_w, avail_h)` | 计算自动适配视口的缩放比例 |
-| `_compute_overview_layout(valid_ids)` | BFS从当前位置开始计算节点网格布局 |
+### 4.5 Buff 系统
 
-#### 关键函数
+#### BuffManager
+- buffs 数组 + hook_chain；`DURATION_STACK_BUFFS = ["weak","vulnerable"]`（叠加延长 duration）
+- `get_flat_add(stat)`：累加所有 xxx_add；`get_mult(stat)`：累乘所有 xxx_mult
+- `apply_buff()`：已存在→add_stacks+重建钩子；不存在→duplicate+注册钩子
+- `decrease_durations()`：duration 递减 + stack_decay 衰减 + 过期移除
+- `decay_on_event(event)`：通用事件触发衰减；`remove_at_turn_end()`：回合末移除
+- ⚠️ **已移除**：MODIFIER_FORMULAS 常量、recalculate_modifiers()、temp_strength 分支（2026-08-05 剪枝）
+- buff 的 modifiers 直接在 BuffData 中配置（如 weak 带 `modifiers:{"damage_mult":0.75}`）
 
-| 函数 | 说明 |
-|------|------|
-| `_get_center_pos()` | 获取中心位置，容器尺寸为0时回退(1152,280) |
-| `_get_grid_position(grid_index, center_pos)` | 根据grid索引(0-8)计算节点位置（4=中心，其他8方向） |
-| `_get_direction_offset(dir_name)` | 返回8方向偏移Vector2 |
-| `_create_node(location_id, location_data, pos, is_current)` | 动态创建Button节点，初始透明(a=0)，当前地点disabled+金色字体 |
-| `_refresh_nodes()` | 清空active_nodes，重新根据grid创建所有节点 |
-| `_on_node_pressed(location_id)` | 点击节点→查找grid索引→映射Direction→调用_do_move_animation |
-| `_do_move_animation(direction)` | 核心动画函数（详见下方） |
+#### Buff 的 Hook 注册（_register_buff_hook）
+| buff_id | hook 阶段 | 效果 |
+|---------|----------|------|
+| strength | calc_attack_damage | +stacks 伤害 |
+| dexterity | calc_attack_block | +stacks 格挡 |
+| weak | calc_attack_final | 伤害 ×0.75 |
+| vulnerable | on_damage_taken | 受伤 ×1.5 |
+| skip_attack | on_attack_start | 标记跳过攻击 |
+| ignore_block | on_attack_start | 标记无视格挡 |
+| counter_stance | on_attack_hit | 记录反击伤害 |
 
-#### _do_move_animation 动画流程
+⚠️ 层数变化时必须重建 hook 回调（闭包捕获旧层数）：`_update_strength_hook`
 
-```
-1. 方向枚举→字符串 → 获取move_offset → 计算center_pos
-2. 旧节点：set_parallel(true) 同时执行：
-   - 位移：position += move_offset（0.35秒，EASE_IN_OUT）
-   - 淡出：modulate.a → 0（0.2秒，EASE_IN）
-3. await 0.35秒
-4. 删除所有旧节点（queue_free + active_nodes.clear()）
-5. map_controller.move_to_direction(direction) 更新数据
-6. 新节点：在 start_pos = final_pos - move_offset 处创建（透明）
-   - 位移：start_pos → final_pos（0.35秒，EASE_OUT）
-   - 淡入：modulate.a → 1（0.2秒，EASE_OUT，延迟0.05秒）
-7. await 0.35秒
-8. is_animating = false
-```
+#### Buff 创建（effect_resolver._create_buff_from_id）
+支持：strength, dexterity, weak, vulnerable, poison, regen（weak/vulnerable duration=2；poison on_turn_end 伤害；regen on_turn_start 治疗）
 
-#### 已修复的地图Bug
+### 4.6 卡牌系统
 
-| Bug | 原因 | 修复 |
-|-----|------|------|
-| 初始位置不合理 | `_refresh_nodes`中`node_container.size`首次调用为(0,0) | `_get_center_pos()`增加回退值Vector2(1152,280) |
-| 旧节点未删除导致重叠 | `queue_free`延迟执行，新旧节点同帧同时显示 | 先收集旧按钮引用，await后统一queue_free+clear |
-| 无淡入淡出效果 | 旧节点只有位移没有透明度变化 | `set_parallel(true)`让位移和淡出/淡入同时执行 |
+#### 效果分发（effect_resolver，字典注册模式）
+- 处理器注册表 `_handlers: {effect_type: Callable}`，`register_effect_handler()` 注册
+- 处理器签名：`func(effect: Dictionary, source, target) -> Dictionary`
+- 支持 `base_stat` 字段：效果值基于玩家属性（strength/dexterity × multiplier）
 
-#### 地图UI布局
+#### 效果类型
+damage / block / heal / damage_boost(永久改 base_strength) / temp_damage_boost(注册 calc_attack_base 钩子) / skip_attack(蓄势) / store_damage(蓄力) / ignore_block(破甲) / counter_stance(招架) / draw / apply_buff·apply_debuff / add_card_to_hand / search_draw·search_discard / search_draw_by_tag·search_discard_by_tag / exhaust_random·discard_random / shuffle_discard_to_draw
 
-- `_create_map_section()`：ColorRect背景(0.05,0.05,0.1) + node_container(clip_contents=true)
-- map_section custom_minimum_size = (0, 280)
-- 可交互区域改为横向排列(HBoxContainer)
-- 地点信息面板 + 交互面板互斥显示
+#### CardSystem
+- 四牌堆：draw_pile / hand / discard_pile / exhaust_pile（消耗堆）
+- max_hand_size = 10；draw_cards() 空抽牌堆不自动洗牌，emit deck_exhausted
+- 支持搜索（按 id/标签）、消耗、弃牌、add_to_draw_pile(to_top)、add_to_hand
+- 信号：card_drawn / card_played / card_discarded / card_exhausted / hand_changed / deck_count_changed / card_added_to_hand / deck_exhausted
 
-### 4.9 CardSystem
+### 4.7 地图系统（MapController + MapScreen）
 
-- MAX_HAND_SIZE = 10
-- draw_cards()：空抽牌堆不自动洗牌，emit deck_exhausted
-- manual_shuffle_discard_to_draw()：手动洗牌方法
-- 支持搜索抽牌堆/弃牌堆/按标签搜索
-- 支持消耗(exhaust)和弃牌(discard)
+#### 架构
+`map_screen.gd`（视图，纯代码构建 UI）↔ `map_controller.gd`（逻辑）↔ `map_state.gd`（状态）↔ `map_database.gd`（JSON 加载）
+
+#### MapController
+- `Direction` 枚举（8 方向）+ DIRECTION_NAMES / DIRECTION_VECTORS 映射
+- `load_map(map_id)`：`"test"` → 测试地图；endless_mode → 无尽模式；否则加载 JSON 地图
+- **无尽模式**：营地（layer_0，休息/卡组桌）+ 向北动态生成楼层；`EndlessLayerType` = BOSS(每10层)/NORMAL/CHEST/ELITE/EVENT(未实装)
+- `_generate_layer_node(layer)` 到达时生成；`max_layer_reached` 记录最深层
+- `can_move_to()`：北进需清空当前层战斗敌人；南行可回营地
+- `remove_dead_enemies(alive_ids)` / `mark_layer_cleared(layer)`：战斗返回后清理
+- 信号：location_changed / interactable_selected / interactable_deselected / battle_requested / log_message
+
+#### MapScreen（纯代码构建 UI）
+- header：状态 / 地点名 / 设置 / 地图（总览）按钮
+- 地图区：node_container 动态节点（keep/remove/add 分类动画）
+- 交互物区：battle_trigger / info / heal / container / portal / deck_view / test_exp
+- 探索日志（最多 50 条）；状态面板（等级/经验/属性点加点/卡组）；卡组工作台（从卡池添加/移除，单卡上限 3）；设置弹窗（保存）
+- 群战 `_start_group_battle(enemy_ids, layer)`：无尽模式带 layer 存档
+
+#### 地图总览（_on_map_overview_pressed）
+- 两级视图：世界视图（区域列表）→ 区域视图（canvas 节点图，未访问 ???
+）
+- 拖动/缩放**代码已实现**（canvas 绑 gui_input + MOUSE_FILTER_STOP），但**可用性未验证**（BUG-3/4）
+- `_compute_fit_zoom`：启发式自动缩放（BUG-5）；`_compute_overview_layout`：BFS 布局
+
+#### MapState
+字段：current_map_id, current_location_id, visited_locations, interactable_states, enabled_connections, interaction_log
+方法：initialize, move_to, get/set_interactable_state, enable_connection, add_log, get_recent_logs, serialize/deserialize
+
+### 4.8 存档系统
+
+#### SaveManager（user://savegame.json，version 2）
+- `GameProgress` 枚举：NONE / IN_BATTLE / IN_MAP / GAME_OVER
+- save_game(progress, additional) / save_map_state() / save_before_battle(enemy_id, map_id, endless_layer, is_test_mode) / save_game_over()
+- apply_game_data()：恢复 GameData（含牌组升级/标签/treated_as）
+- 牌组序列化：每张卡单独保存 id/name/is_upgraded/effects/tags/treated_as
+
+#### CardPoolManager（user://card_pool.json）
+- `{version, unlocked_card_ids}`；initialize_with_starter_cards() 首次从 decks.json 初始化
+- 永久卡池跨角色继承，不随死亡消失
+
+#### CharacterManager（user://characters.json）
+- 角色创建/删除/选择/序列化；⚠️ **当前主流程未接入角色创建**（新游戏直接进无尽地图）
 
 ---
 
-## 5. UI系统
+## 5. UI 系统
 
-### 5.1 UIController
-
-关键变量：
-- `_card_select_active/_card_select_min/_card_select_max/_card_selected_cards`：弃牌选择模式状态
-- `drag_arrow: DragArrow`：指向性卡拖拽箭头
-- `is_dragging/dragging_card/drag_card_node`：拖拽状态
-- `is_selecting_target`：选目标状态
-- `player_manager`：引用（用于敌人意图计算和buff变化刷新）
-
-关键信号：card_clicked, card_released, card_cancelled, card_dropped, card_played, enemy_selected, end_turn_clicked
+### 5.1 UIController（战斗）
+- 手牌布局（HandLayoutPresets.get_card_position）、拖拽箭头（DragArrow）、目标标记（TargetMarker）
+- 攻击目标按钮（手动选目标模式）、卡牌选择模式（回调机制）、伤害数字、buff 栏 + tooltip
+- show_turn_banner / show_state_message 提示
+- 玩家属性面板：蓄力:%d（get_stored_power）+ 预计攻击:%d（get_expected_attack_damage）
 
 ### 5.2 CardUI
+- 状态：is_pressed / is_dragging / is_hovered / is_select_mode / is_awaiting_target
+- original_position / original_scale / original_rotation（动画还原）
+- 信号：card_clicked / card_hovered / card_unhovered / drag_started / drag_updated / drag_ended / card_released / card_cancelled / target_mode_started / target_mode_ended / card_play_requested
+- 交互：左键按下→拖拽(>10px)→拖放/打出/点击；右键取消；短按指向卡进入目标模式
 
-关键变量：
-- `is_dragging/is_pressed/is_hovered/is_select_mode/is_awaiting_target`
-- `original_position/original_scale/original_rotation`：动画还原用
-- `drag_exited_hand`：拖拽出手牌区标志
+### 5.3 EnemyUI / PlayerUI
+- 意图显示（attack 考虑玩家 vulnerable；defend/buff/debuff）；buff 栏 + tooltip
+- 敌人 buff 变化时刷新意图
 
-选择模式行为：
-- is_select_mode=true时禁止hover动画和拖拽
-- 选择模式不调_cancel_press，不触_animate_press_down
-- mouse_filter恢复为MOUSE_FILTER_STOP
-
-### 5.3 EnemyUI
-
-- 需要player_manager引用（意图伤害考虑玩家vulnerable）
-- buff栏使用offset布局
-- 支持tooltip悬停弹窗（Button+mouse_entered/exited+自定义PanelContainer）
-- NO_STACK_BUFFS不显示层数
-
-### 5.4 手牌布局 (HandLayoutPresets)
-
-- CARD_WIDTH = 140.0
-- IDEAL_SPACINGS: 1-10张的理想间距
-- ROTATION_CURVE: 1-10张的旋转曲线
-- 动态spacing = min(ideal, max_spacing)
-- max_spacing = (container_width - CARD_WIDTH) / (n-1)
-- HandArea: offset_left=192, anchor_right=1
-
-### 5.5 弃牌选择模式
-
-信号路径：CardUI._gui_input → is_select_mode → emit card_clicked → ui_controller._on_card_select_card_clicked → _toggle_card_selection
-
-选中动画：tween移到画面中央+rotation归零+放大1.1+变红+z_index=50
-取消动画：tween回original_position+original_rotation+original_scale+白色+z_index=0
-多张选中：_reposition_selected_cards水平错开排列（spacing=card_width+20）
-
-弃牌栏位置：PRESET_TOP_WIDE（屏幕顶部，不遮挡手牌）
-
-### 5.6 回合提示
-
-- 只在回合真正开始时显示banner（非RESOLVING→PLAYER_TURN时）
-- PRESET_CENTER居中+grow双向+无position偏移
-- 已删除"战斗开始"和"蓄力中"多余提示
+### 5.4 手牌布局（HandLayoutPresets）
+- CARD_WIDTH = 140.0；IDEAL_SPACINGS / ROTATION_CURVE（max_rotation/curve_factor）
+- 动态 spacing = min(ideal, max_spacing)；弧形布局
 
 ---
 
 ## 6. 数据定义
 
-### 6.1 卡牌
+### 6.1 卡牌（data/cards/，7 张）
 
 | ID | 类型 | 目标 | 效果 | 稀有度 |
 |----|------|------|------|--------|
@@ -446,196 +351,153 @@ const GAP_Y := 30
 | 招架 | skill | self | counter_stance + block 5 | uncommon |
 | 致弱 | skill | single_enemy | apply_buff vulnerable 2层 | common |
 
-初始卡组(decks.json)：斩击×3, 格挡×3, 蓄力×2, 蓄势×2
+初始卡组（decks.json）：斩击×3, 格挡×3, 蓄力×2, 蓄势×2
 
-### 6.2 敌人
+卡牌 JSON 模板：`_模板_卡牌名.json`（含 effect_type / buff_id / base_stat 说明，可扩展架构参考）
+
+### 6.2 敌人（data/enemies/，5 个）
 
 | ID | HP | AI | 行为 | 描述 |
-|----|-----|----|------ |------|
-| test_dummy | 10 | basic | 攻击1 | 测试木偶 |
+|----|-----|----|------|------|
+| test_dummy | 100 | basic | 攻击1 | 测试木偶 |
+| test_debuffer | 10 | basic | 虚弱 weak 1层/攻击1 | 测试虚弱训练师 |
 | 石甲卫兵 | 30 | basic | 攻击3/防御5/重击5 | 攻守兼备 |
 | 暗影刺客 | 15 | basic | 暗杀8/下毒weak/刺击6 | 高攻低血 |
 | 腐化法师 | 22 | basic | 蓄能strength/衰弱vulnerable/法击4 | 自我强化+削弱 |
 
-### 6.3 BuffData字段
+action type：attack / defend / buff / debuff，均带 intent_text / intent_icon
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | String | buff标识 |
-| name | String | 显示名 |
-| buff_type | String | buff/debuff |
-| duration | int | -1=永久，>0=回合数 |
-| stacks | int | 层数 |
-| max_stacks | int | 上限(默认99) |
-| trigger_timing | String | passive/on_turn_end/on_turn_start/on_turn_end_remove |
-| modifiers | Dictionary | 由MODIFIER_FORMULAS计算 |
-| tick_effect | Dictionary | 定时触发效果 |
-| icon_path | String | 图标路径 |
-| stack_decay | Dictionary | 衰减规则(空=永续) |
+### 6.3 Buff（data/buffs.json）
+
+可用 buff：strength, dexterity, weak, vulnerable, poison, regen, skip_attack, ignore_block, counter_stance
+（2026-08-05 剪枝：temp_strength / stored_power 已从定义移除）
+
+字段：id / name / symbol / color / description / buff_type / modifier_formula（已废弃，保留字段）
+
+### 6.4 标签（data/tags.json）
+- 分类：type / keyword / archetype / rarity
+- 标签属性：Exhaust / Retain / Innate / Ethereal / Unplayable 等（priority / conflicts）
+- 卡牌支持：has_tag（含 treated_as）/ has_any_tag / has_all_tags / get_all_tags
+
+### 6.5 地图（data/maps/test_map.json）
+- regions（区域归属）/ locations（8 方向 connections + interactables）/ interactables（state 状态机）
+- interactable 类型：battle_trigger / info / heal / container / portal / deck_view
+
+### 6.6 存档格式
+- user://savegame.json：{version:2, progress, game_data, map_state, enemy_id, map_id, additional}
+- user://card_pool.json：{version:1, unlocked_card_ids}
+- user://characters.json：角色数组（CharacterData.serialize）
 
 ---
 
 ## 7. 已完成功能清单
 
-- [x] 战斗系统18个bug修复
-- [x] 效果→buff统一重构（删除旧属性/信号）
-- [x] 属性全部统一为buff（PlayerManager无裸属性）
-- [x] 6张新卡牌JSON + 3个新敌人JSON
-- [x] 卡牌交互系统重构（拖拽打出+指向性箭头+选择模式）
-- [x] 弃牌流程重构（选择模式+中央动画+rotation处理）
-- [x] 伤害计算链修复（双算bug+stored_power渗入+get_flat_add双乘stacks）
-- [x] buff栏tooltip悬停弹窗
-- [x] 敌人buff栏可见（offset布局+tscn节点位置调整+EnemyUI高度210）
-- [x] 敌人意图伤害考虑玩家vulnerable
-- [x] 玩家buff变化时刷新所有敌人意图
-- [x] apply_buff兼容buff_type字段
-- [x] buff衰减机制扩展（stack_decay字段+decay_on_event方法）
-- [x] 无层数buff不显示层数（NO_STACK_BUFFS）
-- [x] skip_attack命名统一为"蓄势"
-- [x] 弃牌选择栏移到屏幕顶部
-- [x] 选择模式卡牌动画修复（rotation归零+original_rotation保存+不调_cancel_press）
-- [x] 卡牌布局动态自适应
-- [x] 回合提示位置严格居中
-- [x] "你的回合"只在非RESOLVING进入时显示
-- [x] 删除"战斗开始"和"蓄力中"多余提示
-- [x] 选择模式hover动画禁止
-- [x] 地图系统：动态节点方案（放弃预创建按钮，动态创建/删除）
-- [x] 地图系统：_do_move_animation动画（旧节点滑出淡出+新节点反向滑入淡入）
-- [x] 地图系统：初始位置bug修复（_get_center_pos回退值）
-- [x] 地图系统：旧节点重叠bug修复（先收集引用，await后统一queue_free）
-- [x] 地图系统：淡入淡出效果（set_parallel让位移+透明度同时执行）
-- [x] 地图系统：地图总览功能（弹出菜单、两级视图、BFS布局、画布渲染、自动适配）
+- [x] 战斗系统：状态机 + HookChain 责任链 + 效果字典注册模式
+- [x] 伤害模型重构：裸属性 base_strength/base_dexterity + buff 修正 + 完整钩子链
+- [x] 蓄力机制重构：pending_stored_damage + _pending_stored 钩子（替代 stored_power buff）
+- [x] 效果分发重构：match → register_effect_handler 注册表（可扩展）
+- [x] 无尽模式：营地 + 动态楼层（普通/宝箱/精英/Boss/事件）+ 战斗前后存档恢复
+- [x] 测试地图：营地/普通战斗/精英战斗 3 层
+- [x] 卡牌系统：拖拽/指向箭头/选择模式/标签检索/消耗堆
+- [x] 地图系统：动态节点动画、地图总览弹窗（拖动/缩放代码已实现，待验证）
+- [x] 卡组工作台：从永久卡池添加/移除卡牌（单卡上限 3）
+- [x] 存档系统：GameProgress、战斗前存档、战斗后存活敌人恢复
+- [x] 角色系统：CharacterData/CharacterManager 持久化（未接入主流程）
+- [x] 2026-08-05 死代码剪枝：删除 166 行完全失效代码（详见 git diff）
 
 ---
 
-## 8. 当前Bug与待修复
+## 8. 已知问题与待办
 
-### 8.1 严重Bug
+### 8.1 战斗 Bug（蓄力相关，可能被移除）
 
-#### BUG-1: 蓄力后斩击伤害未实时计算
-- **描述**：先打出蓄力卡，再打出斩击卡时，伤害显示未能实时反映临时力量增加
-- **根因分析**：打出蓄力后stored_power buff已创建，但打出斩击(temp_damage_boost)时，UI上预计伤害值未实时更新。需要确认_update_player_ui()在每张卡打出后是否正确刷新了所有伤害相关信息
-- **相关文件**：effect_resolver.gd:_resolve_store_damage, battle_controller.gd:play_card→_update_player_ui, ui_controller.gd:update_player_stats_info
+#### BUG-1: 蓄力后斩击伤害未实时计算（⚠️ 代码路径已具备，待实测）
+- `play_card` 每次打牌后调用 `_update_player_ui()`；`update_player_stats_info()` 实时显示"蓄力:%d"与"预计攻击:%d"（`get_expected_attack_damage()` 走完整钩子链）
+- 残留疑点：蓄力卡 `store_damage` 会 `clear_temp_hooks`，若"斩击后蓄力"时序下临时力量被吸入蓄力并清除，与"蓄力后斩击"显示可能不一致
 
-#### BUG-2: 多次打出蓄力造成重复加伤害
-- **描述**：多次打出蓄力卡会重复将当前力量累加到stored_power，导致伤害膨胀
-- **根因分析**：_resolve_store_damage中，每次调用都取current=get_strength()+temp_strength，然后add_stacks(current)到stored_power。如果第二次蓄力时temp_strength已移除但strength不变，则会再次把strength加到stored_power上
-- **示例**：strength=5，第一次蓄力→stored_power=5；第二次蓄力→stored_power=5+5=10（但实际应只蓄力一次的伤害）
-- **设计需确认**：蓄力卡是否应该允许一回合多次打出？如果允许，第二次应该蓄什么？
-- **相关文件**：effect_resolver.gd:_resolve_store_damage
+#### BUG-2: 多次打出蓄力重复加伤害（⚠️ 未完全修复）
+- `_resolve_store_damage` 中 `pending_stored_damage += raw`，raw 每次含 base_strength
+- 反例：strength=5，同回合打 2 张蓄力 → pending=10（base 重复累加）
+- 额外隐患：若本回合已注册上回合 `_pending_stored` 钩子，新蓄力会把它也算进 raw
+- **设计方向**：蓄力 bug 未成功，**后续可能考虑移除蓄力功能**（或大修卡牌效果时重做）
 
-### 8.2 其他严重问题
+### 8.2 地图总览 Bug
 
-- **选择模式取消选中仍需实测**：确认不调_cancel_press后，点击取消选中流程是否正确完整
-- **buff衰减机制未配置**：stack_decay框架已有，但所有buff都是空字典（如weak应每回合掉1层duration）
-- **卡牌升级无触发途径**：upgrade JSON已定义但游戏内无法升级
-- **缺少洗牌卡**：手动洗牌设计但无卡牌触发
+#### BUG-3: 地图总览拖动（⚠️ 代码已实现，可用性未验证）
+- 代码：canvas 绑 gui_input（MOUSE_FILTER_STOP，子控件 IGNORE），MOUSE_BUTTON_LEFT + InputEventMouseMotion 更新 canvas.position
+- 潜在问题：拖动 delta 乘 scale_factor，缩放≠1 时幅度异常
+- **设计方向**：地图考虑其他优化方式（可能移除总览弹窗）
 
-### 8.3 中等问题
+#### BUG-4: 地图总览滚轮缩放（⚠️ 代码已实现，可用性未验证）
+- 与 BUG-3 同源
 
-- **buff栏与属性面板信息重复**：蓄力/预计攻击在两处显示
-- **info_panel位置验证**：anchor布局+call_deferred定位到player_area右侧，需实测
-- **AI只有basic模式**：敌人行为可预测，缺少智能AI
-- **更多敌人/Boss设计**：当前只有4个敌人
-- **Game Over界面**：未测试
-- **敌人buff栏stack_decay配置**：腐化法师等敌人buff应配置衰减规则
+#### BUG-5: _compute_fit_zoom 自动缩放公式为启发式
+- zoom_w=(avail_w-40)/(grid_w*200)、zoom_h=(avail_h-40)/(grid_h*100)，与实际画布公式不完全对应
 
-### 8.4 地图总览Bug
+### 8.3 其他问题
+- 选择模式取消选中流程需实测
+- buff stack_decay 大部分未配置（weak 每回合 duration-1 等）
+- 卡牌升级无触发途径（upgrade JSON 有定义，游戏内无入口）
+- 敌人 AI 仅 basic（decide_next_intent 随机抽取 actions）
+- 敌人/Boss 不足（无尽 Boss 层复用普通敌人）
+- 无尽模式 EVENT 事件楼层未实装
+- 角色系统未接入主流程（新游戏直接进无尽地图）
 
-#### BUG-3: 地图总览拖动效果不可用
-- **描述**：进入区域详情视图后，鼠标左键拖动无法平移地图
-- **根因**：Godot 4 的 gui_input 事件不会从child冒泡到parent。之前将 gui_input 连接到 ScrollContainer，但鼠标事件被 canvas（ScrollContainer的child）拦截
-- **当前尝试**（2026-05-31）：将 gui_input 移到 canvas 自身，canvas 设 MOUSE_FILTER_STOP。待验证
-- **优先级**：高（用户明确要求先修复拖动）
+### 8.4 待开发功能
+- 高优先级：卡牌效果大修（含蓄力去留）、卡牌升级触发、buff stack_decay 配置、EVENT 事件实装
+- 中优先级：敌人 AI 扩展、更多敌人/Boss、卡牌动画+音效、地图优化（替代总览方案）
+- 低优先级：buff 栏与属性面板去重、Game Over 完善、敌人 buff 衰减配置
 
-#### BUG-4: 地图总览鼠标滚轮缩放不可用
-- **描述**：鼠标滚轮缩放无效果
-- **原因**：与BUG-3相同（事件传递问题）
-- **优先级**：低（用户要求暂时搁置）
-
-#### BUG-5: _compute_fit_zoom 自动缩放公式可能不精确
-- **描述**：`zoom_w = (avail_w - 40) / (grid_w * 200)` 中的 -40 和 *200 与实际画布尺寸公式不完全对应
-- **优先级**：低
+### 8.5 规划方向（用户 2026-08-05 确认）
+- **蓄力 bug 未成功**：后续可能移除蓄力功能
+- **地图拖动 bug 未成功**：地图考虑其他优化方式
+- **卡牌效果将大修**
+- 死代码剪枝已完成（166 行）
 
 ---
 
-## 9. 待开发功能
+## 9. 技术备忘
 
-### 9.1 高优先级
-- [ ] 修复BUG-1: 蓄力后伤害实时计算
-- [ ] 修复BUG-2: 多次蓄力重复加伤害
-- [ ] buff stack_decay逐个配置（weak每回合duration-1等）
-- [ ] 洗牌卡牌设计与实现
-- [ ] 卡牌升级触发机制（reward界面或地图交互物）
-- [ ] 地图连线绘制功能（_draw_lines）
-- [ ] 地图移动动画实测与微调（时长/缓动曲线）
-
-### 9.2 中优先级
-- [ ] 敌人AI模式扩展
-- [ ] 更多敌人/Boss
-- [ ] 卡牌打出后动画+音效
-- [ ] info_panel位置实测
-
-### 9.3 低优先级
-- [ ] buff栏与属性面板信息去重
-- [ ] Game Over界面完善
-- [ ] 敌人buff衰减配置
-
----
-
-## 10. 技术备忘
-
-### 10.1 关键信号连接
+### 9.1 战斗关键信号
 
 ```
 battle_controller._connect_ui_signals():
-  ui_controller.card_clicked → _on_ui_card_clicked
-  ui_controller.card_released → _on_ui_card_released
-  ui_controller.card_cancelled → _on_ui_card_cancelled
-  ui_controller.card_dropped → _on_ui_card_dropped
-  ui_controller.card_played → _on_ui_card_played
-  ui_controller.enemy_selected → _on_ui_enemy_selected
-  ui_controller.end_turn_clicked → _on_ui_end_turn_clicked
+  ui_controller.card_clicked / card_released / card_cancelled
+  ui_controller.card_dropped / card_played / enemy_selected / end_turn_clicked
 
 battle_controller._connect_signals():
   state_machine.state_enter → _on_state_enter
   turn_manager.player_turn_start → _on_player_turn_start
-  card_system.card_played → _on_card_played
-  card_system.hand_changed → _on_hand_changed
-  player_manager.hp_changed → _on_player_hp_changed
-  player_manager.block_changed → _on_player_block_changed
-  player_manager.player_died → _on_player_died
-  player_manager.counter_damage → _on_counter_damage
+  card_system.card_played / hand_changed / deck_count_changed
+  enemy_system.enemy_died / enemy_damaged / all_enemies_defeated
+  player_manager.hp_changed / block_changed / player_died / counter_damage
 ```
 
-### 10.2 _update_player_ui()调用点
+### 9.2 蓄力钩子注册/清理
+- 临时攻击钩子：`temp_atk_%d`（calc_attack_base），`clear_temp_hooks()` 清理
+- 蓄力钩子：`_pending_stored`（calc_attack_damage），DRAW_PHASE 注册、auto_attack 后 unregister
 
-每次卡牌打出后(battle_controller.play_card)、玩家HP/护甲变化时、初始UI时都会调用：
-```gdscript
-func _update_player_ui():
-    ui_controller.update_player_display(hp, max_hp, block)
-    ui_controller.update_player_stats_info(player_manager)
-    ui_controller.update_player_buff_bar(player_manager)
-    ui_controller.update_all_enemy_intents()
-```
+### 9.3 战斗胜利结算（battle.gd）
+- 无尽层经验：30 + 层×5（Boss 层 +50）→ gain_exp
+- 胜利：标记 endless_layer_cleared → 返回无尽地图；非无尽 → RewardScreen
+- 测试模式：不存档，直接返回测试地图
 
-### 10.3 EnemyUI场景布局
+### 9.4 PlayerManager 便捷方法
 
-- custom_minimum_size = 150×210
-- BlockLabel y=118
-- HPBar y=162
-- IntentLabel y=180
-
-### 10.4 BattleScene布局
-
-- HandArea: offset_left=192, anchor_right=1
-- HandArea宽度 = viewport_width - 192 - 50
+| 方法 | 实现 |
+|------|------|
+| get_strength() | base_strength + strength buff.stacks |
+| get_dexterity() | base_dexterity + dexterity buff.stacks |
+| get_stored_power() | pending_stored_damage |
+| get_total_damage() | base_strength + int(get_flat_add("damage")) |
+| get_total_block() | base_dexterity + int(get_flat_add("block")) |
+| get_expected_attack_damage() | 完整钩子链预览（UI 用） |
 
 ---
 
-## 11. 变更日志
+## 10. 变更日志
 
 | 日期 | 变更 |
 |------|------|
-| 2026-05-24 | 初始创建：整理全部项目状态、架构、数据、bug清单 |
-| 2026-05-24 | 新增4.8地图系统章节：设计决策与失败历史、动态节点方案、动画流程、3个bug修复；已完成清单+6项地图功能；待开发+2项地图功能（连线绘制、动画实测） |
+| 2026-05-24 | 初始创建（旧架构描述） |
+| 2026-08-05 | **全面重写**：反映重构后的伤害模型（裸属性+hook）、蓄力 pending_stored_damage、效果注册表、无尽模式、存档 GameProgress、5 敌人、死代码剪枝；同步已知问题真实状态（BUG-1~5） |
