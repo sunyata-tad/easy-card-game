@@ -126,8 +126,8 @@ func _init_test_map() -> bool:
 		}
 	}
 	
-	# Layer 1: 普通战斗层
-	var n_id = _select_normal_enemy(1, enemy_db)
+	# Layer 1: 普通战斗层（固定使用测试假人，100 血高坦，便于持续测试弃牌阶段）
+	var n_id = "test_dummy"
 	var n_data = enemy_db.get_enemy(n_id)
 	var n_name = n_data.name if n_data else n_id
 	_endless_nodes["layer_1"] = {

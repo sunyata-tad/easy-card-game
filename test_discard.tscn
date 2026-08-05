@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://testdiscard01"]
+
+[ext_resource type="Script" path="res://test_discard_scene.gd" id="1_discard"]
+
+[node name="TestDiscard" type="Node"]
+script = ExtResource("1_discard")

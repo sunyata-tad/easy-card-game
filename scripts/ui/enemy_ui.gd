@@ -277,7 +277,7 @@ func _extract_buff_info(buff) -> Dictionary:
 
 var _buff_tooltip_panel: PanelContainer = null
 
-const NO_STACK_BUFFS: Array = ["skip_attack", "ignore_block", "counter_stance"]
+const NO_STACK_BUFFS: Array = ["skip_attack", "ignore_block", "counter_stance", "no_discard"]
 
 func _create_buff_label(info: Dictionary) -> Control:
 	var buff_id: String = info.get("id", "")

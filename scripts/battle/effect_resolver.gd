@@ -282,10 +282,21 @@ func _resolve_exhaust_random(count: int, source) -> Dictionary:
 		return {"success": exhausted > 0, "value": exhausted}
 	return {"success": false, "value": 0}
 
+## 检查弃牌是否被规则阻止（触发 check_discard 钩子，如"本场不弃牌"能力）
+func _is_discard_blocked(source) -> bool:
+	var ctx := {"block_discard": false}
+	if source and source.hook_chain:
+		source.hook_chain.trigger(BuffManager.HOOK_DISCARD, 0, ctx)
+	return ctx.get("block_discard", false)
+
 ## 随机弃置手牌
 func _resolve_discard_random(count: int, source) -> Dictionary:
-	if source.has_method("get") and source.get("card_system"):
-		var cs = source.card_system; var discarded = 0
+	if _is_discard_blocked(source):
+		return {"success": false, "value": 0, "blocked": true}
+	var cs = card_system
+	if not cs and source.has_method("get") and source.get("card_system"): cs = source.card_system
+	if cs:
+		var discarded = 0
 		for i in count: if cs.discard_random_hand_card(): discarded += 1
 		return {"success": discarded > 0, "value": discarded}
 	return {"success": false, "value": 0}
@@ -314,6 +325,7 @@ func _create_buff_from_id(buff_id: String, stacks: int = 1) -> BuffData:
 		"vulnerable": {"id": "vulnerable", "name": "易伤", "buff_type": "debuff", "duration": 2, "stacks": stacks, "modifiers": {"damage_taken_mult": 1.5}},
 		"poison": {"id": "poison", "name": "中毒", "buff_type": "debuff", "duration": -1, "stacks": stacks, "trigger_timing": "on_turn_end", "tick_effect": {"type": "damage", "value": 1}},
 		"regen": {"id": "regen", "name": "再生", "buff_type": "buff", "duration": -1, "stacks": stacks, "trigger_timing": "on_turn_start", "tick_effect": {"type": "heal", "value": 1}},
+		"no_discard": {"id": "no_discard", "name": "不弃", "buff_type": "buff", "duration": -1, "stacks": 1},
 	}
 	if configs.has(buff_id): return BuffData.new(configs[buff_id].duplicate(true))
 	return null

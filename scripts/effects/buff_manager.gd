@@ -22,6 +22,7 @@ const HOOK_BLOCK: String = "calc_attack_block"       ## 格挡值计算阶段
 const HOOK_ATTACK_START: String = "on_attack_start"  ## 攻击开始时
 const HOOK_ATTACK_HIT: String = "on_attack_hit"      ## 攻击命中时
 const HOOK_ATTACK_END: String = "on_attack_end"      ## 攻击结束时
+const HOOK_DISCARD: String = "check_discard"          ## 弃牌规则门（钩子可阻止弃牌）
 
 ## buff 变化相关信号
 signal buff_applied(buff: BuffData)   ## buff 被应用时触发
@@ -66,6 +67,9 @@ func _register_buff_hook(buff: BuffData) -> void:
 		"counter_stance":
 			# 反击架势：攻击命中时在上下文中记录反击伤害值
 			hook_chain.register(HOOK_ATTACK_HIT, func(v, c): if v is int and v > 0: c["counter_damage"] = v; return v, 50, _hook_id("counter_stance"))
+		"no_discard":
+			# 本场不弃牌：在弃牌规则门阶段设置 block_discard 标记，阻止回合末弃牌与卡牌弃牌效果
+			hook_chain.register(HOOK_DISCARD, func(v, c): c["block_discard"] = true; return v, 100, _hook_id("no_discard"))
 
 ## 注销指定 buff 在所有钩子阶段注册的回调
 ## 不知道 buff 注册了哪个阶段，所以一次性注销所有可能的阶段（多余的 unregister 会安全忽略）
@@ -79,6 +83,7 @@ func _unregister_buff_hook(buff_id: String) -> void:
 	hook_chain.unregister(HOOK_DAMAGE_TAKEN, _hook_id(buff_id))
 	hook_chain.unregister(HOOK_ATTACK_START, _hook_id(buff_id))
 	hook_chain.unregister(HOOK_ATTACK_HIT, _hook_id(buff_id))
+	hook_chain.unregister(HOOK_DISCARD, _hook_id(buff_id))
 
 ## 更新力量 buff 的钩子（层数变化时需要重建回调，因为回调闭包捕获了旧层数）
 func _update_strength_hook(new_stacks: int) -> void:

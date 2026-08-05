@@ -129,6 +129,8 @@ func _on_draw_phase() -> void:
 		player_manager.hook_chain.register("calc_attack_damage", func(v, _c): return v + val, 5, "_pending_stored")
 	var draw_count = 5 if is_first_turn else 1
 	is_first_turn = false
+	# 正常规则：每回合开始必定抽 1 张（游戏王模式），即使手牌已达上限也会抽到 11 张；
+	# 超出的部分由回合结束的弃牌阶段处理（弃牌降到 max_hand_size）。
 	card_system.draw_cards(draw_count)
 	turn_changed.emit(true)
 	_decide_all_enemy_intents()
@@ -154,7 +156,13 @@ func _on_enemy_turn_phase() -> void:
 
 func _on_turn_end_phase() -> void:
 	var excess = card_system.hand.size() - card_system.max_hand_size
+	var block_discard := false
 	if excess > 0:
+		# 弃牌规则门：check_discard 钩子可阻止弃牌（如"本场不弃牌"能力卡）
+		var ctx := {"block_discard": false}
+		player_manager.hook_chain.trigger(BuffManager.HOOK_DISCARD, excess, ctx)
+		block_discard = ctx.get("block_discard", false)
+	if excess > 0 and not block_discard:
 		is_discard_phase = true
 		ui_controller.set_interactive(false)
 		discard_phase_started.emit(excess)

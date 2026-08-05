@@ -98,16 +98,14 @@ func go_to_endless_map(map_state: Dictionary = {}) -> void:
 	change_scene(GameScene.MAP, data)
 
 ## 测试地图：预设测试楼层（普通战斗、精英战斗、测试台），不使用存档
+## 测试牌组：20 张蓄势（每张抽 2 张），用于触发手牌超上限，测试弃牌阶段
 func go_to_test_map() -> void:
 	GameData.initialize_new_run()
 	GameData.player_strength = 5
 	GameData.player_dexterity = 5
 	var card_db = CardDatabase.new()
 	GameData.player_deck = card_db.create_deck([
-		{"card_id": "蓄力", "count": 6},
-		{"card_id": "蓄势", "count": 6},
-		{"card_id": "斩击", "count": 2},
-		{"card_id": "格挡", "count": 2}
+		{"card_id": "蓄势", "count": 20}
 	])
 	var data: Dictionary = {"map_id": "test", "test_mode": true}
 	change_scene(GameScene.MAP, data)
@@ -122,10 +120,7 @@ func go_to_test_battle() -> void:
 		GameData.player_dexterity = 5
 		var card_db = CardDatabase.new()
 		GameData.player_deck = card_db.create_deck([
-			{"card_id": "蓄力", "count": 6},
-			{"card_id": "蓄势", "count": 6},
-			{"card_id": "斩击", "count": 2},
-			{"card_id": "格挡", "count": 2}
+			{"card_id": "蓄势", "count": 20}
 		])
 		start_battle([enemy])
 

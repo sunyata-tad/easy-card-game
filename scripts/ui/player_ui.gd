@@ -14,7 +14,7 @@ var player_manager: PlayerManager  ## 玩家状态引用
 static var _buff_db: Dictionary = {}          ## buff 数据库缓存
 var _buff_tooltip_panel: PanelContainer = null  ## buff 提示面板
 
-const NO_STACK_BUFFS: Array = ["skip_attack", "ignore_block", "counter_stance"]  ## 不显示层数的 buff
+const NO_STACK_BUFFS: Array = ["skip_attack", "ignore_block", "counter_stance", "no_discard"]  ## 不显示层数的 buff
 
 func _ready():
 	_load_buff_db()

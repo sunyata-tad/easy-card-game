@@ -40,6 +40,14 @@
 			"buff_type": "buff",
 			"modifier_formula": null
 		},
+		"no_discard": {
+			"name": "不弃",
+			"symbol": "守",
+			"color": "#80CCFF",
+			"description": "本场战斗不会弃牌（含卡牌弃牌效果）",
+			"buff_type": "buff",
+			"modifier_formula": null
+		},
 		"weak": {
 			"name": "虚弱",
 			"symbol": "痿",
