@@ -12,17 +12,8 @@ var buffs: Array = []
 ## 关联的钩子链，用于将 buff 效果注入攻击计算流程
 var hook_chain: HookChain = null
 
-## 攻击计算各阶段的钩子名称常量
-const HOOK_BASE: String = "calc_attack_base"        ## 基础攻击力计算阶段
-const HOOK_MULT: String = "calc_attack_mult"         ## 攻击力倍率计算阶段
-const HOOK_ADDITION: String = "calc_attack_damage"   ## 攻击力加算阶段
-const HOOK_FINAL_MULT: String = "calc_attack_final"  ## 最终伤害倍率阶段
-const HOOK_DAMAGE_TAKEN: String = "on_damage_taken"  ## 受到伤害时
-const HOOK_BLOCK: String = "calc_attack_block"       ## 格挡值计算阶段
-const HOOK_ATTACK_START: String = "on_attack_start"  ## 攻击开始时
-const HOOK_ATTACK_HIT: String = "on_attack_hit"      ## 攻击命中时
-const HOOK_ATTACK_END: String = "on_attack_end"      ## 攻击结束时
-const HOOK_DISCARD: String = "check_discard"          ## 弃牌规则门（钩子可阻止弃牌）
+## 钩子名称统一引用 HookRegistry（唯一来源，勿在此重复定义）
+## 完整钩子列表（名字 + 注释）见 scripts/effects/hook_registry.gd
 
 ## buff 变化相关信号
 signal buff_applied(buff: BuffData)   ## buff 被应用时触发
@@ -48,48 +39,48 @@ func _register_buff_hook(buff: BuffData) -> void:
 	match buff.id:
 		"strength":
 			# 力量：在加算阶段增加伤害，增加量 = 层数
-			hook_chain.register(HOOK_ADDITION, func(v, _c): return v + buff.stacks, 10, _hook_id("strength"))
+			hook_chain.register(HookRegistry.HOOK_CALC_ADD, func(v, _c): return v + buff.stacks, 10, _hook_id("strength"))
 		"dexterity":
 			# 敏捷：在格挡计算阶段增加格挡值，增加量 = 层数
-			hook_chain.register(HOOK_BLOCK, func(v, _c): return v + buff.stacks, 10, _hook_id("dexterity"))
+			hook_chain.register(HookRegistry.HOOK_CALC_BLOCK, func(v, _c): return v + buff.stacks, 10, _hook_id("dexterity"))
 		"weak":
 			# 虚弱：最终伤害 × 0.75，至少为 1
-			hook_chain.register(HOOK_FINAL_MULT, func(v, _c): return maxi(1, int(v * 0.75)), 20, _hook_id("weak"))
+			hook_chain.register(HookRegistry.HOOK_CALC_FINAL, func(v, _c): return maxi(1, int(v * 0.75)), 20, _hook_id("weak"))
 		"vulnerable":
 			# 易伤：受到伤害 × 1.5，至少为 1
-			hook_chain.register(HOOK_DAMAGE_TAKEN, func(v, _c): return maxi(1, int(v * 1.5)), 20, _hook_id("vulnerable"))
+			hook_chain.register(HookRegistry.HOOK_ON_DAMAGE_TAKEN, func(v, _c): return maxi(1, int(v * 1.5)), 20, _hook_id("vulnerable"))
 		"skip_attack":
 			# 跳过攻击：在攻击开始时设置上下文的 skip_attack 标记
-			hook_chain.register(HOOK_ATTACK_START, func(v, c): c["skip_attack"] = true; return v, 100, _hook_id("skip_attack"))
+			hook_chain.register(HookRegistry.HOOK_ON_ATTACK_START, func(v, c): c["skip_attack"] = true; return v, 100, _hook_id("skip_attack"))
 		"ignore_block":
 			# 无视格挡：在攻击开始时设置上下文的 ignore_block 标记
-			hook_chain.register(HOOK_ATTACK_START, func(v, c): c["ignore_block"] = true; return v, 50, _hook_id("ignore_block"))
+			hook_chain.register(HookRegistry.HOOK_ON_ATTACK_START, func(v, c): c["ignore_block"] = true; return v, 50, _hook_id("ignore_block"))
 		"counter_stance":
 			# 反击架势：攻击命中时在上下文中记录反击伤害值
-			hook_chain.register(HOOK_ATTACK_HIT, func(v, c): if v is int and v > 0: c["counter_damage"] = v; return v, 50, _hook_id("counter_stance"))
+			hook_chain.register(HookRegistry.HOOK_ON_ATTACK_HIT, func(v, c): if v is int and v > 0: c["counter_damage"] = v; return v, 50, _hook_id("counter_stance"))
 		"no_discard":
 			# 本场不弃牌：在弃牌规则门阶段设置 block_discard 标记，阻止回合末弃牌与卡牌弃牌效果
-			hook_chain.register(HOOK_DISCARD, func(v, c): c["block_discard"] = true; return v, 100, _hook_id("no_discard"))
+			hook_chain.register(HookRegistry.HOOK_CHECK_DISCARD, func(v, c): c["block_discard"] = true; return v, 100, _hook_id("no_discard"))
 
 ## 注销指定 buff 在所有钩子阶段注册的回调
 ## 不知道 buff 注册了哪个阶段，所以一次性注销所有可能的阶段（多余的 unregister 会安全忽略）
 func _unregister_buff_hook(buff_id: String) -> void:
 	if hook_chain == null: return
-	hook_chain.unregister(HOOK_BASE, _hook_id(buff_id))
-	hook_chain.unregister(HOOK_ADDITION, _hook_id(buff_id))
-	hook_chain.unregister(HOOK_BLOCK, _hook_id(buff_id))
-	hook_chain.unregister(HOOK_MULT, _hook_id(buff_id))
-	hook_chain.unregister(HOOK_FINAL_MULT, _hook_id(buff_id))
-	hook_chain.unregister(HOOK_DAMAGE_TAKEN, _hook_id(buff_id))
-	hook_chain.unregister(HOOK_ATTACK_START, _hook_id(buff_id))
-	hook_chain.unregister(HOOK_ATTACK_HIT, _hook_id(buff_id))
-	hook_chain.unregister(HOOK_DISCARD, _hook_id(buff_id))
+	hook_chain.unregister(HookRegistry.HOOK_CALC_BASE, _hook_id(buff_id))
+	hook_chain.unregister(HookRegistry.HOOK_CALC_ADD, _hook_id(buff_id))
+	hook_chain.unregister(HookRegistry.HOOK_CALC_BLOCK, _hook_id(buff_id))
+	hook_chain.unregister(HookRegistry.HOOK_CALC_MULT, _hook_id(buff_id))
+	hook_chain.unregister(HookRegistry.HOOK_CALC_FINAL, _hook_id(buff_id))
+	hook_chain.unregister(HookRegistry.HOOK_ON_DAMAGE_TAKEN, _hook_id(buff_id))
+	hook_chain.unregister(HookRegistry.HOOK_ON_ATTACK_START, _hook_id(buff_id))
+	hook_chain.unregister(HookRegistry.HOOK_ON_ATTACK_HIT, _hook_id(buff_id))
+	hook_chain.unregister(HookRegistry.HOOK_CHECK_DISCARD, _hook_id(buff_id))
 
 ## 更新力量 buff 的钩子（层数变化时需要重建回调，因为回调闭包捕获了旧层数）
 func _update_strength_hook(new_stacks: int) -> void:
 	if hook_chain == null: return
-	hook_chain.unregister(HOOK_ADDITION, _hook_id("strength"))
-	hook_chain.register(HOOK_ADDITION, func(v, _c): return v + new_stacks, 10, _hook_id("strength"))
+	hook_chain.unregister(HookRegistry.HOOK_CALC_ADD, _hook_id("strength"))
+	hook_chain.register(HookRegistry.HOOK_CALC_ADD, func(v, _c): return v + new_stacks, 10, _hook_id("strength"))
 
 ## 应用一个 buff 到当前单位
 ## 已有同类型 buff 时：DURATION_STACK_BUFFS 类型的叠加持续时间，其他类型叠加层数

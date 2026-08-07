@@ -52,10 +52,10 @@ func get_total_damage() -> int:
 ## 预估攻击伤害：按完整的钩子链流程计算一次（用于 UI 显示预览值）
 ## 流程：基础攻击力 → 倍率 → 加算 → 最终倍率
 func get_expected_attack_damage() -> int:
-	var v = hook_chain.trigger("calc_attack_base", base_strength, {})
-	v = hook_chain.trigger("calc_attack_mult", int(v), {})
-	v = hook_chain.trigger("calc_attack_damage", v, {})
-	v = hook_chain.trigger("calc_attack_final", v, {})
+	var v = hook_chain.trigger(HookRegistry.HOOK_CALC_BASE, base_strength, {})
+	v = hook_chain.trigger(HookRegistry.HOOK_CALC_MULT, int(v), {})
+	v = hook_chain.trigger(HookRegistry.HOOK_CALC_ADD, v, {})
+	v = hook_chain.trigger(HookRegistry.HOOK_CALC_FINAL, v, {})
 	return int(v)
 
 ## 获取总格挡值（基础敏捷 + 所有 buff 的 block_add 修正值之和）
@@ -72,7 +72,7 @@ func set_selected_target(index: int) -> void:
 func take_damage(amount: int) -> int:
 	if is_dead or amount <= 0: return 0
 	# 经过钩子链处理（如易伤会放大伤害）
-	var actual_damage = int(hook_chain.trigger("on_damage_taken", amount, {"source_type": "enemy"}))
+	var actual_damage = int(hook_chain.trigger(HookRegistry.HOOK_ON_DAMAGE_TAKEN, amount, {"source_type": "enemy"}))
 	if block > 0:
 		if block >= actual_damage:
 			var blocked = actual_damage; block -= actual_damage; block_changed.emit(block)
@@ -86,7 +86,7 @@ func take_damage(amount: int) -> int:
 	# 死亡判定：通过钩子链允许阻止死亡
 	if current_hp <= 0:
 		var death_ctx: Dictionary = {"can_die": true}
-		hook_chain.trigger("before_death", actual_damage, death_ctx)
+		hook_chain.trigger(HookRegistry.HOOK_ON_BEFORE_DEATH, actual_damage, death_ctx)
 		if death_ctx.get("can_die", true):
 			is_dead = true; player_died.emit()
 		else:

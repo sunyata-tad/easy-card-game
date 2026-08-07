@@ -82,7 +82,7 @@ func _connect_ui_signals() -> void:
 	ui_controller.end_turn_clicked.connect(_on_ui_end_turn_clicked)
 
 ## 检查战斗是否结束（可被 HookChain 拦截修改）
-## 通过 player_manager.hook_chain 的 "check_battle_end" 钩子实现自定义结束条件
+## 通过 player_manager.hook_chain 的 HOOK_CHECK_BATTLE_END 钩子实现自定义结束条件
 func _check_battle_end_state() -> bool:
 	if not state_machine.is_battle_active():
 		return true
@@ -92,7 +92,7 @@ func _check_battle_end_state() -> bool:
 		ctx.should_end = true; ctx.result = "victory"; ctx.reason = "all_enemies_defeated"
 	elif not player_manager.is_alive():
 		ctx.should_end = true; ctx.result = "defeat"; ctx.reason = "player_dead"
-	player_manager.hook_chain.trigger("check_battle_end", 0, ctx)
+	player_manager.hook_chain.trigger(HookRegistry.HOOK_CHECK_BATTLE_END, 0, ctx)
 	if not ctx.should_end:
 		return false
 	if ctx.result == "victory":
@@ -125,8 +125,8 @@ func _on_draw_phase() -> void:
 	if player_manager.pending_stored_damage > 0:
 		var val = player_manager.pending_stored_damage
 		player_manager.pending_stored_damage = 0
-		player_manager.hook_chain.unregister("calc_attack_damage", "_pending_stored")
-		player_manager.hook_chain.register("calc_attack_damage", func(v, _c): return v + val, 5, "_pending_stored")
+		player_manager.hook_chain.unregister(HookRegistry.HOOK_CALC_ADD, "_pending_stored")
+		player_manager.hook_chain.register(HookRegistry.HOOK_CALC_ADD, func(v, _c): return v + val, 5, "_pending_stored")
 	var draw_count = 5 if is_first_turn else 1
 	is_first_turn = false
 	# 正常规则：每回合开始必定抽 1 张（游戏王模式），即使手牌已达上限也会抽到 11 张；
@@ -158,9 +158,9 @@ func _on_turn_end_phase() -> void:
 	var excess = card_system.hand.size() - card_system.max_hand_size
 	var block_discard := false
 	if excess > 0:
-		# 弃牌规则门：check_discard 钩子可阻止弃牌（如"本场不弃牌"能力卡）
+		# 弃牌规则门：HOOK_CHECK_DISCARD 钩子可阻止弃牌（如"本场不弃牌"能力卡）
 		var ctx := {"block_discard": false}
-		player_manager.hook_chain.trigger(BuffManager.HOOK_DISCARD, excess, ctx)
+		player_manager.hook_chain.trigger(HookRegistry.HOOK_CHECK_DISCARD, excess, ctx)
 		block_discard = ctx.get("block_discard", false)
 	if excess > 0 and not block_discard:
 		is_discard_phase = true
@@ -248,7 +248,7 @@ func _execute_player_auto_attack() -> void:
 	if target and target.is_alive():
 		_perform_attack(player_manager, target, 0)
 		await get_tree().create_timer(0.2).timeout
-	player_manager.hook_chain.unregister("calc_attack_damage", "_pending_stored")
+	player_manager.hook_chain.unregister(HookRegistry.HOOK_CALC_ADD, "_pending_stored")
 	player_manager.pending_stored_damage = 0
 
 func _perform_attack(source, target, base_damage: int) -> void:
@@ -257,33 +257,33 @@ func _perform_attack(source, target, base_damage: int) -> void:
 	var hc = source.hook_chain if source.hook_chain else null
 	if source is PlayerManager and hc:
 		var ctx: Dictionary = {}
-		hc.trigger("on_attack_start", 0, ctx)
-		var base = hc.trigger("calc_attack_base", source.base_strength, ctx)
-		base = int(hc.trigger("calc_attack_mult", int(base), ctx))
-		var add = hc.trigger("calc_attack_damage", 0, ctx)
+		hc.trigger(HookRegistry.HOOK_ON_ATTACK_START, 0, ctx)
+		var base = hc.trigger(HookRegistry.HOOK_CALC_BASE, source.base_strength, ctx)
+		base = int(hc.trigger(HookRegistry.HOOK_CALC_MULT, int(base), ctx))
+		var add = hc.trigger(HookRegistry.HOOK_CALC_ADD, 0, ctx)
 		var raw = int(base) + int(add)
-		var final_dmg = hc.trigger("calc_attack_final", raw, ctx)
-		hc.trigger("on_attack_hit", final_dmg, {"hit_index": 0})
+		var final_dmg = hc.trigger(HookRegistry.HOOK_CALC_FINAL, raw, ctx)
+		hc.trigger(HookRegistry.HOOK_ON_ATTACK_HIT, final_dmg, {"hit_index": 0})
 		if target is EnemyUnit:
 			var actual = target.take_damage(final_dmg, ctx.get("ignore_block", false))
 			ui_controller.update_single_enemy(target)
 			ui_controller.show_damage_number(target, actual)
 		elif target is PlayerManager:
 			target.take_damage(final_dmg)
-		hc.trigger("on_attack_end", 0, ctx)
+		hc.trigger(HookRegistry.HOOK_ON_ATTACK_END, 0, ctx)
 		return
 	if hc:
 		var ctx: Dictionary = {}
-		hc.trigger("on_attack_start", base_damage, ctx)
-		var hit_value = hc.trigger("calc_attack_base", base_damage, ctx)
-		hit_value = hc.trigger("calc_attack_mult", hit_value, ctx)
-		hit_value = hc.trigger("calc_attack_damage", hit_value, ctx)
-		hit_value = hc.trigger("calc_attack_final", hit_value, ctx)
-		hc.trigger("on_attack_hit", hit_value, {"hit_index": 0})
+		hc.trigger(HookRegistry.HOOK_ON_ATTACK_START, base_damage, ctx)
+		var hit_value = hc.trigger(HookRegistry.HOOK_CALC_BASE, base_damage, ctx)
+		hit_value = hc.trigger(HookRegistry.HOOK_CALC_MULT, hit_value, ctx)
+		hit_value = hc.trigger(HookRegistry.HOOK_CALC_ADD, hit_value, ctx)
+		hit_value = hc.trigger(HookRegistry.HOOK_CALC_FINAL, hit_value, ctx)
+		hit_value = hc.trigger(HookRegistry.HOOK_ON_ATTACK_HIT, hit_value, {"hit_index": 0})
 		if target is PlayerManager:
 			var actual = target.take_damage(hit_value)
 			ui_controller.show_damage_number(target, actual)
-		hc.trigger("on_attack_end", 0, ctx)
+		hc.trigger(HookRegistry.HOOK_ON_ATTACK_END, 0, ctx)
 		return
 	var actual = target.take_damage(base_damage)
 	ui_controller.show_damage_number(target, actual)

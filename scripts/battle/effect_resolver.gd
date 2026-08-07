@@ -103,18 +103,18 @@ func _resolve_damage(base_damage: int, source, target) -> Dictionary:
 	# 玩家攻击：使用完整钩子链计算
 	if source is PlayerManager and hc:
 		var ctx: Dictionary = {}
-		hc.trigger("on_attack_start", 0, ctx)
-		var base = hc.trigger("calc_attack_base", source.base_strength, ctx)
-		base = int(hc.trigger("calc_attack_mult", int(base), ctx))
-		var add = hc.trigger("calc_attack_damage", 0, ctx)
+		hc.trigger(HookRegistry.HOOK_ON_ATTACK_START, 0, ctx)
+		var base = hc.trigger(HookRegistry.HOOK_CALC_BASE, source.base_strength, ctx)
+		base = int(hc.trigger(HookRegistry.HOOK_CALC_MULT, int(base), ctx))
+		var add = hc.trigger(HookRegistry.HOOK_CALC_ADD, 0, ctx)
 		var raw = int(base) + int(add)
-		var final_dmg = hc.trigger("calc_attack_final", raw, ctx)
-		hc.trigger("on_attack_hit", final_dmg, {"hit_index": 0})
+		var final_dmg = hc.trigger(HookRegistry.HOOK_CALC_FINAL, raw, ctx)
+		hc.trigger(HookRegistry.HOOK_ON_ATTACK_HIT, final_dmg, {"hit_index": 0})
 		if target is EnemyUnit:
 			target.take_damage(final_dmg, ctx.get("ignore_block", false))
 		elif target is PlayerManager:
 			target.take_damage(final_dmg)
-		hc.trigger("on_attack_end", 0, ctx)
+		hc.trigger(HookRegistry.HOOK_ON_ATTACK_END, 0, ctx)
 		damage_dealt.emit(target, final_dmg)
 		return {"success": true, "value": final_dmg, "target": target}
 	
@@ -122,15 +122,15 @@ func _resolve_damage(base_damage: int, source, target) -> Dictionary:
 	if hc:
 		var total = base_damage
 		var ctx: Dictionary = {}
-		hc.trigger("on_attack_start", total, ctx)
-		var hit_value = hc.trigger("calc_attack_base", total, ctx)
-		hit_value = hc.trigger("calc_attack_mult", hit_value, ctx)
-		hit_value = hc.trigger("calc_attack_damage", hit_value, ctx)
-		hit_value = hc.trigger("calc_attack_final", hit_value, ctx)
-		hc.trigger("on_attack_hit", hit_value, {"hit_index": 0})
+		hc.trigger(HookRegistry.HOOK_ON_ATTACK_START, total, ctx)
+		var hit_value = hc.trigger(HookRegistry.HOOK_CALC_BASE, total, ctx)
+		hit_value = hc.trigger(HookRegistry.HOOK_CALC_MULT, hit_value, ctx)
+		hit_value = hc.trigger(HookRegistry.HOOK_CALC_ADD, hit_value, ctx)
+		hit_value = hc.trigger(HookRegistry.HOOK_CALC_FINAL, hit_value, ctx)
+		hc.trigger(HookRegistry.HOOK_ON_ATTACK_HIT, hit_value, {"hit_index": 0})
 		if target is PlayerManager: target.take_damage(hit_value)
 		elif target is EnemyUnit: target.take_damage(hit_value)
-		hc.trigger("on_attack_end", 0, ctx)
+		hc.trigger(HookRegistry.HOOK_ON_ATTACK_END, 0, ctx)
 		damage_dealt.emit(target, hit_value)
 		return {"success": true, "value": hit_value, "target": target}
 	
@@ -174,7 +174,7 @@ func _resolve_damage_boost(value: int, source) -> Dictionary:
 func _resolve_temp_damage_boost(value: int, source) -> Dictionary:
 	if source is PlayerManager:
 		var hook_id = "temp_atk_%d" % _temp_hook_ids.size()
-		source.hook_chain.register("calc_attack_base", func(v, _c): return v + value, 5, hook_id)
+		source.hook_chain.register(HookRegistry.HOOK_CALC_BASE, func(v, _c): return v + value, 5, hook_id)
 		_temp_hook_ids.append(hook_id)
 		return {"success": true, "value": value}
 	return {"success": false, "value": 0}
@@ -193,9 +193,9 @@ func _resolve_store_damage(source) -> Dictionary:
 	if source is PlayerManager:
 		var ctx: Dictionary = {}
 		var v = source.base_strength
-		v = source.hook_chain.trigger("calc_attack_base", v, ctx)
-		v = int(source.hook_chain.trigger("calc_attack_mult", v, ctx))
-		var add = source.hook_chain.trigger("calc_attack_damage", 0, ctx)
+		v = source.hook_chain.trigger(HookRegistry.HOOK_CALC_BASE, v, ctx)
+		v = int(source.hook_chain.trigger(HookRegistry.HOOK_CALC_MULT, v, ctx))
+		var add = source.hook_chain.trigger(HookRegistry.HOOK_CALC_ADD, 0, ctx)
 		var raw = v + add
 		clear_temp_hooks(source)
 		source.pending_stored_damage += raw
@@ -286,7 +286,7 @@ func _resolve_exhaust_random(count: int, source) -> Dictionary:
 func _is_discard_blocked(source) -> bool:
 	var ctx := {"block_discard": false}
 	if source and source.hook_chain:
-		source.hook_chain.trigger(BuffManager.HOOK_DISCARD, 0, ctx)
+		source.hook_chain.trigger(HookRegistry.HOOK_CHECK_DISCARD, 0, ctx)
 	return ctx.get("block_discard", false)
 
 ## 随机弃置手牌
@@ -304,7 +304,7 @@ func _resolve_discard_random(count: int, source) -> Dictionary:
 ## 清理所有临时攻击力钩子
 func clear_temp_hooks(source) -> void:
 	if source and source.hook_chain:
-		for hook_id in _temp_hook_ids: source.hook_chain.unregister("calc_attack_base", hook_id)
+		for hook_id in _temp_hook_ids: source.hook_chain.unregister(HookRegistry.HOOK_CALC_BASE, hook_id)
 	_temp_hook_ids.clear()
 
 func clear_all_temp_hooks(source) -> void:

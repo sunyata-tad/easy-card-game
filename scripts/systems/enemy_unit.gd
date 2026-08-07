@@ -36,7 +36,7 @@ func take_damage(amount: int, ignore_target_block: bool = false) -> int:
 		return 0
 	
 	# 先经过钩子链处理（如易伤 buff 会增加伤害）
-	var actual_damage = int(hook_chain.trigger("on_damage_taken", amount, {}))
+	var actual_damage = int(hook_chain.trigger(HookRegistry.HOOK_ON_DAMAGE_TAKEN, amount, {}))
 	
 	# 格挡抵消伤害（除非被标记为无视格挡）
 	if not ignore_target_block and block > 0:
@@ -57,7 +57,7 @@ func take_damage(amount: int, ignore_target_block: bool = false) -> int:
 	# 死亡判定：通过钩子链允许阻止死亡（实现"生命归零不会死亡"等效果）
 	if current_hp <= 0:
 		var death_ctx: Dictionary = {"can_die": true, "source_type": "damage"}
-		hook_chain.trigger("before_death", actual_damage, death_ctx)
+		hook_chain.trigger(HookRegistry.HOOK_ON_BEFORE_DEATH, actual_damage, death_ctx)
 		if death_ctx.get("can_die", true):
 			is_dead = true
 			clear_intent()

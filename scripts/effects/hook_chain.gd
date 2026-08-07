@@ -1,5 +1,13 @@
 ## 钩子链系统，用于在攻击/伤害计算流程中插入可叠加的修改逻辑。
 ## 工作原理类似"责任链模式"：多个回调按优先级排序后依次执行，每个回调接收上一个的返回值作为输入。
+##
+## 调用规范（复用旧效果的标准流程）：
+##   调用钩子（trigger / register） → 实现效果（回调内写逻辑）
+##
+## 钩子名必须使用 HookRegistry 中已文档化的常量（本类会自动校验并告警），
+## 完整钩子列表（名字 + 注释）见 scripts/effects/hook_registry.gd，
+## 完整规范文档见项目根目录 EFFECT_HOOKS.md。
+##
 ## Godot 特色：
 ## - class_name 使脚本成为全局可用的类型（类似 Python 中定义一个类）
 ## - Callable 是可调用对象（类似 Python 的 callable / Java 的 FunctionalInterface）
@@ -10,11 +18,12 @@ class_name HookChain
 var _hooks: Dictionary = {}
 
 ## 注册一个钩子回调
-## @param hook_name: 钩子名称（对应攻击计算的不同阶段，如 "calc_attack_base"）
+## @param hook_name: 钩子名称（建议使用 HookRegistry 常量，未文档化会告警）
 ## @param callback: 回调函数，签名为 func(current_value: Variant, context: Dictionary) -> Variant
 ## @param priority: 优先级，数值越小越先执行（类似 Python 的 sorted(key=lambda)）
 ## @param id: 唯一标识，用于后续取消注册
 func register(hook_name: String, callback: Callable, priority: int = 0, id: String = "") -> void:
+	_validate_hook_name(hook_name, "register")
 	if not _hooks.has(hook_name):
 		_hooks[hook_name] = []
 	_hooks[hook_name].append({
@@ -33,10 +42,12 @@ func unregister(hook_name: String, id: String) -> void:
 	_hooks[hook_name] = _hooks[hook_name].filter(func(h): return h.id != id)
 
 ## 触发钩子链：按优先级依次执行所有注册的回调，每个回调的返回值作为下一个的输入
+## @param hook_name: 钩子名称（建议使用 HookRegistry 常量，未文档化会告警）
 ## @param value: 初始值（如基础攻击力）
 ## @param context: 可变的上下文字典，回调可以在其中读写额外数据（如标记"忽略格挡"）
 ## @return: 经过所有钩子处理后的最终值
 func trigger(hook_name: String, value: Variant = null, context: Dictionary = {}) -> Variant:
+	_validate_hook_name(hook_name, "trigger")
 	if not _hooks.has(hook_name):
 		return value
 	var current_value = value
@@ -57,3 +68,9 @@ func clear() -> void:
 ## 清空指定名称的所有钩子
 func clear_hook(hook_name: String) -> void:
 	_hooks.erase(hook_name)
+
+## 校验钩子名是否已文档化（定义在 HookRegistry），未文档化时告警提示
+## 这保证了"调用钩子"的钩子名都有据可查，拼写错误会在运行时立即暴露
+func _validate_hook_name(hook_name: String, action: String) -> void:
+	if not HookRegistry.is_known_hook(hook_name):
+		push_warning("HookChain.%s: 未文档化的钩子名 '%s'。请先查看 scripts/effects/hook_registry.gd 或 EFFECT_HOOKS.md 确认是否正确" % [action, hook_name])

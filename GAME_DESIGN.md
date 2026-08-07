@@ -137,6 +137,8 @@ INIT → DRAW_PHASE → PLAYER_TURN → RESOLVING → ENEMY_TURN → TURN_END，
 - 效果类型：damage / block / heal / 攻击力提升 / 蓄力 / buff / 抽牌 / 检索 / 消耗 / 洗牌等
 - 支持 `base_stat`（基于力量/敏捷计算效果值）与 `scaling_key`（描述占位符）
 - 标签系统：分类（type/keyword/archetype/rarity）+ 卡牌标签检索
+- **钩子调用规范**：所有钩子名统一收敛到 `scripts/effects/hook_registry.gd`（常量 + 清单），
+  复用旧效果遵循"调用钩子 → 实现效果"流程，完整规范见 `EFFECT_HOOKS.md`
 
 ### 4.4 卡牌升级
 - upgrade JSON 已定义、GameData.upgrade_card_at_index() 已实现
