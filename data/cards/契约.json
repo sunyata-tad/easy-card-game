@@ -1,0 +1,13 @@
+{
+	"id": "契约",
+	"name": "契约",
+	"type": "attack",
+	"description": "造成50点伤害，若击杀敌人，生命值永久上限减少1",
+	"rarity": "uncommon",
+	"target_type": "single_enemy",
+	"tags": ["Attack", "Uncommon"],
+	"treated_as": [],
+	"effects": [
+		{"effect_type": "contract", "value": 50}
+	]
+}

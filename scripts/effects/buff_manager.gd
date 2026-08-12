@@ -49,9 +49,6 @@ func _register_buff_hook(buff: BuffData) -> void:
 		"vulnerable":
 			# 易伤：受到伤害 × 1.5，至少为 1
 			hook_chain.register(HookRegistry.HOOK_ON_DAMAGE_TAKEN, func(v, _c): return maxi(1, int(v * 1.5)), 20, _hook_id("vulnerable"))
-		"skip_attack":
-			# 跳过攻击：在攻击开始时设置上下文的 skip_attack 标记
-			hook_chain.register(HookRegistry.HOOK_ON_ATTACK_START, func(v, c): c["skip_attack"] = true; return v, 100, _hook_id("skip_attack"))
 		"ignore_block":
 			# 无视格挡：在攻击开始时设置上下文的 ignore_block 标记
 			hook_chain.register(HookRegistry.HOOK_ON_ATTACK_START, func(v, c): c["ignore_block"] = true; return v, 50, _hook_id("ignore_block"))

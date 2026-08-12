@@ -67,13 +67,17 @@ func draw_cards(count: int) -> Array:
 	
 	return drawn_cards
 
-## 打出手牌中的一张卡牌（从手牌移到弃牌堆）
+## 打出手牌中的一张卡牌（带 Exhaust 标签的卡进消耗堆，否则进弃牌堆）
 func play_card(card: CardData, target = null) -> bool:
 	if not hand.has(card):
 		return false
 	
 	hand.erase(card)
-	discard_pile.append(card)
+	if card.has_tag("Exhaust"):
+		exhaust_pile.append(card)
+		card_exhausted.emit(card)
+	else:
+		discard_pile.append(card)
 	card_played.emit(card, target)
 	hand_changed.emit(hand)
 	_emit_deck_count()
@@ -118,6 +122,26 @@ func add_to_draw_pile(card: CardData, to_top: bool = false) -> void:
 func add_to_discard(card: CardData) -> void:
 	discard_pile.append(card.duplicate())
 	_emit_deck_count()
+
+## 将手牌中的一张牌移回抽牌堆（用于"回到牌库"类效果）
+func move_hand_to_draw_pile(card: CardData, to_top: bool = false) -> void:
+	if hand.has(card):
+		hand.erase(card)
+		if to_top:
+			draw_pile.push_front(card)
+		else:
+			draw_pile.append(card)
+		hand_changed.emit(hand)
+		_emit_deck_count()
+
+## 将弃牌堆中的一张牌移回手牌（用于"墓地回手"类效果）
+func move_discard_to_hand(card: CardData) -> void:
+	if discard_pile.has(card):
+		discard_pile.erase(card)
+		hand.append(card)
+		card_drawn.emit(card)
+		hand_changed.emit(hand)
+		_emit_deck_count()
 
 ## 在抽牌堆中按 id 搜索卡牌（不取出）
 func search_draw_pile(card_id: String) -> CardData:

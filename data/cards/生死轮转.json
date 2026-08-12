@@ -1,0 +1,14 @@
+{
+	"id": "生死轮转",
+	"name": "生死轮转",
+	"type": "skill",
+	"description": "支付20点生命值，交换卡组与墓地所有卡",
+	"rarity": "rare",
+	"target_type": "self",
+	"tags": ["Skill", "Rare"],
+	"treated_as": [],
+	"effects": [
+		{"effect_type": "pay_life", "value": 20},
+		{"effect_type": "swap_draw_discard"}
+	]
+}

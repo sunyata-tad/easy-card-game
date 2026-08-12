@@ -1,0 +1,14 @@
+{
+	"id": "热寂",
+	"name": "热寂",
+	"type": "attack",
+	"description": "消耗5点生命值，造成20点伤害",
+	"rarity": "common",
+	"target_type": "single_enemy",
+	"tags": ["Attack", "Common"],
+	"treated_as": [],
+	"effects": [
+		{"effect_type": "pay_life", "value": 5},
+		{"effect_type": "damage", "value": 20}
+	]
+}

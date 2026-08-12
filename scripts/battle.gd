@@ -128,7 +128,11 @@ func _on_battle_ended(victory: bool):
 				SaveManager.save_map_state()
 			
 			if endless_layer > 0:
-				GameManager.go_to_map(return_map_id, SaveManager.get_cached_map_state())
+				if endless_layer % 10 == 0:
+					# Boss 战后：遗物三选一
+					GameManager.go_to_relic_reward()
+				else:
+					GameManager.go_to_map(return_map_id, SaveManager.get_cached_map_state())
 			else:
 				GameManager.go_to_reward(battle_stats)
 		else:

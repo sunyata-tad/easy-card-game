@@ -1,0 +1,13 @@
+{
+	"id": "批命",
+	"name": "批命",
+	"type": "skill",
+	"description": "施加1回合迷惑（敌人本回合无法行动），消耗",
+	"rarity": "common",
+	"target_type": "single_enemy",
+	"tags": ["Skill", "Exhaust", "Common"],
+	"treated_as": [],
+	"effects": [
+		{"effect_type": "apply_debuff", "buff_id": "stun", "value": 1}
+	]
+}

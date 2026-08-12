@@ -5,10 +5,11 @@
 extends Node
 
 var player_deck: Array = []       ## 玩家当前牌组
-var player_max_hp: int = 80       ## 最大血量
-var player_current_hp: int = 80   ## 当前血量
-var player_strength: int = 0      ## 力量属性
+var player_max_hp: int = 50       ## 最大血量
+var player_current_hp: int = 50   ## 当前血量
+var player_strength: int = 5      ## 力量属性
 var player_dexterity: int = 0     ## 敏捷属性
+var relics: Array = []            ## 本局持有的遗物 id 列表
 var gold: int = 0                 ## 金币
 var battles_won: int = 0          ## 胜利次数
 var total_damage_dealt: int = 0   ## 累计造成伤害
@@ -37,10 +38,11 @@ func _ready():
 ## 初始化一次新的 run（使用默认初始牌组和属性）
 func initialize_new_run() -> void:
 	player_deck = card_database.load_starter_deck()
-	player_max_hp = 80
+	player_max_hp = 50
 	player_current_hp = player_max_hp
-	player_strength = 0
+	player_strength = 5
 	player_dexterity = 0
+	relics = []
 	gold = 0
 	battles_won = 0
 	total_damage_dealt = 0
@@ -80,6 +82,15 @@ func initialize_run_from_character(character: CharacterData) -> void:
 	deck_changed.emit(player_deck)
 	hp_changed.emit(player_current_hp, player_max_hp)
 	stats_changed.emit(player_strength, player_dexterity)
+
+## 获得一个遗物（加入本局遗物列表）
+func grant_relic(relic_id: String) -> void:
+	if not relics.has(relic_id):
+		relics.append(relic_id)
+
+## 获取遗物 id 列表副本
+func get_relics() -> Array:
+	return relics.duplicate()
 
 func get_deck() -> Array:
 	return player_deck.duplicate()

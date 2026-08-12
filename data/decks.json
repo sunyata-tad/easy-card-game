@@ -2,7 +2,7 @@
 	"starter_deck": [
 		{"card_id": "斩击", "count": 3},
 		{"card_id": "格挡", "count": 3},
-		{"card_id": "蓄力", "count": 2},
-		{"card_id": "蓄势", "count": 2}
+		{"card_id": "破甲", "count": 2},
+		{"card_id": "招架", "count": 2}
 	]
 }

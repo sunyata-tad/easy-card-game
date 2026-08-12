@@ -8,6 +8,17 @@
 
 ---
 
+## 近期重大变更（2026-08-12）
+
+- **自动攻击移除** → 主动**弃牌攻击**（回合中弃 1 张手牌 → get_strength() 走完整攻击链，一回合一次）
+- **蓄力/ skip_attack 删除**：`store_damage` / `pending_stored_damage` / 蓄力·蓄势 卡移除
+- **遗物系统新增**：`relic_data.gd` / `relic_database.gd` / `relic_manager.gd` / `data/relics.json`；无尽 Boss 战后**遗物三选一**（`RelicRewardScreen`）；终末轮回 + 占位头环
+- **数值**：力量 5 开局、玩家 HP 50、初始卡组 斩击×3/格挡×3/破甲×2/招架×2（临时）
+- 战斗按钮"普通攻击"；无法攻击提示"你已经攻击过了。"
+- 效果文本 ↔ 代码一致性规范（条件式）见 coding-conventions §6
+
+---
+
 ## 1. 项目概述
 
 回合制卡牌战斗 + 文字地图探索。玩家通过卡牌操控属性和牌堆，每回合自动攻击（力量为基础伤害），战斗间有地图探索、角色成长、存档系统。当前主线为**无尽模式**（营地 + 向北逐层推进），另有测试地图。
@@ -22,12 +33,11 @@
 - 卡牌效果采用**字典注册模式**：`effect_resolver.register_effect_handler("效果名", 处理函数)` 注册，新增效果无需改分发逻辑
 
 ### 2.2 伤害模型（当前实际）
-- **自动攻击**：基础力量（`base_strength`）每回合自动结算
+- **弃牌攻击**：玩家回合中主动弃 1 张手牌 → 用 get_strength() 走完整攻击链结算（一回合一次）
 - **裸属性 + buff 修正并存**：
-  - `PlayerManager.base_strength / base_dexterity / pending_stored_damage`（裸属性）
+  - `PlayerManager.base_strength / base_dexterity`（裸属性）
   - `get_strength() = base_strength + strength buff.stacks`
   - 临时攻击力通过 `calc_attack_base` 钩子（`temp_atk_%d`）注入，`clear_temp_hooks()` 清理
-  - 蓄力通过 `pending_stored_damage` 字段 + `_pending_stored` 钩子（见 4.4）
 
 ### 2.3 抽牌机制
 - **游戏王模式**：开局抽 5，每回合抽 1
@@ -46,7 +56,7 @@
 ### 2.6 效果与属性体系
 - **持续性效果统一为 buff**，由 `BuffManager` 管理，通过 `HookChain` 注入伤害计算
 - **持久属性为裸属性**（base_strength/base_dexterity），与 buff 修正叠加
-- **临时一次性效果**（temp_damage_boost/蓄力）用钩子 + 状态字段，不再伪装成 buff
+- **临时一次性效果**（temp_damage_boost）用钩子 + 状态字段，不再伪装成 buff
 
 ### 2.7 buff 衰减
 - `stack_decay` 字段可自定义衰减规则，`decay_on_event(event)` 通用触发
@@ -54,7 +64,7 @@
 - ⚠️ **当前多数 buff 的 stack_decay 为空字典（永续不衰减），留待逐个配置**
 
 ### 2.8 无层数 buff
-- NO_STACK_BUFFS = ["skip_attack", "ignore_block", "counter_stance"]
+- NO_STACK_BUFFS = ["ignore_block", "counter_stance"]
 - buff 栏只显示符号不显示数字，stacks 固定为 1
 
 ---
@@ -155,12 +165,12 @@ GameManager 场景枚举：MAIN_MENU, CHARACTER_SELECT, CHARACTER_CREATION, MAP,
 
 ```
 setup_battle() → start_battle()
-  → INIT → DRAW_PHASE(注册蓄力钩子,抽牌,决定意图) → PLAYER_TURN
-  → 玩家操作(打出卡牌→RESOLVING→PLAYER_TURN 循环)
+  → INIT → DRAW_PHASE(抽牌,决定意图) → PLAYER_TURN
+  → 玩家操作(打出卡牌→RESOLVING→PLAYER_TURN 循环；可弃牌攻击→选目标→攻击)
   → 结束回合 → ENEMY_TURN → TURN_END
   → _process_turn_end_effects():
       1. tick_buffs_on_turn_end（毒/再生等，玩家+敌人）
-      2. _execute_player_auto_attack（获取护甲,判断 skip_attack,计算伤害,攻击,清除 _pending_stored 钩子）
+      2. _execute_player_auto_block（敏捷自动护甲）
       3. _execute_enemy_attacks（逐个执行敌人行动）
       4. decrease_durations + remove_at_turn_end（玩家+敌人）
   → DRAW_PHASE(下回合)
@@ -169,17 +179,17 @@ setup_battle() → start_battle()
 关键细节：
 - setup_battle 从 GameData 读取 `player_max_hp/player_current_hp/player_strength/player_dexterity` 初始化 PlayerManager
 - sync_player_stats_to_gamedata 将 base_strength/base_dexterity 写回 GameData
-- skip_attack 时仍获取 dexterity 护甲，只跳过自动攻击
-- 蓄力释放：DRAW_PHASE 注册 `_pending_stored` 钩子到 calc_attack_damage；auto_attack 后 unregister + 清零
+- 敏捷护甲：TURN_END 阶段 `_execute_player_auto_block` 获取（base_dexterity 自动护甲保留）
+- 弃牌攻击：玩家主动触发（弃 1 牌 → 攻击），DRAW_PHASE 不注册蓄力钩子（蓄力已删）
 
 ### 4.3 伤害计算链条（必须遵守，防双算）
 
 **攻击流程（PlayerManager 攻击，effect_resolver._resolve_damage / battle_controller._perform_attack 共用）：**
 ```
-hc.trigger("on_attack_start", 0, ctx)          # 可设 skip_attack / ignore_block 标记
+hc.trigger("on_attack_start", 0, ctx)          # 可设 ignore_block 标记
 base = hc.trigger("calc_attack_base", base_strength, ctx)    # 临时力量钩子(temp_atk)在此
 base = int(hc.trigger("calc_attack_mult", int(base), ctx))
-add = hc.trigger("calc_attack_damage", 0, ctx)               # 蓄力 _pending_stored 钩子在此
+add = hc.trigger("calc_attack_damage", 0, ctx)               # 额外伤害加算阶段
 raw = int(base) + int(add)
 final_dmg = hc.trigger("calc_attack_final", raw, ctx)        # weak ×0.75
 hc.trigger("on_attack_hit", final_dmg, {"hit_index": 0})
@@ -198,29 +208,14 @@ if hp <= 0: hook_chain.trigger("before_death", ...)             # 可阻止死�
 **关键规则：**
 - vulnerable 只在 take_damage 内部的 on_damage_taken 处理（单一责任方，防双算）
 - weak 在 calc_attack_final 处理；ignore_block 通过 ctx 传给 take_damage 第二参
-- 蓄力只参与 auto_attack 的 calc_attack_damage 阶段，不参与卡牌伤害
 
-### 4.4 蓄力机制（store_damage，pending_stored_damage 方案）
+### 4.4 弃牌攻击（主动攻击，替代原自动攻击）
 
-**存储（effect_resolver._resolve_store_damage）：**
-```
-v = base_strength
-v = hook_chain.trigger("calc_attack_base", v, ctx)    # 含临时力量钩子
-v = int(hook_chain.trigger("calc_attack_mult", v, ctx))
-add = hook_chain.trigger("calc_attack_damage", 0, ctx)
-raw = v + add
-clear_temp_hooks(source)          # 清除临时攻击力钩子
-source.pending_stored_damage += raw
-```
-
-**释放（battle_controller._on_draw_phase）：**
-```
-if pending_stored_damage > 0:
-    val = pending_stored_damage; pending_stored_damage = 0
-    hook_chain.register("calc_attack_damage", func(v,_c): return v+val, 5, "_pending_stored")
-```
-
-⚠️ **BUG-2 未完全修复**：`pending_stored_damage += raw` 每次蓄力累加 base_strength，`clear_temp_hooks` 只清临时钩子。同回合打多张蓄力 → base 重复累加（strength=5 打 2 张蓄力 → pending=10）。**蓄力功能可能被移除/重做（见 8.1）**
+- 流程：玩家回合点击"普通攻击" → 进入"选一张牌弃掉"（card select 模式）→ 弃牌立即结算 → 实时检测存活敌人 → 选目标 → `_perform_attack` 走完整攻击链（伤害 = get_strength()）
+- 一回合一次（`discard_attack_available`，回合开始重置）；弃牌代价已付即消耗名额（防倾泻手牌）
+- 实时结算：选目标前实时检测存活敌人；目标已死自动改选存活；无存活目标则攻击作废
+- 无法攻击时提示"你已经攻击过了。"
+- 旧蓄力机制（store_damage / pending_stored_damage）已删除（2026-08-12）
 
 ### 4.5 Buff 系统
 
@@ -240,7 +235,6 @@ if pending_stored_damage > 0:
 | dexterity | calc_attack_block | +stacks 格挡 |
 | weak | calc_attack_final | 伤害 ×0.75 |
 | vulnerable | on_damage_taken | 受伤 ×1.5 |
-| skip_attack | on_attack_start | 标记跳过攻击 |
 | ignore_block | on_attack_start | 标记无视格挡 |
 | counter_stance | on_attack_hit | 记录反击伤害 |
 
@@ -257,7 +251,8 @@ if pending_stored_damage > 0:
 - 支持 `base_stat` 字段：效果值基于玩家属性（strength/dexterity × multiplier）
 
 #### 效果类型
-damage / block / heal / damage_boost(永久改 base_strength) / temp_damage_boost(注册 calc_attack_base 钩子) / skip_attack(蓄势) / store_damage(蓄力) / ignore_block(破甲) / counter_stance(招架) / draw / apply_buff·apply_debuff / add_card_to_hand / search_draw·search_discard / search_draw_by_tag·search_discard_by_tag / exhaust_random·discard_random / shuffle_discard_to_draw
+damage / block / heal / damage_boost(永久改 base_strength) / temp_damage_boost(注册 calc_attack_base 钩子) / ignore_block(破甲) / counter_stance(招架) / draw / apply_buff·apply_debuff / add_card_to_hand / search_draw·search_discard / search_draw_by_tag·search_discard_by_tag / exhaust_random·discard_random / shuffle_discard_to_draw
+（蓄力 store_damage、skip_attack 已删除 2026-08-12）
 
 #### CardSystem
 - 四牌堆：draw_pile / hand / discard_pile / exhaust_pile（消耗堆）
@@ -319,7 +314,7 @@ damage / block / heal / damage_boost(永久改 base_strength) / temp_damage_boos
 - 手牌布局（HandLayoutPresets.get_card_position）、拖拽箭头（DragArrow）、目标标记（TargetMarker）
 - 攻击目标按钮（手动选目标模式）、卡牌选择模式（回调机制）、伤害数字、buff 栏 + tooltip
 - show_turn_banner / show_state_message 提示
-- 玩家属性面板：蓄力:%d（get_stored_power）+ 预计攻击:%d（get_expected_attack_damage）
+- 玩家属性面板：弃牌攻击:%d（get_expected_attack_damage，弃牌攻击伤害预览）
 
 ### 5.2 CardUI
 - 状态：is_pressed / is_dragging / is_hovered / is_select_mode / is_awaiting_target
@@ -339,19 +334,17 @@ damage / block / heal / damage_boost(永久改 base_strength) / temp_damage_boos
 
 ## 6. 数据定义
 
-### 6.1 卡牌（data/cards/，7 张）
+### 6.1 卡牌（data/cards/，5 张；旧卡整体待重设计）
 
 | ID | 类型 | 目标 | 效果 | 稀有度 |
 |----|------|------|------|--------|
 | 斩击 | attack | self | temp_damage_boost +5 | basic |
 | 格挡 | skill | self | block 5 | basic |
-| 蓄力 | skill | self | skip_attack + store_damage | uncommon |
-| 蓄势 | skill | self | skip_attack + draw 2 | uncommon |
 | 破甲 | attack | self | ignore_block + temp_damage_boost +3 | uncommon |
 | 招架 | skill | self | counter_stance + block 5 | uncommon |
 | 致弱 | skill | single_enemy | apply_buff vulnerable 2层 | common |
 
-初始卡组（decks.json）：斩击×3, 格挡×3, 蓄力×2, 蓄势×2
+初始卡组（decks.json）：斩击×3, 格挡×3, 破甲×2, 招架×2（蓄力/蓄势已删）
 
 卡牌 JSON 模板：`_模板_卡牌名.json`（含 effect_type / buff_id / base_stat 说明，可扩展架构参考）
 
@@ -369,7 +362,8 @@ action type：attack / defend / buff / debuff，均带 intent_text / intent_icon
 
 ### 6.3 Buff（data/buffs.json）
 
-可用 buff：strength, dexterity, weak, vulnerable, poison, regen, skip_attack, ignore_block, counter_stance
+可用 buff：strength, dexterity, weak, vulnerable, poison, regen, ignore_block, counter_stance
+（skip_attack 已删 2026-08-12）
 （2026-08-05 剪枝：temp_strength / stored_power 已从定义移除）
 
 字段：id / name / symbol / color / description / buff_type / modifier_formula（已废弃，保留字段）
@@ -394,7 +388,7 @@ action type：attack / defend / buff / debuff，均带 intent_text / intent_icon
 
 - [x] 战斗系统：状态机 + HookChain 责任链 + 效果字典注册模式
 - [x] 伤害模型重构：裸属性 base_strength/base_dexterity + buff 修正 + 完整钩子链
-- [x] 蓄力机制重构：pending_stored_damage + _pending_stored 钩子（替代 stored_power buff）
+- [x] ~~蓄力机制重构：pending_stored_damage + _pending_stored 钩子~~（2026-08-12 已删除，改用弃牌攻击）
 - [x] 效果分发重构：match → register_effect_handler 注册表（可扩展）
 - [x] 无尽模式：营地 + 动态楼层（普通/宝箱/精英/Boss/事件）+ 战斗前后存档恢复
 - [x] 测试地图：营地/普通战斗/精英战斗 3 层
@@ -409,17 +403,13 @@ action type：attack / defend / buff / debuff，均带 intent_text / intent_icon
 
 ## 8. 已知问题与待办
 
-### 8.1 战斗 Bug（蓄力相关，可能被移除）
+### 8.1 战斗 Bug（蓄力相关，均已随删除关闭）
 
-#### BUG-1: 蓄力后斩击伤害未实时计算（⚠️ 代码路径已具备，待实测）
-- `play_card` 每次打牌后调用 `_update_player_ui()`；`update_player_stats_info()` 实时显示"蓄力:%d"与"预计攻击:%d"（`get_expected_attack_damage()` 走完整钩子链）
-- 残留疑点：蓄力卡 `store_damage` 会 `clear_temp_hooks`，若"斩击后蓄力"时序下临时力量被吸入蓄力并清除，与"蓄力后斩击"显示可能不一致
+#### BUG-1: 蓄力后斩击伤害未实时计算（✅ 关闭 2026-08-12：蓄力机制已删除）
+- 原由 `store_damage` / `pending_stored_damage` 引起，机制已删
 
-#### BUG-2: 多次打出蓄力重复加伤害（⚠️ 未完全修复）
-- `_resolve_store_damage` 中 `pending_stored_damage += raw`，raw 每次含 base_strength
-- 反例：strength=5，同回合打 2 张蓄力 → pending=10（base 重复累加）
-- 额外隐患：若本回合已注册上回合 `_pending_stored` 钩子，新蓄力会把它也算进 raw
-- **设计方向**：蓄力 bug 未成功，**后续可能考虑移除蓄力功能**（或大修卡牌效果时重做）
+#### BUG-2: 多次打出蓄力重复加伤害（✅ 关闭 2026-08-12：蓄力机制已删除）
+- 原由 `_resolve_store_damage` 的 `pending_stored_damage += raw` 引起，机制已删
 
 ### 8.2 地图总览 Bug
 
@@ -444,14 +434,14 @@ action type：attack / defend / buff / debuff，均带 intent_text / intent_icon
 - 角色系统未接入主流程（新游戏直接进无尽地图）
 
 ### 8.4 待开发功能
-- 高优先级：卡牌效果大修（含蓄力去留）、卡牌升级触发、buff stack_decay 配置、EVENT 事件实装
+- 高优先级：卡牌重新设计（规则突破 + 减益利用）、卡牌升级触发、buff stack_decay 配置、EVENT 事件实装
 - 中优先级：敌人 AI 扩展、更多敌人/Boss、卡牌动画+音效、地图优化（替代总览方案）
 - 低优先级：buff 栏与属性面板去重、Game Over 完善、敌人 buff 衰减配置
 
-### 8.5 规划方向（用户 2026-08-05 确认）
-- **蓄力 bug 未成功**：后续可能移除蓄力功能
+### 8.5 规划方向（用户 2026-08-05 确认，2026-08-12 更新）
+- ~~**蓄力**~~：已删除（2026-08-12）
 - **地图拖动 bug 未成功**：地图考虑其他优化方式
-- **卡牌效果将大修**
+- **卡牌重新设计**（规则突破 + 减益利用；数值基准 1 卡≈5）
 - 死代码剪枝已完成（166 行）
 
 ---
@@ -473,13 +463,13 @@ battle_controller._connect_signals():
   player_manager.hp_changed / block_changed / player_died / counter_damage
 ```
 
-### 9.2 蓄力钩子注册/清理
+### 9.2 钩子注册/清理
 - 临时攻击钩子：`temp_atk_%d`（calc_attack_base），`clear_temp_hooks()` 清理
-- 蓄力钩子：`_pending_stored`（calc_attack_damage），DRAW_PHASE 注册、auto_attack 后 unregister
+- 遗物钩子：`relic_before_death`（before_death）、`relic_damage_redirect`（on_damage_taken），由 RelicManager 注册
 
 ### 9.3 战斗胜利结算（battle.gd）
 - 无尽层经验：30 + 层×5（Boss 层 +50）→ gain_exp
-- 胜利：标记 endless_layer_cleared → 返回无尽地图；非无尽 → RewardScreen
+- 胜利：标记 endless_layer_cleared → 返回无尽地图；**Boss 层（%10==0）先进遗物三选一**；非无尽 → RewardScreen
 - 测试模式：不存档，直接返回测试地图
 
 ### 9.4 PlayerManager 便捷方法
@@ -488,10 +478,9 @@ battle_controller._connect_signals():
 |------|------|
 | get_strength() | base_strength + strength buff.stacks |
 | get_dexterity() | base_dexterity + dexterity buff.stacks |
-| get_stored_power() | pending_stored_damage |
 | get_total_damage() | base_strength + int(get_flat_add("damage")) |
 | get_total_block() | base_dexterity + int(get_flat_add("block")) |
-| get_expected_attack_damage() | 完整钩子链预览（UI 用） |
+| get_expected_attack_damage() | 完整钩子链预览（UI 用，弃牌攻击伤害预览） |
 
 ---
 

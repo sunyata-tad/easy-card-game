@@ -51,11 +51,11 @@ func _setup_buttons():
 	if cancel_button:
 		cancel_button.pressed.connect(_on_cancel_pressed)
 
-## 初始化预设牌组（3张斩击 + 3张格挡 + 2张蓄力 + 2张蓄势）
+## 初始化预设牌组（3张斩击 + 3张格挡 + 2张破甲 + 2张招架）
 func _setup_initial_stats():
 	creation_data.base_stats = {
-		"max_hp": 80,
-		"strength": 0,
+		"max_hp": 50,
+		"strength": 5,
 		"dexterity": 0,
 		"initial_block": 0
 	}
@@ -67,9 +67,9 @@ func _setup_initial_stats():
 	for i in range(3):
 		creation_data.deck_card_ids.append("格挡")
 	for i in range(2):
-		creation_data.deck_card_ids.append("蓄力")
+		creation_data.deck_card_ids.append("破甲")
 	for i in range(2):
-		creation_data.deck_card_ids.append("蓄势")
+		creation_data.deck_card_ids.append("招架")
 
 ## 随机分配属性点
 func _randomize_stats():

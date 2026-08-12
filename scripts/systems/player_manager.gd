@@ -1,5 +1,5 @@
 ## 玩家管理器：代表玩家角色在战斗中的所有状态（血量、格挡、属性、buff 等）。
-## 与 EnemyUnit 结构对称，但多了"选择目标"和"存储伤害"等玩家特有机制。
+## 与 EnemyUnit 结构对称，但多了"选择目标"等玩家特有机制。
 ## Godot 特色：
 ## - 信号参数类型声明（如 current: int, maximum: int）是可选但推荐的做法
 ## - int() / float() 是类型转换函数
@@ -10,9 +10,9 @@ var max_hp: int                ## 最大血量
 var block: int = 0             ## 当前格挡值
 var base_strength: int = 0     ## 基础力量（影响攻击力）
 var base_dexterity: int = 0    ## 基础敏捷（影响格挡值）
-var pending_stored_damage: int = 0  ## 待存储的伤害（用于"蓄力"机制：将本回合剩余伤害留到下回合）
 var buff_manager: BuffManager  ## buff 管理器
 var hook_chain: HookChain      ## 钩子链
+var relic_manager: RelicManager ## 遗物管理器（规则改变来源）
 var selected_target_index: int = 0   ## 选中敌人的索引
 var is_dead: bool = false      ## 是否已死亡
 var selected_target: EnemyUnit = null  ## 当前选中的敌人对象
@@ -30,6 +30,7 @@ func _init(initial_max_hp: int = 80):
 	current_hp = max_hp
 	hook_chain = HookChain.new()
 	buff_manager = BuffManager.new(hook_chain)
+	relic_manager = RelicManager.new(self)
 
 ## 获取当前力量值（基础力量 + 力量 buff 层数）
 func get_strength() -> int:
@@ -40,10 +41,6 @@ func get_strength() -> int:
 func get_dexterity() -> int:
 	var buff = buff_manager.get_buff_by_id("dexterity")
 	return base_dexterity + (buff.stacks if buff else 0)
-
-## 获取待释放的存储伤害值
-func get_stored_power() -> int:
-	return pending_stored_damage
 
 ## 获取总伤害加成（基础力量 + 所有 buff 的 damage_add 修正值之和）
 func get_total_damage() -> int:
@@ -81,16 +78,17 @@ func take_damage(amount: int) -> int:
 			return 0
 		else:
 			actual_damage -= block; block = 0; block_changed.emit(block)
-	current_hp = maxi(current_hp - actual_damage, 0)
+	current_hp -= actual_damage
 	hp_changed.emit(current_hp, max_hp); player_damaged.emit(actual_damage)
-	# 死亡判定：通过钩子链允许阻止死亡
+	# 死亡判定：通过钩子链允许阻止死亡 / 允许生命为负（遗物觉醒态）
 	if current_hp <= 0:
-		var death_ctx: Dictionary = {"can_die": true}
+		var death_ctx: Dictionary = {"can_die": true, "allow_negative": false}
 		hook_chain.trigger(HookRegistry.HOOK_ON_BEFORE_DEATH, actual_damage, death_ctx)
 		if death_ctx.get("can_die", true):
-			is_dead = true; player_died.emit()
-		else:
-			current_hp = 1
+			die()
+		elif not death_ctx.get("allow_negative", false):
+			# 归零不死亡：保持 0（不设为 1）
+			current_hp = maxi(current_hp, 0)
 			hp_changed.emit(current_hp, max_hp)
 	return actual_damage
 
@@ -112,10 +110,34 @@ func heal(amount: int) -> int:
 
 func reset_block() -> void: block = 0; block_changed.emit(block)
 
+## 直接判定死亡（如遗物规则：抽空牌组时抽卡）
+func die() -> void:
+	if is_dead: return
+	is_dead = true
+	player_died.emit()
+
+## 支付生命：直接扣 HP，不被护盾格挡 / 不被伤害转移 / 不走 on_damage_taken。
+## 可触发遗物归零判定（配合终末轮回"卖血启动"）。
+func pay_life(amount: int) -> bool:
+	if is_dead or amount <= 0:
+		return amount <= 0
+	current_hp -= amount
+	hp_changed.emit(current_hp, max_hp)
+	if current_hp <= 0:
+		# 归零判定：走 before_death 钩子（让终末轮回等遗物接住）
+		var death_ctx: Dictionary = {"can_die": true, "allow_negative": false}
+		hook_chain.trigger(HookRegistry.HOOK_ON_BEFORE_DEATH, amount, death_ctx)
+		if death_ctx.get("can_die", true):
+			die()
+		elif not death_ctx.get("allow_negative", false):
+			current_hp = maxi(current_hp, 0)
+			hp_changed.emit(current_hp, max_hp)
+	return true
+
 ## 设置最大血量（当前血量不会超过新的最大值）
 func set_max_hp(value: int) -> void: max_hp = value; current_hp = mini(current_hp, max_hp); hp_changed.emit(current_hp, max_hp)
 
-func is_alive() -> bool: return not is_dead and current_hp > 0
+func is_alive() -> bool: return not is_dead  ## 以 is_dead 为准（遗物觉醒后生命可为负，仍算存活）
 
 ## 获取血量百分比（0.0 ~ 1.0）
 func get_hp_percent() -> float: return float(current_hp) / float(max_hp)

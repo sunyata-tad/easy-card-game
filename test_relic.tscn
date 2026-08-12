@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://testrelic01"]
+
+[ext_resource type="Script" path="res://test_relic_scene.gd" id="1_relic"]
+
+[node name="TestRelic" type="Node"]
+script = ExtResource("1_relic")

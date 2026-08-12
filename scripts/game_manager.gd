@@ -15,6 +15,7 @@ enum GameScene {
 	MAP,               ## 地图
 	BATTLE,            ## 战斗
 	REWARD,            ## 奖励
+	RELIC_REWARD,      ## 遗物奖励（Boss 战后三选一）
 	GAME_OVER          ## 游戏结束
 }
 
@@ -26,6 +27,7 @@ const SCENES := {
 	GameScene.MAP: "res://scenes/MapScreen.tscn",
 	GameScene.BATTLE: "res://scenes/BattleScene.tscn",
 	GameScene.REWARD: "res://scenes/RewardScreen.tscn",
+	GameScene.RELIC_REWARD: "res://scenes/RelicRewardScreen.tscn",
 	GameScene.GAME_OVER: "res://scenes/GameOverScreen.tscn"
 }
 
@@ -105,7 +107,7 @@ func go_to_test_map() -> void:
 	GameData.player_dexterity = 5
 	var card_db = CardDatabase.new()
 	GameData.player_deck = card_db.create_deck([
-		{"card_id": "蓄势", "count": 20}
+		{"card_id": "格挡", "count": 20}
 	])
 	var data: Dictionary = {"map_id": "test", "test_mode": true}
 	change_scene(GameScene.MAP, data)
@@ -120,7 +122,7 @@ func go_to_test_battle() -> void:
 		GameData.player_dexterity = 5
 		var card_db = CardDatabase.new()
 		GameData.player_deck = card_db.create_deck([
-			{"card_id": "蓄势", "count": 20}
+			{"card_id": "格挡", "count": 20}
 		])
 		start_battle([enemy])
 
@@ -149,6 +151,10 @@ func end_battle(victory: bool, battle_stats: Dictionary = {}) -> void:
 func go_to_reward(battle_stats: Dictionary = {}) -> void:
 	var data: Dictionary = {"battle_stats": battle_stats}
 	change_scene(GameScene.REWARD, data)
+
+## 遗物奖励（Boss 战后三选一）
+func go_to_relic_reward() -> void:
+	change_scene(GameScene.RELIC_REWARD)
 
 func go_to_game_over(stats: Dictionary = {}) -> void:
 	var data = {"stats": stats}

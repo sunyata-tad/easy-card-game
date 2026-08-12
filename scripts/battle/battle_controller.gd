@@ -14,6 +14,8 @@ var enemy_database: EnemyDatabase
 var pending_card: CardData = null
 var is_first_turn: bool = true
 var is_discard_phase: bool = false
+var discard_attack_available: bool = true   ## 本回合是否还能使用弃牌攻击（基础：一回合一次）
+var _is_discard_attack_aiming: bool = false ## 弃牌攻击：是否处于"已弃牌、等待选择攻击目标"阶段
 
 signal battle_started()
 signal battle_ended(victory: bool)
@@ -44,6 +46,7 @@ func _connect_signals() -> void:
 	enemy_system.enemy_died.connect(_on_enemy_died)
 	enemy_system.enemy_damaged.connect(_on_enemy_damaged)
 	enemy_system.all_enemies_defeated.connect(_on_all_enemies_defeated)
+	card_system.deck_exhausted.connect(_on_deck_exhausted)
 	player_manager.hp_changed.connect(_on_player_hp_changed)
 	player_manager.block_changed.connect(_on_player_block_changed)
 	player_manager.player_died.connect(_on_player_died)
@@ -55,16 +58,29 @@ func setup_battle(root_node: Control, initial_deck: Array = [], enemies: Array =
 	_connect_ui_signals()
 	card_system.initialize_deck(initial_deck)
 	effect_resolver.card_system = card_system
+	effect_resolver.ui_controller = ui_controller
 	player_manager.max_hp = GameData.player_max_hp
 	player_manager.current_hp = GameData.player_current_hp
 	player_manager.base_strength = GameData.player_strength
 	player_manager.base_dexterity = GameData.player_dexterity
+	# 加载遗物（规则改变来源）并注入战斗上下文
+	_load_player_relics()
 	for enemy_data in enemies:
 		enemy_system.add_enemy(enemy_data)
 	if enemies.is_empty():
 		var e = enemy_database.get_enemy("test_dummy")
 		if e:
 			enemy_system.add_enemy(e)
+
+## 从 GameData 加载玩家遗物，并注入战斗上下文（供需要敌方/状态的遗物规则使用）
+func _load_player_relics() -> void:
+	var relic_db := RelicDatabase.new()
+	if GameData:
+		for relic_id in GameData.get_relics():
+			var relic = relic_db.get_relic(relic_id)
+			if relic:
+				player_manager.relic_manager.add_relic(relic)
+	player_manager.relic_manager.battle_controller = self
 
 func start_battle() -> void:
 	_update_initial_ui()
@@ -80,6 +96,8 @@ func _connect_ui_signals() -> void:
 	ui_controller.card_played.connect(_on_ui_card_played)
 	ui_controller.enemy_selected.connect(_on_ui_enemy_selected)
 	ui_controller.end_turn_clicked.connect(_on_ui_end_turn_clicked)
+	ui_controller.discard_attack_requested.connect(_on_discard_attack_requested)
+	ui_controller.attack_target_selected.connect(_on_discard_attack_target_selected)
 
 ## 检查战斗是否结束（可被 HookChain 拦截修改）
 ## 通过 player_manager.hook_chain 的 HOOK_CHECK_BATTLE_END 钩子实现自定义结束条件
@@ -122,12 +140,10 @@ func _on_draw_phase() -> void:
 	enemy_system.reset_all_block()
 	player_manager.buff_manager.remove_at_turn_end()
 	effect_resolver.clear_all_temp_hooks(player_manager)
-	if player_manager.pending_stored_damage > 0:
-		var val = player_manager.pending_stored_damage
-		player_manager.pending_stored_damage = 0
-		player_manager.hook_chain.unregister(HookRegistry.HOOK_CALC_ADD, "_pending_stored")
-		player_manager.hook_chain.register(HookRegistry.HOOK_CALC_ADD, func(v, _c): return v + val, 5, "_pending_stored")
 	var draw_count = 5 if is_first_turn else 1
+	# 遗物"终末轮回"效果②生效后：每回合开始抽卡直到手卡≥10
+	if player_manager.relic_manager and player_manager.relic_manager.is_awakened("immortal_cycle"):
+		draw_count = maxi(card_system.max_hand_size - card_system.hand.size(), 0)
 	is_first_turn = false
 	# 正常规则：每回合开始必定抽 1 张（游戏王模式），即使手牌已达上限也会抽到 11 张；
 	# 超出的部分由回合结束的弃牌阶段处理（弃牌降到 max_hand_size）。
@@ -192,7 +208,66 @@ func confirm_discard_cards(cards_to_discard: Array) -> void:
 		return
 	await _resolve_end_turn()
 
+## ========== 弃牌攻击（主动攻击） ==========
+## 玩家在回合中主动弃 1 张手牌 → 立刻用 get_strength() 走完整攻击链结算一次攻击。
+## 基础限制：一回合一次（discard_attack_available）；未来可由"突破规则"卡修改。
+
+## UI 触发：点击"普通攻击"按钮 → 进入"选择一张牌弃掉"步骤
+func _on_discard_attack_requested() -> void:
+	_is_discard_attack_aiming = false
+	if not state_machine.is_player_turn():
+		return
+	# 无法攻击（已攻击过 / 效果导致不能攻击 / 额外攻击次数耗尽）→ 统一提示
+	if not discard_attack_available:
+		ui_controller.show_state_message("你已经攻击过了。", 1.0)
+		return
+	if card_system.hand.is_empty():
+		ui_controller.show_state_message("没有手牌可以弃掉", 1.0)
+		return
+	ui_controller.enter_card_select_mode(
+		"弃牌攻击：选择 1 张牌弃掉（本回合限 1 次）", 1, 1,
+		_on_discard_attack_card_selected
+	)
+
+## 弃牌步骤完成：弃掉所选牌 → 立即结算（实时结算原则）→ 实时检测存活敌人 → 进入选目标
+func _on_discard_attack_card_selected(cards: Array) -> void:
+	if cards.is_empty():
+		return
+	# 弃牌 cost 完成后立即结算；弃牌可能触发效果杀死敌人
+	card_system.discard_specific_card(cards[0])
+	# 弃牌代价已支付，本次"弃牌攻击"名额消耗（防止取消后免费倾泻手牌）
+	discard_attack_available = false
+	_update_player_ui()
+	# 实时检测存活目标（实时结算：弃牌效果可能已杀死部分/全部敌人）
+	var alive = enemy_system.get_alive_enemies()
+	if alive.is_empty():
+		# 无存活目标，本次攻击作废；战斗是否结束交由结束判定
+		_check_battle_end_state()
+		return
+	_is_discard_attack_aiming = true
+	ui_controller.start_target_selection()
+
+## 选目标完成：执行弃牌攻击（完整攻击链，伤害 = get_strength() = base_strength + 力量 buff）
+func _on_discard_attack_target_selected(enemy: EnemyUnit) -> void:
+	if not _is_discard_attack_aiming:
+		return
+	_is_discard_attack_aiming = false
+	# 实时结算：目标可能在弃牌效果中已死亡，重新校验存活
+	if not enemy.is_alive():
+		var alive = enemy_system.get_alive_enemies()
+		if alive.is_empty():
+			_check_battle_end_state()
+			return
+		enemy = alive[0]
+	_perform_attack(player_manager, enemy, 0)
+	_update_player_ui()
+	_check_battle_end_state()
+
 func _on_victory() -> void:
+	# 遗物"终末轮回"效果③：触发过②的战斗，战斗结束时生命设为上限 50%
+	if player_manager.relic_manager and player_manager.relic_manager.is_awakened("immortal_cycle"):
+		player_manager.current_hp = int(round(player_manager.max_hp * 0.5))
+		player_manager.hp_changed.emit(player_manager.current_hp, player_manager.max_hp)
 	sync_player_stats_to_gamedata()
 	battle_ended.emit(true)
 
@@ -211,7 +286,7 @@ func _process_turn_end_effects() -> void:
 	_tick_buffs_on_turn_end(player_manager)
 	for enemy in enemy_system.get_alive_enemies():
 		_tick_buffs_on_turn_end(enemy)
-	await _execute_player_auto_attack()
+	_execute_player_auto_block()
 	if _check_battle_end_state():
 		return
 	await _execute_enemy_attacks()
@@ -230,26 +305,12 @@ func _execute_enemy_attacks() -> void:
 			break
 		await get_tree().create_timer(0.3).timeout
 
-func _execute_player_auto_attack() -> void:
+## 回合结束阶段：玩家自动获取敏捷护甲（base_dexterity 自动护甲保留；攻击改为主动弃牌攻击）
+func _execute_player_auto_block() -> void:
 	var total_block = player_manager.get_total_block()
 	if total_block > 0:
 		player_manager.gain_block(total_block)
 		_update_player_ui()
-		await get_tree().create_timer(0.2).timeout
-	if player_manager.buff_manager.has_buff("skip_attack"):
-		await get_tree().create_timer(0.2).timeout
-		return
-	var alive = enemy_system.get_alive_enemies()
-	var target = player_manager.selected_target
-	if target == null or not target.is_alive():
-		if alive.size() > 0:
-			target = alive[0]
-			player_manager.selected_target = target
-	if target and target.is_alive():
-		_perform_attack(player_manager, target, 0)
-		await get_tree().create_timer(0.2).timeout
-	player_manager.hook_chain.unregister(HookRegistry.HOOK_CALC_ADD, "_pending_stored")
-	player_manager.pending_stored_damage = 0
 
 func _perform_attack(source, target, base_damage: int) -> void:
 	if not source or not target:
@@ -304,6 +365,10 @@ func _execute_enemy_turns() -> void:
 func _execute_single_enemy_turn(enemy: EnemyUnit) -> void:
 	if not enemy.is_alive() or enemy.current_intent.is_empty() or not player_manager.is_alive():
 		return
+	# 迷惑：本回合无法行动（回合结束层数-1）
+	if enemy.buff_manager and enemy.buff_manager.has_buff("stun"):
+		ui_controller.show_state_message("%s 被迷惑，无法行动" % enemy.get_name(), 0.8)
+		return
 	_execute_enemy_action(enemy, enemy.current_intent)
 
 func _execute_enemy_action(enemy: EnemyUnit, action: Dictionary) -> void:
@@ -326,6 +391,7 @@ func _execute_enemy_action(enemy: EnemyUnit, action: Dictionary) -> void:
 			_update_player_ui()
 
 func _on_player_turn_start() -> void:
+	discard_attack_available = true
 	_tick_buffs_on_turn_start(player_manager)
 	for enemy in enemy_system.get_alive_enemies():
 		_tick_buffs_on_turn_start(enemy)
@@ -353,6 +419,10 @@ func _apply_tick_effect(target, effect: Dictionary) -> void:
 
 func play_card(card: CardData, target = null) -> bool:
 	if not state_machine.is_player_turn():
+		return false
+	# 出牌条件检查（如逆流：生命低于最大10%才可打出）
+	if not card.can_play(player_manager):
+		ui_controller.show_state_message("条件不满足，无法打出：%s" % card.name, 1.2)
 		return false
 	var target_to_use = target
 	if card.target_type == "self":
@@ -399,6 +469,12 @@ func _on_enemy_damaged(enemy: EnemyUnit, amount: int) -> void:
 func _on_all_enemies_defeated() -> void:
 	if state_machine.is_battle_active():
 		state_machine.change_state(StateMachine.BattleState.VICTORY)
+
+func _on_deck_exhausted() -> void:
+	# 遗物"终末轮回"效果②生效后：失败条件改为"卡组为空时进行抽卡"
+	if player_manager.relic_manager and player_manager.relic_manager.is_awakened("immortal_cycle"):
+		if state_machine.is_battle_active():
+			player_manager.die()
 
 func _on_player_hp_changed(current: int, _maximum: int) -> void:
 	_update_player_ui()

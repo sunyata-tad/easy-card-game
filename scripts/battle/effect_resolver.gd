@@ -13,6 +13,7 @@ class_name EffectResolver
 
 var card_database: CardDatabase         ## 卡牌数据库，用于根据卡牌 id 创建卡牌实例
 var card_system: CardSystem = null      ## 卡牌系统引用，用于抽牌/弃牌/消耗等操作
+var ui_controller = null                ## UI 控制器引用（供需要选择界面的效果使用，如逆流）
 var _temp_hook_ids: Array = []          ## 临时攻击力钩子的 id 列表，用于清理
 
 ## 效果处理器注册表：{ "effect_type": Callable }
@@ -100,11 +101,11 @@ func _resolve_damage(base_damage: int, source, target) -> Dictionary:
 		return {"success": false, "value": 0}
 	var hc = _get_hook_chain(source)
 	
-	# 玩家攻击：使用完整钩子链计算
+	# 玩家攻击：使用完整钩子链计算（以效果值为链基——卡牌"造成X点伤害"为固定伤害；弃牌攻击走 _perform_attack 的力量链）
 	if source is PlayerManager and hc:
 		var ctx: Dictionary = {}
 		hc.trigger(HookRegistry.HOOK_ON_ATTACK_START, 0, ctx)
-		var base = hc.trigger(HookRegistry.HOOK_CALC_BASE, source.base_strength, ctx)
+		var base = hc.trigger(HookRegistry.HOOK_CALC_BASE, base_damage, ctx)
 		base = int(hc.trigger(HookRegistry.HOOK_CALC_MULT, int(base), ctx))
 		var add = hc.trigger(HookRegistry.HOOK_CALC_ADD, 0, ctx)
 		var raw = int(base) + int(add)
@@ -177,29 +178,6 @@ func _resolve_temp_damage_boost(value: int, source) -> Dictionary:
 		source.hook_chain.register(HookRegistry.HOOK_CALC_BASE, func(v, _c): return v + value, 5, hook_id)
 		_temp_hook_ids.append(hook_id)
 		return {"success": true, "value": value}
-	return {"success": false, "value": 0}
-
-## 跳过攻击：给玩家施加 skip_attack buff，持续到回合结束
-func _resolve_skip_attack(_value: int, source) -> Dictionary:
-	if source is PlayerManager and not source.buff_manager.has_buff("skip_attack"):
-		var buff = BuffData.new({"id": "skip_attack", "name": "蓄势", "buff_type": "buff", "duration": 1, "stacks": 1, "trigger_timing": "on_turn_end_remove"})
-		source.buff_manager.apply_buff(buff)
-		return {"success": true, "value": 1}
-	return {"success": false, "value": 0}
-
-## 存储伤害：走前 3 步钩子管道计算 raw_damage，累加到 pending_stored_damage
-## 用于"蓄力"机制：当前回合存储伤害，下回合额外释放
-func _resolve_store_damage(source) -> Dictionary:
-	if source is PlayerManager:
-		var ctx: Dictionary = {}
-		var v = source.base_strength
-		v = source.hook_chain.trigger(HookRegistry.HOOK_CALC_BASE, v, ctx)
-		v = int(source.hook_chain.trigger(HookRegistry.HOOK_CALC_MULT, v, ctx))
-		var add = source.hook_chain.trigger(HookRegistry.HOOK_CALC_ADD, 0, ctx)
-		var raw = v + add
-		clear_temp_hooks(source)
-		source.pending_stored_damage += raw
-		return {"success": true, "value": raw, "stored_total": source.pending_stored_damage}
 	return {"success": false, "value": 0}
 
 ## 无视格挡：施加 ignore_block buff，攻击时忽略目标的格挡值
@@ -315,6 +293,74 @@ func _resolve_shuffle_discard_to_draw(source) -> Dictionary:
 	if source.has_method("get") and source.get("card_system"): source.card_system.manual_shuffle_discard_to_draw(); return {"success": true, "value": 1}
 	return {"success": false, "value": 0}
 
+## ========== 新机制（2026-08-12 卡牌）==========
+
+## 支付生命：直接扣 HP，不被护盾格挡 / 不被伤害转移；可触发遗物归零判定（终末轮回"卖血启动"）
+func _resolve_pay_life(value: int, source) -> Dictionary:
+	if source is PlayerManager:
+		source.pay_life(value)
+		return {"success": true, "value": value}
+	return {"success": false, "value": 0}
+
+## 交换抽牌堆与弃牌堆所有卡（生死轮转）
+func _resolve_swap_draw_discard(source) -> Dictionary:
+	var cs = card_system
+	if not cs and source.has_method("get") and source.get("card_system"): cs = source.card_system
+	if cs:
+		var tmp = cs.draw_pile
+		cs.draw_pile = cs.discard_pile
+		cs.discard_pile = tmp
+		cs._emit_deck_count()
+		return {"success": true, "value": 1}
+	return {"success": false, "value": 0}
+
+## 契约：造成伤害；若击杀敌人 → 生命永久上限-1（跨战斗，写回 GameData）
+func _resolve_contract(effect: Dictionary, source, target) -> Dictionary:
+	var value = effect.get("value", 0)
+	if target is EnemyUnit:
+		var result = _resolve_damage(value, source, target)
+		if target.is_dead and source is PlayerManager:
+			source.max_hp = maxi(source.max_hp - 1, 1)
+			if GameData:
+				GameData.player_max_hp = source.max_hp
+				if GameData.player_current_hp > source.max_hp:
+					GameData.player_current_hp = source.max_hp
+			return {"success": true, "value": result.get("value", 0), "killed": true}
+		return result
+	return {"success": false, "value": 0}
+
+## 逆流：选5张手牌回抽牌堆（顶部）+ 墓地（弃牌堆）回手。
+## 出牌条件（生命<最大10%）由 play_card 拦截，此处只做效果。
+func _resolve_flow_reversal(effect: Dictionary, source) -> Dictionary:
+	if ui_controller == null or card_system == null:
+		return {"success": false, "value": 0}
+	var cs = card_system
+	if cs.hand.is_empty():
+		return {"success": false, "value": 0}
+	ui_controller.enter_card_select_mode(
+		"逆流：选择 5 张手牌回到牌库", 5, 5,
+		func(selected: Array) -> void:
+			_flow_step_hand_to_draw(selected, cs)
+	)
+	return {"success": true, "value": 0, "pending": true}
+
+func _flow_step_hand_to_draw(selected: Array, cs: CardSystem) -> void:
+	if selected.is_empty():
+		return  # 取消：效果作废
+	for card in selected:
+		cs.move_hand_to_draw_pile(card, true)
+	var discard: Array = cs.discard_pile
+	if discard.size() <= 3:
+		for card in discard.duplicate():
+			cs.move_discard_to_hand(card)
+	else:
+		ui_controller.enter_discard_select_mode(
+			"逆流：从墓地选择至多 3 张回手", discard.duplicate(), 3,
+			func(selected2: Array) -> void:
+				for card in selected2:
+					cs.move_discard_to_hand(card)
+		)
+
 ## 根据 buff_id 创建 BuffData 实例
 ## 这是 buff 配置的硬编码版本（也可从 JSON 加载）
 func _create_buff_from_id(buff_id: String, stacks: int = 1) -> BuffData:
@@ -326,6 +372,7 @@ func _create_buff_from_id(buff_id: String, stacks: int = 1) -> BuffData:
 		"poison": {"id": "poison", "name": "中毒", "buff_type": "debuff", "duration": -1, "stacks": stacks, "trigger_timing": "on_turn_end", "tick_effect": {"type": "damage", "value": 1}},
 		"regen": {"id": "regen", "name": "再生", "buff_type": "buff", "duration": -1, "stacks": stacks, "trigger_timing": "on_turn_start", "tick_effect": {"type": "heal", "value": 1}},
 		"no_discard": {"id": "no_discard", "name": "不弃", "buff_type": "buff", "duration": -1, "stacks": 1},
+		"stun": {"id": "stun", "name": "迷惑", "buff_type": "debuff", "duration": -1, "stacks": stacks, "stack_decay": {"on_turn_end": 1}},
 	}
 	if configs.has(buff_id): return BuffData.new(configs[buff_id].duplicate(true))
 	return null
@@ -352,8 +399,6 @@ func _register_default_handlers() -> void:
 	register_effect_handler("temp_damage_boost", func(e, s, _t): return _resolve_temp_damage_boost(e.get("value", 0), s))
 
 	# === 机制效果（value, source）或（source） ===
-	register_effect_handler("skip_attack",    func(e, s, _t): return _resolve_skip_attack(e.get("value", 0), s))
-	register_effect_handler("store_damage",   func(_e, s, _t): return _resolve_store_damage(s))
 	register_effect_handler("ignore_block",   func(_e, s, _t): return _resolve_ignore_block(s))
 	register_effect_handler("counter_stance", func(_e, s, _t): return _resolve_counter_stance(s))
 
@@ -375,6 +420,12 @@ func _register_default_handlers() -> void:
 	register_effect_handler("exhaust_random",  func(e, s, _t): return _resolve_exhaust_random(e.get("value", 0), s))
 	register_effect_handler("discard_random",  func(e, s, _t): return _resolve_discard_random(e.get("value", 0), s))
 	register_effect_handler("add_card_to_hand", func(e, s, _t): return _resolve_add_card(e, s))
+
+	# === 新机制（2026-08-12 卡牌） ===
+	register_effect_handler("pay_life",          func(e, s, _t): return _resolve_pay_life(e.get("value", 0), s))
+	register_effect_handler("swap_draw_discard", func(_e, s, _t): return _resolve_swap_draw_discard(s))
+	register_effect_handler("contract",          func(e, s, t): return _resolve_contract(e, s, t))
+	register_effect_handler("flow_reversal",     func(e, s, _t): return _resolve_flow_reversal(e, s))
 
 	## ========== 扩展指南 ==========
 	## 在此处添加你的自定义效果处理器，示例：

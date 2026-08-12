@@ -55,7 +55,7 @@ func _setup() -> Control:
 	add_child(root_ui)
 
 	var card_db := CardDatabase.new()
-	var deck: Array = card_db.create_deck([{"card_id": "蓄势", "count": 20}])
+	var deck: Array = card_db.create_deck([{"card_id": "格挡", "count": 20}])
 	var enemy_db := EnemyDatabase.new()
 	var enemy = enemy_db.get_enemy("test_dummy")
 
@@ -69,19 +69,15 @@ func _setup() -> Control:
 	bc.start_battle()
 	return root_ui
 
-## 打出蓄势直到手牌超过上限
+## 直接向手牌塞入卡牌直到超过上限（旧蓄势卡已删除，改用 add_to_hand 模拟抽满手牌）
 func _play_until_over() -> int:
 	var guard := 0
-	while bc.state_machine.is_player_turn() and bc.card_system.hand.size() <= bc.card_system.max_hand_size and guard < 30:
-		var hand: Array = bc.card_system.get_hand()
-		var target_card = null
-		for c in hand:
-			if c.id == "蓄势":
-				target_card = c
-				break
-		if target_card == null:
+	var card_db := CardDatabase.new()
+	while bc.card_system.hand.size() <= bc.card_system.max_hand_size and guard < 30:
+		var card = card_db.get_card("格挡")
+		if card == null:
 			break
-		await bc.play_card(target_card)
+		bc.card_system.add_to_hand(card)
 		guard += 1
 	return guard
 
@@ -98,7 +94,7 @@ func _test_discard_normal() -> void:
 	_log("--- [场景1] 普通弃牌：开局 手牌=%d 抽牌堆=%d 状态=%s ---" % [bc.card_system.hand.size(), bc.card_system.get_draw_pile_count(), _state()])
 
 	var played := await _play_until_over()
-	_log("打了 %d 张蓄势后：手牌=%d 抽牌堆=%d 弃牌堆=%d" % [played, bc.card_system.hand.size(), bc.card_system.get_draw_pile_count(), bc.card_system.get_discard_pile_count()])
+	_log("堆入 %d 张后：手牌=%d 抽牌堆=%d 弃牌堆=%d" % [played, bc.card_system.hand.size(), bc.card_system.get_draw_pile_count(), bc.card_system.get_discard_pile_count()])
 
 	bc.end_player_turn()
 	await _wait(0.9)
@@ -141,9 +137,9 @@ func _test_no_discard() -> void:
 	bc.player_manager.buff_manager.apply_buff(BuffData.new({"id": "no_discard", "name": "不弃", "buff_type": "buff", "duration": -1, "stacks": 1}))
 	_log("已施加 no_discard buff：has_buff=%s" % bc.player_manager.buff_manager.has_buff("no_discard"))
 
-	# 打出蓄势把手牌堆过上限（>10）
+	# 打出蓄势把手牌堆过上限（>10）——旧蓄势已删，改直接塞牌
 	var played := await _play_until_over()
-	_log("打了 %d 张蓄势后：手牌=%d（>10，但应被 no_discard 阻止弃牌）" % [played, bc.card_system.hand.size()])
+	_log("堆入 %d 张后：手牌=%d（>10，但应被 no_discard 阻止弃牌）" % [played, bc.card_system.hand.size()])
 
 	# 回合末：弃牌规则门应阻止弃牌阶段
 	var before := discard_started_count

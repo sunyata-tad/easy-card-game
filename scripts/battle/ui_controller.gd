@@ -66,6 +66,7 @@ signal card_played(card: CardData, target)               ## 卡牌被打出
 signal enemy_selected(enemy: EnemyUnit)                  ## 敌人被选中
 signal end_turn_clicked()                                ## 结束回合按钮被点击
 signal attack_target_selected(enemy: EnemyUnit)          ## 攻击目标被选中
+signal discard_attack_requested()                        ## 请求发起弃牌攻击（点击"攻击"按钮）
 
 ## 构造函数：接收战斗场景的根节点，初始化所有 UI
 func _init(root: Control):
@@ -105,7 +106,7 @@ func _setup_target_button() -> void:
 	
 	target_button = Button.new()
 	target_button.name = "TargetButton"
-	target_button.text = "攻击目标"
+	target_button.text = "普通攻击"
 	target_button.custom_minimum_size = Vector2(120, 40)
 	
 	var button_pos = end_turn_button.position
@@ -122,12 +123,14 @@ func _setup_target_marker() -> void:
 	target_marker.set_script(load("res://scripts/ui/target_marker.gd"))
 	root_node.add_child(target_marker)
 
-## 点击目标选择按钮：切换选择模式
+## 点击"攻击"按钮：发起弃牌攻击；若已在选目标阶段则取消
 func _on_target_button_pressed() -> void:
+	if _card_select_active:
+		return
 	if is_selecting_target:
 		cancel_target_selection()
 	else:
-		start_target_selection()
+		discard_attack_requested.emit()
 
 ## 进入目标选择模式
 func start_target_selection() -> void:
@@ -147,7 +150,7 @@ func cancel_target_selection() -> void:
 	drag_arrow.hide_arrow()
 	
 	if target_button:
-		target_button.text = "攻击目标"
+		target_button.text = "普通攻击"
 	
 	show_state_message("已取消", 0.5)
 
@@ -179,7 +182,7 @@ func select_attack_target(enemy: EnemyUnit) -> void:
 	drag_arrow.hide_arrow()
 	
 	if target_button:
-		target_button.text = "攻击目标"
+		target_button.text = "普通攻击"
 	
 	update_target_marker(enemy)
 	attack_target_selected.emit(enemy)
@@ -543,18 +546,10 @@ func update_player_stats_info(pm: PlayerManager) -> void:
 	for child in _player_stats_panel.get_children():
 		child.queue_free()
 	
-	var stored = pm.get_stored_power()
 	var effective = pm.get_expected_attack_damage()
 	
-	if stored > 0:
-		var st_lbl = Label.new()
-		st_lbl.text = "蓄力:%d" % stored
-		st_lbl.add_theme_font_size_override("font_size", 13)
-		st_lbl.add_theme_color_override("font_color", Color(1, 0.9, 0.3))
-		_player_stats_panel.add_child(st_lbl)
-	
 	var a_lbl = Label.new()
-	a_lbl.text = "预计攻击:%d" % effective
+	a_lbl.text = "弃牌攻击:%d" % effective
 	a_lbl.add_theme_font_size_override("font_size", 13)
 	a_lbl.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
 	_player_stats_panel.add_child(a_lbl)
@@ -600,7 +595,7 @@ func _extract_buff_info(buff) -> Dictionary:
 
 var _buff_tooltip_panel: PanelContainer = null
 
-const NO_STACK_BUFFS: Array = ["skip_attack", "ignore_block", "counter_stance", "no_discard"]
+const NO_STACK_BUFFS: Array = ["ignore_block", "counter_stance", "no_discard"]
 
 func _create_buff_label(info: Dictionary) -> Control:
 	var buff_id: String = info.get("id", "")
@@ -952,6 +947,110 @@ func ensure_cards_layout_state() -> void:
 	
 	if last_hand.size() > 0:
 		update_hand_display(last_hand)
+
+## ========== 弃牌堆选择模式（用于"从墓地选择"类效果，如逆流） ==========
+var _discard_select_panel: PanelContainer = null
+var _discard_select_cards: Array = []
+var _discard_select_selected: Array = []
+var _discard_select_max: int = 3
+var _discard_select_callback: Callable = Callable()
+
+## 进入"从给定卡牌列表（弃牌堆）中选择"模式
+func enter_discard_select_mode(prompt: String, cards: Array, max_count: int, callback: Callable) -> void:
+	_discard_select_cards = cards
+	_discard_select_selected.clear()
+	_discard_select_max = max_count
+	_discard_select_callback = callback
+	_build_discard_select_ui(prompt)
+
+func _build_discard_select_ui(prompt: String) -> void:
+	_close_discard_select_ui()
+	_discard_select_panel = PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.1, 0.1, 0.15, 0.97)
+	style.set_corner_radius_all(8)
+	style.set_content_margin_all(14)
+	style.border_color = Color(0.5, 0.4, 0.25, 1)
+	style.border_width_top = 2
+	style.border_width_bottom = 2
+	style.border_width_left = 2
+	style.border_width_right = 2
+	_discard_select_panel.add_theme_stylebox_override("panel", style)
+	_discard_select_panel.set_anchors_preset(Control.PRESET_CENTER)
+	_discard_select_panel.custom_minimum_size = Vector2(560, 400)
+	_discard_select_panel.z_index = 300
+	root_node.add_child(_discard_select_panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	_discard_select_panel.add_child(vbox)
+
+	var title := Label.new()
+	title.text = prompt
+	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_color_override("font_color", Color(1, 0.9, 0.5))
+	vbox.add_child(title)
+
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 300)
+	vbox.add_child(scroll)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	scroll.add_child(grid)
+
+	for card in _discard_select_cards:
+		var btn := Button.new()
+		btn.text = "%s\n%s" % [card.name, card.get_description_text()]
+		btn.toggle_mode = true
+		btn.custom_minimum_size = Vector2(250, 72)
+		btn.add_theme_font_size_override("font_size", 13)
+		btn.toggled.connect(_on_discard_select_toggled.bind(card, btn))
+		grid.add_child(btn)
+
+	var btn_row := HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 10)
+	vbox.add_child(btn_row)
+
+	var confirm := Button.new()
+	confirm.text = "确认"
+	confirm.custom_minimum_size = Vector2(120, 36)
+	confirm.pressed.connect(_on_discard_select_confirm)
+	btn_row.add_child(confirm)
+
+	var cancel := Button.new()
+	cancel.text = "取消"
+	cancel.custom_minimum_size = Vector2(120, 36)
+	cancel.pressed.connect(_on_discard_select_cancel)
+	btn_row.add_child(cancel)
+
+func _on_discard_select_toggled(pressed: bool, card, btn: Button) -> void:
+	if pressed:
+		if _discard_select_selected.size() >= _discard_select_max:
+			btn.set_pressed_no_signal(false)
+			return
+		_discard_select_selected.append(card)
+	else:
+		_discard_select_selected.erase(card)
+
+func _on_discard_select_confirm() -> void:
+	var cb = _discard_select_callback
+	var selected = _discard_select_selected.duplicate()
+	_close_discard_select_ui()
+	if cb.is_valid():
+		cb.call(selected)
+
+func _on_discard_select_cancel() -> void:
+	var cb = _discard_select_callback
+	_close_discard_select_ui()
+	if cb.is_valid():
+		cb.call([])
+
+func _close_discard_select_ui() -> void:
+	if _discard_select_panel and is_instance_valid(_discard_select_panel):
+		_discard_select_panel.queue_free()
+	_discard_select_panel = null
 
 func is_card_select_active() -> bool:
 	return _card_select_active

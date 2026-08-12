@@ -16,14 +16,6 @@
 			"buff_type": "buff",
 			"modifier_formula": null
 		},
-		"skip_attack": {
-			"name": "蓄势",
-			"symbol": "蓄",
-			"color": "#80CC80",
-			"description": "跳过本回合自动攻击",
-			"buff_type": "buff",
-			"modifier_formula": null
-		},
 		"ignore_block": {
 			"name": "破甲",
 			"symbol": "破",
@@ -78,6 +70,14 @@
 			"color": "#33CC66",
 			"description": "每回合开始恢复 {stacks} 生命",
 			"buff_type": "buff",
+			"modifier_formula": null
+		},
+		"stun": {
+			"name": "迷惑",
+			"symbol": "迷",
+			"color": "#9966CC",
+			"description": "本回合无法行动，回合结束层数-1",
+			"buff_type": "debuff",
 			"modifier_formula": null
 		}
 	}

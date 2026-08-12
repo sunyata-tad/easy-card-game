@@ -14,6 +14,7 @@ var effects: Array          ## 效果列表，每个元素是 Dictionary
 var is_upgraded: bool = false  ## 是否已升级
 var tags: Array = []           ## 标签列表（用于卡牌效果检索，如 "蓄力流"）
 var treated_as: Array = []     ## 视为标签（"视为某标签"但不真正拥有该标签）
+var play_condition: Dictionary = {}  ## 出牌条件（如 {"type": "hp_below_percent", "value": 10}），不满足不可打出
 
 ## 构造函数：从 JSON 数据创建卡牌，upgraded=true 时读取 upgrade 字段
 func _init(data: Dictionary, upgraded: bool = false):
@@ -36,6 +37,7 @@ func _init(data: Dictionary, upgraded: bool = false):
 	target_type = data.get("target_type", "single_enemy")
 	tags = data.get("tags", [])
 	treated_as = data.get("treated_as", [])
+	play_condition = data.get("play_condition", {})
 
 ## 获取描述文本（替换 {scaling_key} 占位符为实际效果值）
 func get_description_text() -> String:
@@ -59,9 +61,21 @@ func duplicate() -> CardData:
 		"target_type": target_type,
 		"effects": effects.duplicate(true),
 		"tags": tags.duplicate(),
-		"treated_as": treated_as.duplicate()
+		"treated_as": treated_as.duplicate(),
+		"play_condition": play_condition.duplicate(true)
 	}
 	return CardData.new(data, is_upgraded)
+
+## 判断出牌条件是否满足（当前支持 hp_below_percent：生命低于最大值的 X%）
+func can_play(player = null) -> bool:
+	if play_condition.is_empty():
+		return true
+	match play_condition.get("type", ""):
+		"hp_below_percent":
+			if player:
+				var pct = play_condition.get("value", 10)
+				return player.current_hp < player.max_hp * pct / 100.0
+	return true
 
 ## 检查是否拥有某标签（包括 treated_as 中的"视为"标签）
 func has_tag(tag: String) -> bool:

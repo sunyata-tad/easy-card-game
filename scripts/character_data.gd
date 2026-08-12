@@ -10,8 +10,8 @@ var name: String              ## 角色名
 var created_time: int         ## 创建时间（Unix 时间戳）
 
 var base_stats: Dictionary = {   ## 基础属性（不可被临时 buff 修改的底层值）
-	"max_hp": 80,
-	"strength": 0,
+	"max_hp": 50,
+	"strength": 5,
 	"dexterity": 0,
 	"initial_block": 0
 }

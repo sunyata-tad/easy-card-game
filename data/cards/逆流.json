@@ -1,0 +1,14 @@
+{
+	"id": "逆流",
+	"name": "逆流",
+	"type": "skill",
+	"description": "生命值低于最大10%才可打出；选5张手牌回到牌库，从墓地选择至多3张牌回到手卡",
+	"rarity": "rare",
+	"target_type": "self",
+	"tags": ["Skill", "Rare"],
+	"treated_as": [],
+	"play_condition": {"type": "hp_below_percent", "value": 10},
+	"effects": [
+		{"effect_type": "flow_reversal"}
+	]
+}
