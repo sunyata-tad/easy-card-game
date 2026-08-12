@@ -14,6 +14,7 @@ var map_controller: MapController
 var location_label: Label
 var description_label: Label
 var status_button: Button
+var relic_button: Button
 var settings_button: Button
 var interactables_container: HBoxContainer
 var log_container: VBoxContainer
@@ -31,6 +32,8 @@ var status_panel_tween: Tween = null
 var _scroll_pending: bool = false
 
 const STATUS_PANEL_HEIGHT := 420
+
+const RELIC_LIST_PANEL := preload("res://scenes/RelicListPanel.tscn")
 
 const BTN_W := 100
 const BTN_H := 36
@@ -104,6 +107,12 @@ func _create_top_section() -> Control:
 	status_button.custom_minimum_size = Vector2(80, 28)
 	status_button.pressed.connect(_on_status_pressed)
 	header.add_child(status_button)
+	
+	relic_button = Button.new()
+	relic_button.text = "遗物"
+	relic_button.custom_minimum_size = Vector2(80, 28)
+	relic_button.pressed.connect(_on_relic_pressed)
+	header.add_child(relic_button)
 	
 	var spacer_left = Control.new()
 	spacer_left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -349,7 +358,7 @@ func receive_data(data: Dictionary) -> void:
 		map_controller.deserialize_state(map_state)
 		if survived:
 			map_controller.remove_dead_enemies(alive_list)
-		if cleared_layer > 0 and map_controller.endless_mode:
+		if cleared_layer > 0 and (map_controller.endless_mode or map_controller.test_mode):
 			map_controller.mark_layer_cleared(cleared_layer)
 		var location_data = map_controller.get_current_location_data()
 		if not location_data.is_empty():
@@ -665,6 +674,19 @@ func _on_status_pressed():
 
 func _on_settings_pressed():
 	_show_settings_dialog()
+
+## 查看持有遗物：弹出可滚动的遗物列表（悬浮查看效果）
+func _on_relic_pressed():
+	if GameData == null:
+		return
+	var popup := PopupPanel.new()
+	popup.name = "RelicPopup"
+	var panel: Control = RELIC_LIST_PANEL.instantiate()
+	popup.add_child(panel)
+	add_child(popup)
+	panel.setup(GameData.get_relics())
+	popup.popup_hide.connect(popup.queue_free)
+	popup.popup_centered()
 
 ## 连接 GameData 信号，状态栏打开时实时刷新（静默重建，无动画）
 func _refresh_status_on_signal() -> void:
@@ -1149,7 +1171,7 @@ func _on_battle_request_internal(enemy_id: String):
 	var enemy = enemy_db.get_enemy(enemy_id)
 	if enemy:
 		SaveManager.save_before_battle(enemy_id, map_controller.map_state.current_map_id)
-		GameManager.start_battle([enemy])
+		GameManager.start_battle([enemy], map_controller.test_mode)
 
 ## 启动群体战斗（支持多个敌人ID）
 func _start_group_battle(enemy_ids: Array, layer: int) -> void:
@@ -1170,11 +1192,11 @@ func _start_group_battle(enemy_ids: Array, layer: int) -> void:
 	var primary_id = enemy_ids[0] if enemy_ids.size() > 0 else ""
 	var save_map_id = "test" if map_controller.test_mode else "endless"
 	if map_controller.endless_mode:
-		SaveManager.save_before_battle(primary_id, save_map_id, layer, map_controller.test_mode)
+		SaveManager.save_before_battle(primary_id, save_map_id, layer, map_controller.test_mode, map_controller.is_boss_layer(layer))
 	else:
 		SaveManager.save_before_battle(primary_id, map_controller.map_state.current_map_id, 0)
 	
-	GameManager.start_battle(enemies)
+	GameManager.start_battle(enemies, map_controller.test_mode)
 
 func get_map_state() -> Dictionary:
 	return map_controller.serialize_state()

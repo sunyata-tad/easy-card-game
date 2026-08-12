@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://tbossflow01"]
+
+[ext_resource type="Script" path="res://test_boss_relic_flow.gd" id="1_bossflow"]
+
+[node name="TestBossRelicFlow" type="Node"]
+script = ExtResource("1_bossflow")

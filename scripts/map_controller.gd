@@ -87,7 +87,7 @@ func _init_test_map() -> bool:
 	endless_mode = true
 	_endless_nodes.clear()
 	_endless_interactables.clear()
-	max_layer_reached = 3
+	max_layer_reached = 5
 	current_layer = 0
 	
 	## 必须先初始化 map_state（initialize 内部会 reset 清空状态），
@@ -126,8 +126,8 @@ func _init_test_map() -> bool:
 		}
 	}
 	
-	# Layer 1: 普通战斗层（固定使用测试假人，100 血高坦，便于持续测试弃牌阶段）
-	var n_id = "test_dummy"
+	# Layer 1: 普通战斗层（石甲卫兵，测试新卡）
+	var n_id = "石甲卫兵"
 	var n_data = enemy_db.get_enemy(n_id)
 	var n_name = n_data.name if n_data else n_id
 	_endless_nodes["layer_1"] = {
@@ -148,7 +148,7 @@ func _init_test_map() -> bool:
 		"id": "layer_2",
 		"name": "精英战斗测试",
 		"description": "第2层。前方出现了危险的气息……",
-		"connections": {"south": "layer_1"},
+		"connections": {"south": "layer_1", "north": "layer_3"},
 		"interactables": e_list,
 		"enemy_ids": e_ids.duplicate()
 	}
@@ -160,6 +160,42 @@ func _init_test_map() -> bool:
 		e_list.append(iid)
 		_endless_interactables[iid] = _create_battle_interactable(iid, enemy_name, eid, 2, false, "精英敌人：%s" % enemy_name)
 		map_state.interactable_states["layer_2:%s" % iid] = "default"
+	
+	# Layer 3: Boss 层（胜利后触发遗物三选一）
+	var boss_ids: Array = ["石甲卫兵", "腐化法师"]
+	var boss_list: Array = []
+	_endless_nodes["layer_3"] = {
+		"id": "layer_3",
+		"name": "Boss战",
+		"description": "第3层。强大的压迫感扑面而来——击败 Boss 可获得遗物！",
+		"connections": {"south": "layer_2", "north": "layer_4"},
+		"interactables": boss_list,
+		"enemy_ids": boss_ids.duplicate(),
+		"boss": true
+	}
+	for i in boss_ids.size():
+		var bid = boss_ids[i]
+		var bd = enemy_db.get_enemy(bid)
+		var bname = bd.name if bd else bid
+		var iid = "test_battle_3_%d" % i
+		boss_list.append(iid)
+		_endless_interactables[iid] = _create_battle_interactable(iid, bname, bid, 3, false, "Boss：%s" % bname)
+		map_state.interactable_states["layer_3:%s" % iid] = "default"
+	
+	# Layer 4: 战后试用层（用于测试获取到的遗物）
+	var p_id = "暗影刺客"
+	var p_data = enemy_db.get_enemy(p_id)
+	var p_name = p_data.name if p_data else p_id
+	_endless_nodes["layer_4"] = {
+		"id": "layer_4",
+		"name": "遗物试用战",
+		"description": "第4层。试试刚获得的遗物！%s挡在了前方！" % p_name,
+		"connections": {"south": "layer_3"},
+		"interactables": ["test_battle_4"],
+		"enemy_ids": [p_id]
+	}
+	_endless_interactables["test_battle_4"] = _create_battle_interactable("test_battle_4", p_name, p_id, 4, false, "%s挡在了前方！" % p_name)
+	map_state.interactable_states["layer_4:test_battle_4"] = "default"
 	
 	_notify_location_changed()
 	return true
@@ -396,7 +432,7 @@ func _endless_move(direction: Direction) -> bool:
 		if target_layer > current_layer_num:
 			# 测试模式下禁止动态生成楼层，只能探索预设楼层
 			if test_mode:
-				map_state.add_log("move", "测试地图仅限3层，无法继续前进。")
+				map_state.add_log("move", "已到达测试地图最顶层，无法继续前进。")
 				return false
 			_generate_layer_node(target_layer)
 			var south_id = "layer_" + str(target_layer - 1)
@@ -566,6 +602,12 @@ func get_selected_interactable() -> Dictionary:
 		if interactable.id == selected_interactable_id:
 			return interactable
 	return {}
+
+## 判断某层是否为 Boss 层（测试地图：layer_3；无尽：每10层）
+func is_boss_layer(layer: int) -> bool:
+	if test_mode:
+		return layer == 3
+	return layer > 0 and layer % 10 == 0
 
 func mark_layer_cleared(layer: int) -> void:
 	if layer <= 0:

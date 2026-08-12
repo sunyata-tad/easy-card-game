@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://tmapflow001"]
+
+[ext_resource type="Script" path="res://test_map_flow.gd" id="1_mapflow"]
+
+[node name="TestMapFlow" type="Node"]
+script = ExtResource("1_mapflow")

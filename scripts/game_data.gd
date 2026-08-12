@@ -9,7 +9,7 @@ var player_max_hp: int = 50       ## 最大血量
 var player_current_hp: int = 50   ## 当前血量
 var player_strength: int = 5      ## 力量属性
 var player_dexterity: int = 0     ## 敏捷属性
-var relics: Array = []            ## 本局持有的遗物 id 列表
+var relics: Array = []            ## 本局持有的遗物实例列表（RelicData，每个独立、不去重）
 var gold: int = 0                 ## 金币
 var battles_won: int = 0          ## 胜利次数
 var total_damage_dealt: int = 0   ## 累计造成伤害
@@ -20,6 +20,7 @@ var player_attribute_points: int = 0  ## 未分配属性点
 
 var card_database: CardDatabase   ## 卡牌数据库
 var enemy_database: EnemyDatabase ## 敌人数据库
+var relic_database: RelicDatabase ## 遗物数据库
 
 signal deck_changed(deck: Array)                           ## 牌组变化
 signal hp_changed(current: int, maximum: int)              ## 血量变化
@@ -34,6 +35,7 @@ func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	card_database = CardDatabase.new()
 	enemy_database = EnemyDatabase.new()
+	relic_database = RelicDatabase.new()
 
 ## 初始化一次新的 run（使用默认初始牌组和属性）
 func initialize_new_run() -> void:
@@ -83,14 +85,22 @@ func initialize_run_from_character(character: CharacterData) -> void:
 	hp_changed.emit(player_current_hp, player_max_hp)
 	stats_changed.emit(player_strength, player_dexterity)
 
-## 获得一个遗物（加入本局遗物列表）
+## 获得一个遗物：创建独立实例加入列表（不去重；可重复遗物可拥有多个）
 func grant_relic(relic_id: String) -> void:
-	if not relics.has(relic_id):
-		relics.append(relic_id)
+	var relic = relic_database.get_relic(relic_id)
+	if relic:
+		relics.append(relic.duplicate())
 
-## 获取遗物 id 列表副本
+## 获取遗物实例列表副本（RelicData，每个独立）
 func get_relics() -> Array:
 	return relics.duplicate()
+
+## 获取已拥有遗物 id 列表（含重复，供遗物池过滤等使用）
+func get_relic_ids() -> Array:
+	var ids: Array = []
+	for relic in relics:
+		ids.append(relic.id)
+	return ids
 
 func get_deck() -> Array:
 	return player_deck.duplicate()

@@ -99,15 +99,21 @@ func go_to_endless_map(map_state: Dictionary = {}) -> void:
 		data["map_state"] = map_state
 	change_scene(GameScene.MAP, data)
 
-## 测试地图：预设测试楼层（普通战斗、精英战斗、测试台），不使用存档
-## 测试牌组：20 张蓄势（每张抽 2 张），用于触发手牌超上限，测试弃牌阶段
+## 测试地图：预设测试楼层（普通战斗/精英战斗/Boss/战斗后层），不使用存档
 func go_to_test_map() -> void:
 	GameData.initialize_new_run()
 	GameData.player_strength = 5
 	GameData.player_dexterity = 5
 	var card_db = CardDatabase.new()
 	GameData.player_deck = card_db.create_deck([
-		{"card_id": "格挡", "count": 20}
+		{"card_id": "热寂", "count": 3},
+		{"card_id": "生死轮转", "count": 2},
+		{"card_id": "批命", "count": 2},
+		{"card_id": "逆流", "count": 1},
+		{"card_id": "契约", "count": 1},
+		{"card_id": "斩击", "count": 3},
+		{"card_id": "格挡", "count": 5},
+		{"card_id": "招架", "count": 3}
 	])
 	var data: Dictionary = {"map_id": "test", "test_mode": true}
 	change_scene(GameScene.MAP, data)
@@ -132,9 +138,9 @@ func go_to_map(map_id: String = "test_map", map_state: Dictionary = {}) -> void:
 		data["map_state"] = map_state
 	change_scene(GameScene.MAP, data)
 
-## 开始战斗（传入敌人列表）
-func start_battle(enemies: Array = []) -> void:
-	var data = {"enemies": enemies}
+## 开始战斗（传入敌人列表；test_mode=true 时战斗场景显示测试辅助按钮）
+func start_battle(enemies: Array = [], test_mode: bool = false) -> void:
+	var data = {"enemies": enemies, "test_mode": test_mode}
 	change_scene(GameScene.BATTLE, data)
 	battle_started.emit()
 

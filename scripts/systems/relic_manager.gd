@@ -15,10 +15,8 @@ var _hooks_registered: bool = false
 func _init(p: PlayerManager):
 	player = p
 
+## 加入一个遗物实例（每个独立、不去重；可重复遗物允许多个）
 func add_relic(relic: RelicData) -> void:
-	# 不可重复遗物：已拥有则忽略（防重复获取 bug）；可重复遗物允许重复加入（占位遗物）
-	if not relic.repeatable and has_relic(relic.id):
-		return
 	relics.append(relic)
 	_register_hooks()
 

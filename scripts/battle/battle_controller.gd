@@ -72,12 +72,10 @@ func setup_battle(root_node: Control, initial_deck: Array = [], enemies: Array =
 		if e:
 			enemy_system.add_enemy(e)
 
-## 从 GameData 加载玩家遗物，并注入战斗上下文（供需要敌方/状态的遗物规则使用）
+## 从 GameData 加载玩家遗物（独立实例，直接加入），并注入战斗上下文
 func _load_player_relics() -> void:
-	var relic_db := RelicDatabase.new()
 	if GameData:
-		for relic_id in GameData.get_relics():
-			var relic = relic_db.get_relic(relic_id)
+		for relic in GameData.get_relics():
 			if relic:
 				player_manager.relic_manager.add_relic(relic)
 	player_manager.relic_manager.battle_controller = self

@@ -2,6 +2,8 @@
 ## 负责创建 BattleController、接收数据、处理战斗结束和弃牌阶段。
 extends Control
 
+const RELIC_LIST_PANEL := preload("res://scenes/RelicListPanel.tscn")
+
 var battle_controller: BattleController  ## 战斗核心控制器
 var battle_stats: Dictionary = {         ## 本场战斗统计
 	"damage_dealt": 0,
@@ -16,6 +18,48 @@ func _setup_exit_button():
 	var exit_button = get_node_or_null("ExitButton")
 	if exit_button:
 		exit_button.pressed.connect(_on_exit_pressed)
+
+## 测试辅助：秒杀敌人按钮（仅 test_mode 战斗显示）
+func _setup_kill_enemies_button():
+	var kill_btn := Button.new()
+	kill_btn.name = "KillEnemiesButton"
+	kill_btn.text = "秒杀敌人"
+	kill_btn.position = Vector2(20, 40)
+	kill_btn.custom_minimum_size = Vector2(110, 34)
+	kill_btn.pressed.connect(_on_kill_enemies_pressed)
+	add_child(kill_btn)
+
+func _on_kill_enemies_pressed():
+	if battle_controller and battle_controller.enemy_system:
+		for enemy in battle_controller.enemy_system.get_alive_enemies():
+			enemy.take_damage(99999)
+
+## 遗物按钮：点击弹出持有遗物列表，悬浮查看详细效果（替代直接显示遗物名字）
+func _setup_relic_button():
+	var relic_btn := Button.new()
+	relic_btn.name = "RelicButton"
+	relic_btn.text = "遗物"
+	relic_btn.position = Vector2(20, 80)
+	relic_btn.custom_minimum_size = Vector2(90, 34)
+	relic_btn.pressed.connect(_show_relic_popup)
+	add_child(relic_btn)
+
+## 弹出持有遗物列表：悬浮查看详细效果（复用通用面板，适配任意数量遗物）
+func _show_relic_popup():
+	if battle_controller == null or battle_controller.player_manager == null:
+		return
+	var rm = battle_controller.player_manager.relic_manager
+	if rm == null:
+		return
+
+	var popup := PopupPanel.new()
+	popup.name = "RelicPopup"
+	var panel: Control = RELIC_LIST_PANEL.instantiate()
+	popup.add_child(panel)
+	add_child(popup)
+	panel.setup(rm.relics)
+	popup.popup_hide.connect(popup.queue_free)
+	popup.popup_centered()
 
 ## 接收 GameManager.change_scene 传入的数据
 func receive_data(data: Dictionary) -> void:
@@ -42,6 +86,12 @@ func _initialize_battle(data: Dictionary = {}):
 
 	battle_controller.setup_battle(self, deck_data, enemies_data)
 	battle_controller.start_battle()
+
+	# 仅测试入口战斗显示秒杀按钮
+	if data.get("test_mode", false):
+		_setup_kill_enemies_button()
+	# 遗物按钮：点击查看持有遗物（悬浮查看详细效果）
+	_setup_relic_button()
 
 func _on_exit_pressed():
 	_show_exit_confirmation()
@@ -128,7 +178,7 @@ func _on_battle_ended(victory: bool):
 				SaveManager.save_map_state()
 			
 			if endless_layer > 0:
-				if endless_layer % 10 == 0:
+				if endless_layer % 10 == 0 or additional.get("is_boss", false):
 					# Boss 战后：遗物三选一
 					GameManager.go_to_relic_reward()
 				else:

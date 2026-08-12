@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://testnewcards01"]
+[gd_scene format=3 uid="uid://bibgbfvxverpk"]
 
 [ext_resource type="Script" path="res://test_new_cards_scene.gd" id="1_nc"]
 

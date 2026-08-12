@@ -113,8 +113,17 @@ func _serialize_game_data() -> Dictionary:
 			"treated_as": card.treated_as.duplicate()
 		})
 	
+	# 序列化遗物（每个独立实例存为 id，保留重复；可重复遗物可多个）
+	var relic_ids: Array = []
+	for relic in GameData.relics:
+		if relic is String:
+			relic_ids.append(relic)
+		else:
+			relic_ids.append(relic.id)
+
 	return {
 		"player_deck": deck_data,
+		"relics": relic_ids,
 		"player_max_hp": GameData.player_max_hp,
 		"player_current_hp": GameData.player_current_hp,
 		"player_strength": GameData.player_strength,
@@ -191,6 +200,14 @@ func apply_game_data(data: Dictionary) -> void:
 				card.treated_as = treated_as
 			GameData.player_deck.append(card)
 	
+	# 恢复遗物（每个独立实例；重复 id 保留为多个）
+	GameData.relics.clear()
+	var relic_db := RelicDatabase.new()
+	for rid in game_data.get("relics", []):
+		var relic = relic_db.get_relic(rid)
+		if relic:
+			GameData.relics.append(relic.duplicate())
+	
 	GameData.deck_changed.emit(GameData.player_deck)
 	GameData.hp_changed.emit(GameData.player_current_hp, GameData.player_max_hp)
 	GameData.gold_changed.emit(GameData.gold)
@@ -200,8 +217,8 @@ func apply_game_data(data: Dictionary) -> void:
 func save_map_state() -> bool:
 	return save_game(GameProgress.IN_MAP)
 
-func save_before_battle(enemy_id: String, map_id: String = "endless", endless_layer: int = 0, is_test_mode: bool = false) -> bool:
-	return save_game(GameProgress.IN_BATTLE, {"enemy_id": enemy_id, "map_id": map_id, "endless_layer": endless_layer, "is_test_mode": is_test_mode})
+func save_before_battle(enemy_id: String, map_id: String = "endless", endless_layer: int = 0, is_test_mode: bool = false, is_boss: bool = false) -> bool:
+	return save_game(GameProgress.IN_BATTLE, {"enemy_id": enemy_id, "map_id": map_id, "endless_layer": endless_layer, "is_test_mode": is_test_mode, "is_boss": is_boss})
 
 func get_cached_map_state() -> Dictionary:
 	return _cached_map_state
