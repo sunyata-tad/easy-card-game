@@ -13,6 +13,7 @@ extends Control
 @onready var name_label: Label = $NameLabel
 @onready var type_label: Label = $TypeLabel
 @onready var desc_label: Label = $DescLabel
+@onready var icon: TextureRect = $Icon
 
 var card_data: CardData               ## 关联的卡牌数据
 var player_manager: PlayerManager     ## 玩家状态引用（用于动态计算伤害预览）
@@ -51,6 +52,41 @@ const SKILL_COLOR := Color(0.15, 0.33, 0.62, 1.0)    ## 技能（深蓝）
 const POWER_COLOR := Color(0.42, 0.24, 0.60, 1.0)    ## 能力（深紫）
 const DEFAULT_COLOR := Color(0.27, 0.28, 0.34, 1.0)  ## 默认（深灰）
 
+## 卡牌类型图标（来自 Raven Fantasy Icons 64x64）
+const ICON_ATTACK := preload("res://assets/Free - Raven Fantasy Icons/Separated Files/64x64/fc4.png")
+const ICON_SKILL := preload("res://assets/Free - Raven Fantasy Icons/Separated Files/64x64/fc5.png")
+const ICON_POWER := preload("res://assets/Free - Raven Fantasy Icons/Separated Files/64x64/fc36.png")
+
+## buff 数据库缓存（从 data/buffs.json 加载，用于悬浮显示卡牌附带的 buff 详情）
+static var _buff_db: Dictionary = {}
+
+func _load_buff_db() -> void:
+	if not _buff_db.is_empty():
+		return
+	var file = FileAccess.open("res://data/buffs.json", FileAccess.READ)
+	if file:
+		var json = JSON.parse_string(file.get_as_text())
+		if json and json.has("buffs"):
+			_buff_db = json["buffs"]
+		file.close()
+
+func _get_buff_data(buff_id: String) -> Dictionary:
+	_load_buff_db()
+	return _buff_db.get(buff_id, {})
+
+## 收集卡牌效果中的 buff/debuff 效果（用于悬浮提示）
+func _get_buff_effects() -> Array:
+	var buffs: Array = []
+	if card_data == null:
+		return buffs
+	for effect in card_data.effects:
+		var et: String = effect.get("effect_type", "")
+		if et == "apply_buff" or et == "apply_debuff":
+			var bid: String = effect.get("buff_id", effect.get("buff_type", ""))
+			if bid != "":
+				buffs.append({"id": bid, "stacks": effect.get("value", effect.get("stacks", 1))})
+	return buffs
+
 ## Godot 生命周期：节点进入场景树时调用
 func _ready():
 	original_position = position
@@ -81,8 +117,10 @@ func setup(card: CardData, pm: PlayerManager = null):
 	
 	# 根据卡牌类型设置卡面颜色
 	_set_card_color(card.type)
+	_set_type_icon(card.type)
 	
 	size = Vector2(140, 180)
+	pivot_offset = Vector2(size.x / 2.0, size.y)  # 以底边中点为轴：扇形旋转与悬浮放大都更自然
 	original_position = position
 	original_scale = scale
 
@@ -123,14 +161,15 @@ func _get_display_text() -> String:
 
 ## 根据卡牌类型给卡面（Frame 面板）上色
 func _set_card_color(type: String) -> void:
-	if frame == null:
+	var frm := get_node_or_null("Frame") as Panel
+	if frm == null:
 		return
-	var base: StyleBoxFlat = frame.get_theme_stylebox("panel") as StyleBoxFlat
+	var base: StyleBoxFlat = frm.get_theme_stylebox("panel") as StyleBoxFlat
 	if base == null:
 		return
 	var sb := base.duplicate() as StyleBoxFlat
 	sb.bg_color = _get_type_color(type)
-	frame.add_theme_stylebox_override("panel", sb)
+	frm.add_theme_stylebox_override("panel", sb)
 
 
 func _get_type_color(type: String) -> Color:
@@ -140,6 +179,17 @@ func _get_type_color(type: String) -> Color:
 		"power": return POWER_COLOR
 		_: return DEFAULT_COLOR
 
+## 根据卡牌类型设置右上角类型图标
+func _set_type_icon(type: String) -> void:
+	var ic := get_node_or_null("Icon") as TextureRect
+	if ic == null:
+		return
+	match type:
+		"attack": ic.texture = ICON_ATTACK
+		"skill": ic.texture = ICON_SKILL
+		"power": ic.texture = ICON_POWER
+		_: ic.texture = null
+
 func _get_type_text(type: String) -> String:
 	match type:
 		"attack": return "攻击"
@@ -147,21 +197,26 @@ func _get_type_text(type: String) -> String:
 		"power": return "能力"
 		_: return ""
 
-## 鼠标悬停动画：放大 + 上移 + 高亮
+## 鼠标悬停动画：放大卡牌本体（便于阅读效果）+ 摆正 + 轻微高亮
 func _animate_hover(hover: bool):
 	# 按下中/目标选择中/选择模式中跳过悬停动画
 	if is_pressed or is_awaiting_target or is_select_mode:
 		return
-	
-	var target_scale = Vector2(1.12, 1.12) if hover else original_scale
-	var target_y = original_position.y - 15 if hover else original_position.y
-	var target_modulate = Color(1.15, 1.15, 1.0, 1.0) if hover else Color.WHITE
-	
+
+	if hover:
+		z_index = 50
+	else:
+		z_index = 0
+
+	var target_scale = Vector2(1.55, 1.55) if hover else original_scale
+	var target_rotation = 0.0 if hover else original_rotation
+	var target_modulate = Color(1.05, 1.05, 1.0, 1.0) if hover else Color.WHITE
+
 	var tween = create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(self, "scale", target_scale, 0.1)
-	tween.tween_property(self, "position:y", target_y, 0.1)
-	tween.tween_property(self, "modulate", target_modulate, 0.1)
+	tween.tween_property(self, "scale", target_scale, 0.12)
+	tween.tween_property(self, "rotation_degrees", target_rotation, 0.12)
+	tween.tween_property(self, "modulate", target_modulate, 0.12)
 
 ## 处理此节点范围内的鼠标输入事件（类似 Unity UI 的 OnPointerDown/Up）
 ## 交互逻辑：
@@ -259,14 +314,14 @@ func _on_mouse_entered():
 	mouse_inside = true
 	_animate_hover(true)
 	card_hovered.emit(card_data)
-	_show_tooltip()
+	_show_buff_tooltip()
 
 func _on_mouse_exited():
 	is_hovered = false
 	mouse_inside = false
 	_animate_hover(false)
 	card_unhovered.emit(card_data)
-	_hide_tooltip()
+	_hide_buff_tooltip()
 
 ## 判断卡牌是否需要选择目标（single_enemy 或 single_ally 类型）
 func _needs_target() -> bool:
@@ -355,7 +410,7 @@ func play_play_animation(target_pos: Vector2, callback: Callable = Callable()):
 	tween.tween_callback(queue_free)
 
 func reset_position():
-	_hide_tooltip()
+	_hide_buff_tooltip()
 	position = original_position
 	scale = original_scale
 	rotation_degrees = 0.0
@@ -409,70 +464,79 @@ func cancel_target_mode():
 func set_original_position(pos: Vector2):
 	original_position = pos
 
-func _show_tooltip() -> void:
-	if card_data == null or is_dragging or is_awaiting_target:
+## 悬浮时在卡牌旁边显示 buff/debuff 详情（仅当卡牌附带 buff 效果时）
+func _show_buff_tooltip() -> void:
+	if card_data == null or is_dragging or is_awaiting_target or is_select_mode:
 		return
-	_hide_tooltip()
-	
+	var buffs := _get_buff_effects()
+	if buffs.is_empty():
+		return
+	_hide_buff_tooltip()
+
+	# 先构建内容，确实有 buff 详情时才弹出
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 5)
+	var any := false
+	for b in buffs:
+		var data := _get_buff_data(b.id)
+		if data.is_empty():
+			continue
+		any = true
+		var buff_name: String = data.get("name", b.id)
+		var desc_template: String = data.get("description", "")
+		var desc: String = desc_template.replace("{stacks}", str(b.stacks))
+		var buff_color: Color = Color(data.get("color", "#B3B3B3"))
+
+		var name_lbl := Label.new()
+		name_lbl.text = "%s%s  ×%d" % [data.get("symbol", ""), buff_name, int(b.stacks)]
+		name_lbl.add_theme_font_size_override("font_size", 13)
+		name_lbl.add_theme_color_override("font_color", buff_color)
+		vbox.add_child(name_lbl)
+
+		var desc_lbl := Label.new()
+		desc_lbl.text = desc
+		desc_lbl.add_theme_font_size_override("font_size", 12)
+		desc_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc_lbl.custom_minimum_size = Vector2(180, 0)
+		vbox.add_child(desc_lbl)
+
+	if not any:
+		return
+
 	tooltip_panel = PanelContainer.new()
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.08, 0.12, 0.95)
-	style.set_corner_radius_all(6)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.06, 0.1, 0.96)
+	style.set_corner_radius_all(8)
 	style.set_content_margin_all(10)
 	style.border_color = Color(0.5, 0.5, 0.6, 1.0)
 	style.border_width_top = 1
 	style.border_width_bottom = 1
 	style.border_width_left = 1
 	style.border_width_right = 1
+	style.shadow_color = Color(0, 0, 0, 0.4)
+	style.shadow_size = 8
+	style.shadow_offset = Vector2(0, 3)
 	tooltip_panel.add_theme_stylebox_override("panel", style)
-	
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 4)
-	
-	var name_lbl = Label.new()
-	name_lbl.text = card_data.name
-	name_lbl.add_theme_font_size_override("font_size", 16)
-	name_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
-	vbox.add_child(name_lbl)
-	
-	var type_lbl = Label.new()
-	type_lbl.text = "[%s]" % _get_type_text(card_data.type)
-	type_lbl.add_theme_font_size_override("font_size", 12)
-	type_lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.7))
-	vbox.add_child(type_lbl)
-	
-	var desc_lbl = Label.new()
-	desc_lbl.text = card_data.get_description_text()
-	desc_lbl.add_theme_font_size_override("font_size", 13)
-	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_lbl.custom_minimum_size = Vector2(160, 0)
-	vbox.add_child(desc_lbl)
-	
-	if card_data.rarity != "basic" and not card_data.rarity.is_empty():
-		var rarity_lbl = Label.new()
-		rarity_lbl.text = card_data.rarity
-		rarity_lbl.add_theme_font_size_override("font_size", 11)
-		rarity_lbl.add_theme_color_override("font_color", _get_rarity_color(card_data.rarity))
-		vbox.add_child(rarity_lbl)
-	
 	tooltip_panel.add_child(vbox)
-	
-	var canvas = get_tree().root
-	canvas.add_child(tooltip_panel)
-	
-	var gp = global_position
-	var ts = tooltip_panel.get_combined_minimum_size()
-	var vp_size = get_viewport_rect().size
-	var px = gp.x + size.x + 8
-	if px + ts.x > vp_size.x:
-		px = gp.x - ts.x - 8
-	var py = gp.y - 10
-	if py + ts.y > vp_size.y:
-		py = vp_size.y - ts.y - 5
-	tooltip_panel.position = Vector2(px, py)
-	tooltip_panel.z_index = 100
 
-func _hide_tooltip() -> void:
+	var canvas := get_tree().root
+	canvas.add_child(tooltip_panel)
+
+	var gp := global_position
+	var ts := tooltip_panel.get_combined_minimum_size()
+	var vp := get_viewport_rect().size
+	# 显示在卡牌右侧（卡牌放大后向右延伸，用放大后的宽度偏移避开）
+	var px := gp.x + size.x * 1.6 + 6
+	if px + ts.x > vp.x:
+		px = gp.x - ts.x - 14
+	var py := gp.y + size.y * 0.35
+	if py + ts.y > vp.y:
+		py = vp.y - ts.y - 6
+	tooltip_panel.position = Vector2(px, py)
+	tooltip_panel.z_index = 120
+
+func _hide_buff_tooltip() -> void:
 	if tooltip_panel and is_instance_valid(tooltip_panel):
 		tooltip_panel.queue_free()
 	tooltip_panel = null

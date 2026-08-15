@@ -120,7 +120,7 @@ func _load_texture(path: String) -> Texture2D:
 
 ## 给一个 Control 添加星云背景 + 暗色蒙版（插入到最底层，保证上层内容可读）。
 ## 返回背景 TextureRect（上层蒙版为 overlay）。
-func add_background(parent: Control, screen: String, dim: float = 0.52) -> TextureRect:
+func add_background(parent: Control, screen: String, dim: float = 0.2) -> TextureRect:
 	var tex := background_for(screen)
 	var bg := TextureRect.new()
 	bg.name = "NebulaBackground"

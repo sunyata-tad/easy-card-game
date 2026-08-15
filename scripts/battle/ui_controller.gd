@@ -51,6 +51,12 @@ var drag_card_node: Control = null        ## 拖拽中卡牌的 UI 节点
 var last_hand: Array = []                 ## 上一次的手牌列表（用于恢复布局）
 var is_selecting_target: bool = false     ## 是否正在选择攻击目标
 
+## 手牌轮盘（扇形窗口）滚动状态
+var _hand_scroll: int = 0                    ## 最左可见卡牌在手牌中的索引
+var _hand_scroll_timer: Timer = null         ## 边缘悬浮滚动计时器
+var _edge_left_hint: Label = null            ## 左边缘"还有更多"提示
+var _edge_right_hint: Label = null           ## 右边缘提示
+
 ## 当前手牌 UI 节点映射 { CardData: Control }
 var current_hand_cards: Dictionary = {}
 ## 当前敌人 UI 节点映射 { EnemyUnit: Control }
@@ -79,6 +85,7 @@ func _init(root: Control):
 	_setup_drag_arrow()
 	_setup_target_button()
 	_setup_target_marker()
+	_setup_hand_scroll()
 
 ## 创建状态显示标签（用于浮动提示文字）
 func _setup_state_display() -> void:
@@ -272,33 +279,106 @@ func _setup_signals() -> void:
 func _load_card_scene() -> void:
 	card_scene = load("res://scenes/Card.tscn")
 
+func _get_hand_container_width() -> float:
+	if hand_container and hand_container.get_parent():
+		var parent_width: float = hand_container.get_parent().size.x
+		if parent_width > 0:
+			return maxf(parent_width - hand_container.position.x - 40.0, 200.0)
+	return 800.0
+
+## 建立手牌边缘滚动计时器与左右提示箭头
+func _setup_hand_scroll() -> void:
+	_hand_scroll_timer = Timer.new()
+	_hand_scroll_timer.wait_time = 0.13
+	_hand_scroll_timer.timeout.connect(_on_hand_scroll_tick)
+	root_node.add_child(_hand_scroll_timer)
+	_hand_scroll_timer.start()
+
+	if hand_container:
+		_edge_left_hint = _make_edge_hint("←")
+		hand_container.add_child(_edge_left_hint)
+		_edge_right_hint = _make_edge_hint("→")
+		hand_container.add_child(_edge_right_hint)
+
+func _make_edge_hint(text: String) -> Label:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 30)
+	lbl.add_theme_color_override("font_color", Color(1, 0.85, 0.5, 0.9))
+	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
+	lbl.add_theme_constant_override("outline_size", 4)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.z_index = 60
+	lbl.visible = false
+	return lbl
+
+## 定时检测鼠标是否悬浮在手牌区左右边缘，若是则滚动窗口（轮盘旋转）
+func _on_hand_scroll_tick() -> void:
+	if last_hand.size() <= HandLayoutPresets.MAX_VISIBLE:
+		return
+	if _card_select_active or is_selecting_target or is_dragging:
+		return
+	if hand_container == null or not (hand_container is Control):
+		return
+	var hc := hand_container as Control
+	var rect: Rect2 = hc.get_global_rect()
+	var mouse: Vector2 = hc.get_global_mouse_position()
+	if not rect.has_point(mouse):
+		return
+	var edge: float = rect.size.x * 0.16
+	if mouse.x < rect.position.x + edge:
+		_scroll_hand(-1)
+	elif mouse.x > rect.position.x + rect.size.x - edge:
+		_scroll_hand(1)
+
+func _scroll_hand(dir: int) -> void:
+	if last_hand.is_empty():
+		return
+	_hand_scroll = wrapi(_hand_scroll + dir, 0, last_hand.size())
+	update_hand_display(last_hand)
+
+func _update_hand_edge_hints(hand_size: int, visible_count: int) -> void:
+	var can_scroll := hand_size > visible_count
+	if _edge_left_hint:
+		_edge_left_hint.visible = can_scroll
+		if can_scroll and hand_container:
+			_edge_left_hint.position = Vector2(6, hand_container.size.y / 2.0 - 20)
+			_edge_left_hint.size = Vector2(32, 40)
+	if _edge_right_hint:
+		_edge_right_hint.visible = can_scroll
+		if can_scroll and hand_container:
+			_edge_right_hint.position = Vector2(hand_container.size.x - 38, hand_container.size.y / 2.0 - 20)
+			_edge_right_hint.size = Vector2(32, 40)
+
 func update_hand_display(hand: Array) -> void:
 	last_hand = hand.duplicate()
-	var hand_size = hand.size()
+	var hand_size := hand.size()
 	if hand_size == 0:
 		_clear_hand()
+		_update_hand_edge_hints(0, 0)
 		return
-	
-	# 计算可用容器宽度（防止未就绪时算出负值）
-	var container_width: float = 800.0
-	if hand_container and hand_container.get_parent():
-		var parent_width = hand_container.get_parent().size.x
-		if parent_width > 0:
-			container_width = maxf(parent_width - hand_container.position.x - 50.0, 100.0)
-	
-	# 先移除已不在手牌的卡牌节点
+
+	var container_width := _get_hand_container_width()
+	var visible_count := mini(hand_size, HandLayoutPresets.MAX_VISIBLE)
+	_hand_scroll = wrapi(_hand_scroll, 0, hand_size)
+
+	# 移除已不在手牌的卡牌节点
 	for card in current_hand_cards.keys():
 		if not hand.has(card):
 			var node = current_hand_cards[card]
 			node.queue_free()
 			current_hand_cards.erase(card)
-	
-	# 确定性布局：按实际手牌数量一次性计算位置并立即生效，
-	# 避免增量 tween 在连续 hand_changed（如抽 2 张只抽到 1 张）时产生位置残留/错乱
-	for i in hand_size:
+
+	# 计算可见槽位：card -> 槽位下标（窗口外的卡牌不在此表中）
+	var slot_of := {}
+	for i in range(visible_count):
+		var card = hand[(_hand_scroll + i) % hand_size]
+		slot_of[card] = i
+
+	for i in range(hand_size):
 		var card = hand[i]
-		var layout = HandLayoutPresets.get_card_position(i, hand_size, container_width)
-		
 		var card_node = current_hand_cards.get(card)
 		if card_node == null:
 			card_node = _create_card_node(card)
@@ -307,12 +387,25 @@ func update_hand_display(hand: Array) -> void:
 			hand_container.add_child(card_node)
 			current_hand_cards[card] = card_node
 			_setup_card_interaction(card_node, card)
-		
+
+		# 卡牌选择模式中已选中的卡保持在屏幕中央，不参与扇形重排
+		if _card_select_active and card in _card_selected_cards:
+			card_node.visible = true
+			continue
+
+		# 窗口外（隐藏）的卡牌
+		if not slot_of.has(card):
+			card_node.visible = false
+			continue
+
+		card_node.visible = true
+		var slot := int(slot_of[card])
+		var layout := HandLayoutPresets.get_card_position(slot, visible_count, container_width)
+
 		# 拖拽中 / 选目标中的卡牌保持原状，不参与重排
 		if (card_node.has_method("is_in_target_mode") and card_node.is_in_target_mode()) or (card_node.has_method("is_dragging_card") and card_node.is_dragging_card()):
 			continue
-		
-		# 位置立即到位（不用增量 tween），并同步原始位置参考供动画还原
+
 		card_node.position = layout.position
 		card_node.rotation_degrees = layout.rotation
 		card_node.modulate.a = 1.0
@@ -320,6 +413,8 @@ func update_hand_display(hand: Array) -> void:
 			card_node.call("set_original_position", layout.position)
 		if "original_rotation" in card_node:
 			card_node.original_rotation = layout.rotation
+
+	_update_hand_edge_hints(hand_size, visible_count)
 
 func _clear_hand() -> void:
 	for card_node in current_hand_cards.values():

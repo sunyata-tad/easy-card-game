@@ -72,3 +72,13 @@ theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 14
 autowrap_mode = 3
 mouse_filter = 2
+
+[node name="Icon" type="TextureRect" parent="." unique_id=1410416969]
+layout_mode = 0
+offset_left = 108.0
+offset_top = 8.0
+offset_right = 132.0
+offset_bottom = 32.0
+expand_mode = 1
+stretch_mode = 5
+mouse_filter = 2
