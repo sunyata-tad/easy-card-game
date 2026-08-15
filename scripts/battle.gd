@@ -98,22 +98,15 @@ func _on_exit_pressed():
 
 ## 显示退出确认对话框
 func _show_exit_confirmation():
-	var confirmation = AcceptDialog.new()
-	confirmation.dialog_text = "确定要退出吗？\n当前进度将会保存。"
-	confirmation.add_button("保存并退出", true, "save_exit")
-	confirmation.add_cancel_button("取消")
+	var confirmation = ConfirmationDialog.new()
+	confirmation.title = "退出战斗"
+	confirmation.dialog_text = "确定要退出战斗吗？\n当前进度将会保存。"
+	confirmation.ok_button_text = "保存并退出"
+	confirmation.cancel_button_text = "取消"
 	add_child(confirmation)
 
-	confirmation.custom_action.connect(_on_exit_dialog_action)
-	confirmation.confirmed.connect(_on_exit_confirmed)
+	confirmation.confirmed.connect(_save_and_exit)
 	confirmation.popup_centered()
-
-func _on_exit_dialog_action(action: String):
-	if action == "save_exit":
-		_save_and_exit()
-
-func _on_exit_confirmed():
-	_save_and_exit()
 
 ## 保存当前地图状态并返回地图
 func _save_and_exit():

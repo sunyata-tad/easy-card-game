@@ -12,60 +12,59 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_u80x2")
 
-[node name="TextureRect" type="TextureRect" parent="." unique_id=1444420486]
-layout_mode = 0
-offset_right = 1152.0
-offset_bottom = 648.0
-texture = ExtResource("1_jaeev")
-expand_mode = 1
-
-[node name="Button_start" type="Button" parent="." unique_id=1407195713]
+[node name="Background" type="TextureRect" parent="." unique_id=1444420486]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -104.0
-offset_top = -70.0
-offset_right = 104.0
-offset_bottom = -0.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+texture = ExtResource("1_jaeev")
+expand_mode = 1
+stretch_mode = 6
+mouse_filter = 2
+
+[node name="Overlay" type="ColorRect" parent="." unique_id=1444420487]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.025, 0.05, 0.45)
+mouse_filter = 2
+
+[node name="MenuCenter" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="MenuBox" type="VBoxContainer" parent="MenuCenter"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Button_start" type="Button" parent="MenuCenter/MenuBox" unique_id=1407195713]
+custom_minimum_size = Vector2(260, 54)
+layout_mode = 2
 button_mask = 7
 text = "开始游戏"
 
-[node name="Button_continue" type="Button" parent="." unique_id=1407195714]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -104.0
-offset_top = 10.0
-offset_right = 104.0
-offset_bottom = 80.0
-grow_horizontal = 2
-grow_vertical = 2
+[node name="Button_continue" type="Button" parent="MenuCenter/MenuBox" unique_id=1407195714]
+custom_minimum_size = Vector2(260, 54)
+layout_mode = 2
 button_mask = 7
 text = "继续游戏"
 
-[node name="Button_exit" type="Button" parent="." unique_id=1465354633]
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -104.0
-offset_top = -72.0
-offset_right = 104.0
-grow_horizontal = 2
-grow_vertical = 0
+[node name="Button_exit" type="Button" parent="MenuCenter/MenuBox" unique_id=1465354633]
+custom_minimum_size = Vector2(260, 54)
+layout_mode = 2
 button_mask = 7
 text = "退出游戏"
 
-[connection signal="pressed" from="Button_start" to="." method="_on_button_start_pressed"]
-[connection signal="pressed" from="Button_continue" to="." method="_on_button_continue_pressed"]
-[connection signal="pressed" from="Button_exit" to="." method="_on_button_exit_pressed"]
+[connection signal="pressed" from="MenuCenter/MenuBox/Button_start" to="." method="_on_button_start_pressed"]
+[connection signal="pressed" from="MenuCenter/MenuBox/Button_continue" to="." method="_on_button_continue_pressed"]
+[connection signal="pressed" from="MenuCenter/MenuBox/Button_exit" to="." method="_on_button_exit_pressed"]

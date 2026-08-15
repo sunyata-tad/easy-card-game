@@ -10,11 +10,13 @@ func _ready():
 
 ## 连接按钮信号，动态创建测试按钮
 func _setup_buttons():
-	var start_button = get_node_or_null("Button_start")
-	var continue_button = get_node_or_null("Button_continue")
-	var exit_button = get_node_or_null("Button_exit")
+	var start_button = get_node_or_null("MenuCenter/MenuBox/Button_start")
+	var continue_button = get_node_or_null("MenuCenter/MenuBox/Button_continue")
+	var exit_button = get_node_or_null("MenuCenter/MenuBox/Button_exit")
 
 	if start_button:
+		if UIStyle:
+			UIStyle.style_primary_button(start_button)
 		if not start_button.pressed.is_connected(_on_start_pressed):
 			start_button.pressed.connect(_on_start_pressed)
 
@@ -40,7 +42,7 @@ func _setup_buttons():
 
 ## 根据是否有存档更新"继续"按钮的可见性
 func _update_continue_button():
-	var continue_button = get_node_or_null("Button_continue")
+	var continue_button = get_node_or_null("MenuCenter/MenuBox/Button_continue")
 	if continue_button:
 		var has_save = SaveManager.has_save()
 		continue_button.visible = has_save
@@ -58,6 +60,8 @@ func _show_new_game_confirmation():
 		_confirmation_dialog = ConfirmationDialog.new()
 		_confirmation_dialog.dialog_text = "检测到已有存档！\n\n开始新游戏将覆盖旧存档。"
 		_confirmation_dialog.title = "提示"
+		_confirmation_dialog.ok_button_text = "确认"
+		_confirmation_dialog.cancel_button_text = "取消"
 		_confirmation_dialog.confirmed.connect(_start_new_game)
 		add_child(_confirmation_dialog)
 

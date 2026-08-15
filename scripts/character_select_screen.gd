@@ -141,6 +141,8 @@ func _show_delete_confirmation(character: CharacterData):
 	var confirmation = ConfirmationDialog.new()
 	confirmation.dialog_text = "确定删除角色 \"%s\" 吗？\n此操作不可撤销。" % character.name
 	confirmation.title = "删除角色"
+	confirmation.ok_button_text = "删除"
+	confirmation.cancel_button_text = "取消"
 	add_child(confirmation)
 
 	confirmation.confirmed.connect(_confirm_delete.bind(character.id))

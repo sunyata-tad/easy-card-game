@@ -9,7 +9,6 @@ class_name CardUI
 extends Control
 
 ## @onready: 在节点进入场景树时自动查找子节点并赋值
-@onready var background: ColorRect = $Background
 @onready var frame: Panel = $Frame
 @onready var name_label: Label = $NameLabel
 @onready var type_label: Label = $TypeLabel
@@ -46,11 +45,11 @@ signal target_mode_started(card: CardData)                       ## 进入目标
 signal target_mode_ended(card: CardData)                         ## 退出目标选择模式
 signal card_play_requested(card: CardData)                       ## 请求直接打出（无需目标）
 
-## 卡牌类型对应颜色
-const ATTACK_COLOR := Color(0.9, 0.3, 0.3, 1.0)   ## 攻击（红色）
-const SKILL_COLOR := Color(0.3, 0.5, 0.9, 1.0)    ## 技能（蓝色）
-const POWER_COLOR := Color(0.7, 0.4, 0.9, 1.0)    ## 能力（紫色）
-const DEFAULT_COLOR := Color(0.8, 0.8, 0.8, 1.0)  ## 默认（灰色）
+## 卡牌类型对应颜色（深色系，保证白色文字可读）
+const ATTACK_COLOR := Color(0.62, 0.16, 0.18, 1.0)   ## 攻击（深红）
+const SKILL_COLOR := Color(0.15, 0.33, 0.62, 1.0)    ## 技能（深蓝）
+const POWER_COLOR := Color(0.42, 0.24, 0.60, 1.0)    ## 能力（深紫）
+const DEFAULT_COLOR := Color(0.27, 0.28, 0.34, 1.0)  ## 默认（深灰）
 
 ## Godot 生命周期：节点进入场景树时调用
 func _ready():
@@ -67,7 +66,6 @@ func setup(card: CardData, pm: PlayerManager = null):
 	card_data = card
 	player_manager = pm
 	
-	var bg = get_node_or_null("Background")
 	var name_lbl = get_node_or_null("NameLabel")
 	var type_lbl = get_node_or_null("TypeLabel")
 	var desc_lbl = get_node_or_null("DescLabel")
@@ -81,13 +79,8 @@ func setup(card: CardData, pm: PlayerManager = null):
 	if desc_lbl:
 		desc_lbl.text = _get_display_text()
 	
-	# 根据卡牌类型设置背景颜色
-	if bg:
-		match card.type:
-			"attack": bg.color = ATTACK_COLOR
-			"skill": bg.color = SKILL_COLOR
-			"power": bg.color = POWER_COLOR
-			_: bg.color = DEFAULT_COLOR
+	# 根据卡牌类型设置卡面颜色
+	_set_card_color(card.type)
 	
 	size = Vector2(140, 180)
 	original_position = position
@@ -128,15 +121,24 @@ func _get_display_text() -> String:
 	
 	return card_data.get_description_text()
 
-func _set_background_color(type: String):
-	if background == null:
+## 根据卡牌类型给卡面（Frame 面板）上色
+func _set_card_color(type: String) -> void:
+	if frame == null:
 		return
-	
+	var base: StyleBoxFlat = frame.get_theme_stylebox("panel") as StyleBoxFlat
+	if base == null:
+		return
+	var sb := base.duplicate() as StyleBoxFlat
+	sb.bg_color = _get_type_color(type)
+	frame.add_theme_stylebox_override("panel", sb)
+
+
+func _get_type_color(type: String) -> Color:
 	match type:
-		"attack": background.color = ATTACK_COLOR
-		"skill": background.color = SKILL_COLOR
-		"power": background.color = POWER_COLOR
-		_: background.color = DEFAULT_COLOR
+		"attack": return ATTACK_COLOR
+		"skill": return SKILL_COLOR
+		"power": return POWER_COLOR
+		_: return DEFAULT_COLOR
 
 func _get_type_text(type: String) -> String:
 	match type:

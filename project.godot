@@ -22,10 +22,15 @@ GameData="*res://scripts/game_data.gd"
 SaveManager="*res://scripts/save_manager.gd"
 CharacterManager="*res://scripts/character_manager.gd"
 CardPoolManager="*res://scripts/card_pool_manager.gd"
+UIStyle="*res://scripts/ui_style.gd"
 
 [dotnet]
 
 project/assembly_name="card"
+
+[gui]
+
+theme/custom="res://ui/theme.tres"
 
 [physics]
 

@@ -40,6 +40,7 @@ var _card_select_staging: Control = null    ## 选择模式 UI 容器
 var _card_select_confirm_btn: Button = null ## 确认按钮
 var _card_select_info_label: Label = null   ## 提示文字
 var _card_select_callback: Callable = Callable()  ## 选择完成后的回调
+var _attack_button_in_card_select: bool = false  ## 普通攻击按钮是否充当"取消选择"（弃牌攻击选牌阶段）
 
 signal card_select_confirmed(selected_cards: Array)  ## 卡牌选择已确认
 
@@ -123,8 +124,12 @@ func _setup_target_marker() -> void:
 	target_marker.set_script(load("res://scripts/ui/target_marker.gd"))
 	root_node.add_child(target_marker)
 
-## 点击"攻击"按钮：发起弃牌攻击；若已在选目标阶段则取消
+## 点击攻击按钮：弃牌攻击选牌阶段时取消；选目标阶段时取消；否则发起弃牌攻击
 func _on_target_button_pressed() -> void:
+	if _attack_button_in_card_select:
+		# 弃牌攻击选牌阶段：点击"取消选择"→ 取消选牌（不消耗攻击次数）
+		_on_card_select_cancel()
+		return
 	if _card_select_active:
 		return
 	if is_selecting_target:
@@ -138,8 +143,9 @@ func start_target_selection() -> void:
 	highlight_all_enemies()
 	drag_arrow.show_arrow()
 	
+	# 选目标阶段按钮保持"普通攻击"并置灰，避免误点（弃牌已结算，需点击敌人确认目标）
 	if target_button:
-		target_button.text = "取消选择"
+		target_button.disabled = true
 	
 	show_state_message("请选择攻击目标", 1.0)
 
@@ -151,6 +157,7 @@ func cancel_target_selection() -> void:
 	
 	if target_button:
 		target_button.text = "普通攻击"
+		target_button.disabled = false
 	
 	show_state_message("已取消", 0.5)
 
@@ -183,6 +190,7 @@ func select_attack_target(enemy: EnemyUnit) -> void:
 	
 	if target_button:
 		target_button.text = "普通攻击"
+		target_button.disabled = false
 	
 	update_target_marker(enemy)
 	attack_target_selected.emit(enemy)
@@ -617,6 +625,8 @@ func _create_buff_label(info: Dictionary) -> Control:
 	btn.add_theme_color_override("font_color", color)
 	btn.add_theme_color_override("font_hover_color", color)
 	btn.flat = true
+	if UIStyle:
+		UIStyle.strip_button_box(btn)
 	btn.custom_minimum_size = Vector2(0, 18)
 	btn.focus_mode = Control.FOCUS_NONE
 	
@@ -776,6 +786,7 @@ func _show_player_stats_popup() -> void:
 	
 	var popup = AcceptDialog.new()
 	popup.title = "角色属性"
+	popup.ok_button_text = "关闭"
 	
 	var stats_text = "生命值: %d / %d\n" % [player_manager.current_hp, player_manager.max_hp]
 	stats_text += "护甲: %d\n" % player_manager.block
@@ -1058,7 +1069,7 @@ func is_card_select_active() -> bool:
 func get_card_node(card: CardData) -> Control:
 	return current_hand_cards.get(card)
 
-func enter_card_select_mode(prompt: String, min_select: int, max_select: int, callback: Callable) -> void:
+func enter_card_select_mode(prompt: String, min_select: int, max_select: int, callback: Callable, show_cancel: bool = true) -> void:
 	_card_select_active = true
 	_card_select_min = min_select
 	_card_select_max = max_select
@@ -1099,12 +1110,13 @@ func enter_card_select_mode(prompt: String, min_select: int, max_select: int, ca
 	_card_select_confirm_btn.pressed.connect(_on_card_select_confirm)
 	inner.add_child(_card_select_confirm_btn)
 	
-	var cancel_btn = Button.new()
-	cancel_btn.name = "CancelBtn"
-	cancel_btn.text = "跳过"
-	cancel_btn.custom_minimum_size = Vector2(100, 32)
-	cancel_btn.pressed.connect(_on_card_select_cancel)
-	inner.add_child(cancel_btn)
+	if show_cancel:
+		var cancel_btn = Button.new()
+		cancel_btn.name = "CancelBtn"
+		cancel_btn.text = "跳过"
+		cancel_btn.custom_minimum_size = Vector2(100, 32)
+		cancel_btn.pressed.connect(_on_card_select_cancel)
+		inner.add_child(cancel_btn)
 	
 	_update_card_select_ui()
 	
@@ -1119,6 +1131,13 @@ func enter_card_select_mode(prompt: String, min_select: int, max_select: int, ca
 			if card_node.has_method("set") and "is_select_mode" in card_node:
 				card_node.is_select_mode = true
 			card_node.mouse_filter = Control.MOUSE_FILTER_STOP
+
+## 弃牌攻击专用选牌模式：不显示"跳过"按钮，普通攻击按钮转为"取消选择"
+func enter_attack_card_select(prompt: String, callback: Callable) -> void:
+	enter_card_select_mode(prompt, 1, 1, callback, false)
+	_attack_button_in_card_select = true
+	if target_button:
+		target_button.text = "取消选择"
 
 func _on_card_select_gui_input(event: InputEvent, card: CardData) -> void:
 	if not _card_select_active:
@@ -1249,6 +1268,11 @@ func _on_card_select_cancel() -> void:
 
 func _exit_card_select_mode() -> void:
 	_card_select_active = false
+	
+	if _attack_button_in_card_select:
+		_attack_button_in_card_select = false
+		if target_button:
+			target_button.text = "普通攻击"
 	
 	if end_turn_button:
 		end_turn_button.disabled = false

@@ -36,7 +36,7 @@ const STATUS_PANEL_HEIGHT := 420
 const RELIC_LIST_PANEL := preload("res://scenes/RelicListPanel.tscn")
 
 const BTN_W := 100
-const BTN_H := 36
+const BTN_H := 34
 const GAP_X := 40
 const GAP_Y := 30
 
@@ -67,6 +67,10 @@ func _setup_ui():
 	anchor_bottom = 1.0
 	grow_horizontal = 2
 	grow_vertical = 2
+	
+	# 星云背景 + 暗色蒙版（位于所有界面之下）
+	if UIStyle:
+		UIStyle.add_background(self, "map")
 	
 	var main_vbox = VBoxContainer.new()
 	main_vbox.anchors_preset = 15
@@ -104,13 +108,13 @@ func _create_top_section() -> Control:
 	
 	status_button = Button.new()
 	status_button.text = "状态"
-	status_button.custom_minimum_size = Vector2(80, 28)
+	status_button.custom_minimum_size = Vector2(88, 34)
 	status_button.pressed.connect(_on_status_pressed)
 	header.add_child(status_button)
 	
 	relic_button = Button.new()
 	relic_button.text = "遗物"
-	relic_button.custom_minimum_size = Vector2(80, 28)
+	relic_button.custom_minimum_size = Vector2(88, 34)
 	relic_button.pressed.connect(_on_relic_pressed)
 	header.add_child(relic_button)
 	
@@ -122,7 +126,7 @@ func _create_top_section() -> Control:
 	location_label.text = "地点名称"
 	location_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	location_label.add_theme_font_size_override("font_size", 20)
-	location_label.custom_minimum_size = Vector2(200, 28)
+	location_label.custom_minimum_size = Vector2(200, 34)
 	header.add_child(location_label)
 	
 	var spacer_right = Control.new()
@@ -131,13 +135,13 @@ func _create_top_section() -> Control:
 	
 	settings_button = Button.new()
 	settings_button.text = "设置"
-	settings_button.custom_minimum_size = Vector2(80, 28)
+	settings_button.custom_minimum_size = Vector2(88, 34)
 	settings_button.pressed.connect(_on_settings_pressed)
 	header.add_child(settings_button)
 
 	var overview_btn = Button.new()
 	overview_btn.text = "地图"
-	overview_btn.custom_minimum_size = Vector2(80, 28)
+	overview_btn.custom_minimum_size = Vector2(88, 34)
 	overview_btn.pressed.connect(_on_map_overview_pressed)
 	header.add_child(overview_btn)
 	
@@ -175,7 +179,7 @@ func _create_map_section() -> Control:
 	bg.anchor_bottom = 1.0
 	bg.grow_horizontal = 2
 	bg.grow_vertical = 2
-	bg.color = Color(0.05, 0.05, 0.1, 1.0)
+	bg.color = Color(0.04, 0.05, 0.1, 0.72)
 	container.add_child(bg)
 	
 	node_container = Control.new()
@@ -214,6 +218,7 @@ func _create_node(location_id: String, location_data: Dictionary, pos: Vector2, 
 	if is_current:
 		btn.disabled = true
 		btn.add_theme_color_override("font_color", Color(1, 0.8, 0.2, 1))
+		btn.add_theme_color_override("font_disabled_color", Color(1, 0.8, 0.2, 1))
 	else:
 		btn.disabled = false
 		btn.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 1))
@@ -322,7 +327,7 @@ func _create_log_section() -> Control:
 	bg.anchors_preset = 12
 	bg.anchor_bottom = 1.0
 	bg.grow_vertical = 2
-	bg.color = Color(0.1, 0.1, 0.12, 1.0)
+	bg.color = Color(0.05, 0.06, 0.11, 0.78)
 	container.add_child(bg)
 	
 	var header = Label.new()
@@ -405,6 +410,7 @@ func _update_interactables():
 		hbox.add_theme_constant_override("separation", 10)
 		
 		var btn = Button.new()
+		btn.custom_minimum_size = Vector2(0, 34)
 		btn.text = interactable.name
 		var state = interactable.get("state", "default")
 		if state != "default":
@@ -443,11 +449,13 @@ func _on_interactable_selected(interactable_data: Dictionary):
 		
 		for action in interactions:
 			var btn = Button.new()
+			btn.custom_minimum_size = Vector2(0, 34)
 			btn.text = action
 			btn.pressed.connect(_on_interaction_action_pressed.bind(interactable_data.id, action))
 			btn_container.add_child(btn)
 		
 		var cancel_btn = Button.new()
+		cancel_btn.custom_minimum_size = Vector2(0, 34)
 		cancel_btn.text = "取消"
 		cancel_btn.pressed.connect(_on_cancel_interaction_pressed)
 		btn_container.add_child(cancel_btn)
@@ -491,6 +499,7 @@ func _update_node_appearance(btn: Button, is_current: bool, location_id: String)
 	if is_current:
 		btn.disabled = true
 		btn.add_theme_color_override("font_color", Color(1, 0.8, 0.2, 1))
+		btn.add_theme_color_override("font_disabled_color", Color(1, 0.8, 0.2, 1))
 		for conn in btn.pressed.get_connections():
 			btn.pressed.disconnect(conn.callable)
 	else:

@@ -299,6 +299,8 @@ func _create_buff_label(info: Dictionary) -> Control:
 	btn.add_theme_color_override("font_color", color)
 	btn.add_theme_color_override("font_hover_color", color)
 	btn.flat = true
+	if UIStyle:
+		UIStyle.strip_button_box(btn)
 	btn.custom_minimum_size = Vector2(0, 16)
 	btn.focus_mode = Control.FOCUS_NONE
 	

@@ -22,6 +22,17 @@ grow_vertical = 2
 texture = ExtResource("1_ltshs")
 expand_mode = 1
 stretch_mode = 6
+mouse_filter = 2
+
+[node name="Overlay" type="ColorRect" parent="Background" unique_id=111657304]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.025, 0.05, 0.45)
+mouse_filter = 2
 
 [node name="EnemyArea" type="HBoxContainer" parent="Background" unique_id=364006535]
 layout_mode = 1
@@ -88,6 +99,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 
 [node name="HPBar" type="ProgressBar" parent="Background/PlayerArea" unique_id=1785970450]
 layout_mode = 1
