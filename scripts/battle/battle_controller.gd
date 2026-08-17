@@ -194,11 +194,21 @@ func _resolve_end_turn() -> void:
 		return
 	state_machine.change_state(StateMachine.BattleState.DRAW_PHASE)
 
+## 弃牌：卡牌节点直接缩小飞向弃牌堆淡出（跳过"飞向中央悬停"），数据层同步弃置
+func _discard_card_with_animation(card: CardData) -> void:
+	var card_node = ui_controller.get_card_node(card) if ui_controller else null
+	if card_node and ui_controller:
+		ui_controller.detach_card_node(card)
+	card_system.discard_specific_card(card)
+	if card_node:
+		var discard_pos = ui_controller.get_discard_pile_global_pos() if ui_controller else Vector2(120, 360)
+		card_node.fly_to_discard(discard_pos)  # 不 await：动画后台播放，不阻塞后续逻辑
+
 func confirm_discard_cards(cards_to_discard: Array) -> void:
 	if not is_discard_phase:
 		return
 	for card in cards_to_discard:
-		card_system.discard_specific_card(card)
+		_discard_card_with_animation(card)
 	is_discard_phase = false
 	discard_phase_ended.emit()
 	var excess = card_system.hand.size() - card_system.max_hand_size
@@ -234,7 +244,7 @@ func _on_discard_attack_card_selected(cards: Array) -> void:
 	if cards.is_empty():
 		return
 	# 弃牌 cost 完成后立即结算；弃牌可能触发效果杀死敌人
-	card_system.discard_specific_card(cards[0])
+	_discard_card_with_animation(cards[0])
 	# 弃牌代价已支付，本次"弃牌攻击"名额消耗（防止取消后免费倾泻手牌）
 	discard_attack_available = false
 	_update_player_ui()

@@ -327,6 +327,8 @@ INIT → DRAW_PHASE → PLAYER_TURN → RESOLVING → ENEMY_TURN → TURN_END，
   避免 `hand_changed` 重排时 `queue_free` 打断动画；打出失败时 reattach + 复位
 - `UIController.get_discard_pile_global_pos()`：读取 `DeckInfo/DiscardPile` 作为飞行终点
 - 健壮性：`CardUI.is_playing_animation` 标志在飞行期间置 `true`，阻止悬停放大动画与飞行 scale 竞争
+- **弃牌动画（2026-08-12）**：弃牌（弃牌攻击 / 回合末弃牌）复用 `fly_to_discard()`，直接缩小飞向弃牌堆，
+  **跳过** ①② 两段（不飞中央、不悬停），避免与打牌流程混淆；由 `BattleController._discard_card_with_animation()` 统一处理
 
 ### 10.4 边界与后续优化（记录）
 
