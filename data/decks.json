@@ -1,8 +1,8 @@
 {
 	"starter_deck": [
-		{"card_id": "斩击", "count": 3},
-		{"card_id": "格挡", "count": 3},
-		{"card_id": "破甲", "count": 2},
-		{"card_id": "招架", "count": 2}
+		{"card_id": "裂击", "count": 3},
+		{"card_id": "破绽", "count": 2},
+		{"card_id": "压制", "count": 2},
+		{"card_id": "铁壁", "count": 3}
 	]
 }

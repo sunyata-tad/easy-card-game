@@ -1,8 +1,8 @@
 # 卡牌游戏项目状态文档
 
-> 最后更新：2026-08-05（全面核查代码后重写，同步死代码剪枝结果）
+> 最后更新：2026-08-12（交互反馈三色飘字 + 三段式打牌；初始卡组重做）
 > 项目路径：`D:/游戏开发/项目文件/card`
-> 引擎：Godot 4.6（Forward Plus）
+> 引擎：Godot 4.7（Forward Plus）
 > 语言：GDScript（数据驱动，JSON 配置）
 > 命名约定：snake_case
 
@@ -13,9 +13,13 @@
 - **自动攻击移除** → 主动**弃牌攻击**（回合中弃 1 张手牌 → get_strength() 走完整攻击链，一回合一次）
 - **蓄力/ skip_attack 删除**：`store_damage` / `pending_stored_damage` / 蓄力·蓄势 卡移除
 - **遗物系统新增**：`relic_data.gd` / `relic_database.gd` / `relic_manager.gd` / `data/relics.json`；无尽 Boss 战后**遗物三选一**（`RelicRewardScreen`）；终末轮回 + 占位头环
-- **数值**：力量 5 开局、玩家 HP 50、初始卡组 斩击×3/格挡×3/破甲×2/招架×2（临时）
+- **数值**：力量 5 开局、玩家 HP 50
 - 战斗按钮"普通攻击"；无法攻击提示"你已经攻击过了。"
 - 效果文本 ↔ 代码一致性规范（条件式）见 coding-conventions §6
+- **交互反馈（视觉）**：`show_damage_number` 三色区分（伤害红/治疗绿/护甲蓝）；卡牌打出改为三段式（`fly_to_center`/`fly_to_discard` + `detach_card_node` 防打断）；详见 GAME_DESIGN 第 10 章
+- **初始卡组重做**：裂击×3/破绽×2/压制×2/铁壁×3；新增 `damage_if_debuff` 条件伤害效果；数值基准（1卡=2抽=1定向检索=5伤/5防）
+- **卡牌 UI 视觉**：稀有度边框+光晕 + 底部稀有度色带；取消类型颜色区分（类型仅文字标注）；稀有度四档（无 basic）
+- **弃牌攻击简化**：选中即弃（无确认按钮）
 
 ---
 
@@ -334,17 +338,21 @@ damage / block / heal / damage_boost(永久改 base_strength) / temp_damage_boos
 
 ## 6. 数据定义
 
-### 6.1 卡牌（data/cards/，5 张；旧卡整体待重设计）
+### 6.1 卡牌（data/cards/，14 张可玩卡 + 1 模板）
+
+初始卡组（decks.json，2026-08-12 重做）：
 
 | ID | 类型 | 目标 | 效果 | 稀有度 |
 |----|------|------|------|--------|
-| 斩击 | attack | self | temp_damage_boost +5 | basic |
-| 格挡 | skill | self | block 5 | basic |
-| 破甲 | attack | self | ignore_block + temp_damage_boost +3 | uncommon |
-| 招架 | skill | self | counter_stance + block 5 | uncommon |
-| 致弱 | skill | single_enemy | apply_buff vulnerable 2层 | common |
+| 裂击 | attack | single_enemy | damage 5 | common |
+| 破绽 | skill | single_enemy | apply_debuff vulnerable 2层 | common |
+| 压制 | attack | single_enemy | damage_if_debuff(vulnerable) 4→8 | common |
+| 铁壁 | skill | self | block 5 | common |
 
-初始卡组（decks.json）：斩击×3, 格挡×3, 破甲×2, 招架×2（蓄力/蓄势已删）
+初始卡组 = 裂击×3 / 破绽×2 / 压制×2 / 铁壁×3
+
+其余卡（进阶/解锁，不在开局）：致弱 / 批命 / 生死轮转 / 热寂 / 契约 / 逆流
+历史遗留（已移出初始卡组，JSON 保留待清理）：斩击 / 格挡 / 破甲 / 招架
 
 卡牌 JSON 模板：`_模板_卡牌名.json`（含 effect_type / buff_id / base_stat 说明，可扩展架构参考）
 
@@ -490,3 +498,4 @@ battle_controller._connect_signals():
 |------|------|
 | 2026-05-24 | 初始创建（旧架构描述） |
 | 2026-08-05 | **全面重写**：反映重构后的伤害模型（裸属性+hook）、蓄力 pending_stored_damage、效果注册表、无尽模式、存档 GameProgress、5 敌人、死代码剪枝；同步已知问题真实状态（BUG-1~5） |
+| 2026-08-12 | **交互反馈 + 卡牌重做 + UI**：飘字三色区分；卡牌打出三段式流程；初始卡组重做为裂击/破绽/压制/铁壁；新增 `damage_if_debuff` 条件伤害；卡牌 UI 稀有度边框+光晕+底带、取消类型颜色、弃牌攻击选中即弃 |

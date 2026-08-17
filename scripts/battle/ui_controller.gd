@@ -38,6 +38,7 @@ var _card_select_max: int = 1               ## 最多选择数量
 var _card_selected_cards: Array = []        ## 已选中的卡牌列表
 var _card_select_staging: Control = null    ## 选择模式 UI 容器
 var _card_select_confirm_btn: Button = null ## 确认按钮
+var _card_select_auto_confirm: bool = false ## 选中即确认（不显示确认按钮，用于弃牌攻击）
 var _card_select_info_label: Label = null   ## 提示文字
 var _card_select_callback: Callable = Callable()  ## 选择完成后的回调
 var _attack_button_in_card_select: bool = false  ## 普通攻击按钮是否充当"取消选择"（弃牌攻击选牌阶段）
@@ -831,7 +832,8 @@ func _get_buff_color(buff_id: String) -> Color:
 	var hex = data.get("color", "#B3B3B3")
 	return Color(hex)
 
-func show_damage_number(target, amount: int) -> void:
+## 弹出飘字：kind = "damage"(红) / "heal"(绿) / "block"(蓝)
+func show_damage_number(target, amount: int, kind: String = "damage") -> void:
 	if amount <= 0:
 		return
 	
@@ -839,24 +841,39 @@ func show_damage_number(target, amount: int) -> void:
 	if target is EnemyUnit and current_enemy_nodes.has(target):
 		target_node = current_enemy_nodes[target]
 		if target_node.has_method("show_damage_number"):
-			target_node.show_damage_number(amount)
+			target_node.show_damage_number(amount, kind)
 			return
 	elif target is PlayerManager and player_area:
 		target_node = player_area
 	
+	if target_node == null:
+		return
+	
+	var text: String
+	var color: Color
+	match kind:
+		"heal":
+			text = "+%d" % amount
+			color = Color(0.35, 0.9, 0.45)
+		"block":
+			text = "+%d" % amount
+			color = Color(0.45, 0.75, 1.0)
+		_:
+			text = "-%d" % amount
+			color = Color.RED
+	
 	var damage_label = Label.new()
-	damage_label.text = "-%d" % amount
-	damage_label.add_theme_color_override("font_color", Color.RED)
+	damage_label.text = text
+	damage_label.add_theme_color_override("font_color", color)
 	damage_label.add_theme_font_size_override("font_size", 24)
 	
-	if target_node:
-		target_node.add_child(damage_label)
-		damage_label.position = Vector2(50, 0)
-		
-		var tween = root_node.create_tween()
-		tween.tween_property(damage_label, "position:y", -20, 1.8)
-		tween.parallel().tween_property(damage_label, "modulate:a", 0.0, 0.3).set_delay(1.5)
-		tween.tween_callback(damage_label.queue_free)
+	target_node.add_child(damage_label)
+	damage_label.position = Vector2(50, 0)
+	
+	var tween = root_node.create_tween()
+	tween.tween_property(damage_label, "position:y", -20, 1.8)
+	tween.parallel().tween_property(damage_label, "modulate:a", 0.0, 0.3).set_delay(1.5)
+	tween.tween_callback(damage_label.queue_free)
 
 func remove_card_from_hand(card: CardData) -> void:
 	if current_hand_cards.has(card):
@@ -919,18 +936,25 @@ func clear_target_highlights() -> void:
 	if player_area and player_area.has_method("set_highlight_for_target"):
 		player_area.set_highlight_for_target(false)
 
-func play_card_animation(card: CardData, card_node: Control, target = null) -> void:
-	if card_node == null:
-		return
-	
-	var target_pos = Vector2(400, 300)
-	
-	if target and current_enemy_nodes.has(target):
-		var enemy_node = current_enemy_nodes[target]
-		target_pos = enemy_node.position + enemy_node.size / 2
-	
-	if card_node.has_method("play_play_animation"):
-		card_node.play_play_animation(target_pos)
+## 将卡牌节点从手牌映射中摘出（不释放），交给打出动画接管；避免 hand_changed 重排时释放它
+func detach_card_node(card: CardData) -> Control:
+	var node = current_hand_cards.get(card)
+	if node:
+		current_hand_cards.erase(card)
+	return node
+
+## 打出失败时把节点放回手牌映射，供后续重排恢复
+func reattach_card_node(card: CardData, card_node: Control) -> void:
+	current_hand_cards[card] = card_node
+
+## 获取弃牌堆标签的屏幕中心位置（卡牌打出后飞向的终点）
+func get_discard_pile_global_pos() -> Vector2:
+	if deck_info_node:
+		var discard = deck_info_node.get_node_or_null("DiscardPile")
+		if discard:
+			return discard.get_global_rect().get_center()
+	# 兜底：屏幕左下角
+	return Vector2(120, root_node.get_viewport_rect().size.y - 60)
 
 func _on_card_drag_started(card: CardData, start_pos: Vector2, card_node: Control) -> void:
 	is_dragging = true
@@ -1164,12 +1188,13 @@ func is_card_select_active() -> bool:
 func get_card_node(card: CardData) -> Control:
 	return current_hand_cards.get(card)
 
-func enter_card_select_mode(prompt: String, min_select: int, max_select: int, callback: Callable, show_cancel: bool = true) -> void:
+func enter_card_select_mode(prompt: String, min_select: int, max_select: int, callback: Callable, show_cancel: bool = true, auto_confirm: bool = false) -> void:
 	_card_select_active = true
 	_card_select_min = min_select
 	_card_select_max = max_select
 	_card_selected_cards.clear()
 	_card_select_callback = callback
+	_card_select_auto_confirm = auto_confirm
 	
 	var bar = HBoxContainer.new()
 	bar.name = "CardSelectBar"
@@ -1199,11 +1224,12 @@ func enter_card_select_mode(prompt: String, min_select: int, max_select: int, ca
 	_card_select_info_label.add_theme_color_override("font_color", Color(1, 0.9, 0.5))
 	inner.add_child(_card_select_info_label)
 	
-	_card_select_confirm_btn = Button.new()
-	_card_select_confirm_btn.text = "确认"
-	_card_select_confirm_btn.custom_minimum_size = Vector2(100, 32)
-	_card_select_confirm_btn.pressed.connect(_on_card_select_confirm)
-	inner.add_child(_card_select_confirm_btn)
+	if not auto_confirm:
+		_card_select_confirm_btn = Button.new()
+		_card_select_confirm_btn.text = "确认"
+		_card_select_confirm_btn.custom_minimum_size = Vector2(100, 32)
+		_card_select_confirm_btn.pressed.connect(_on_card_select_confirm)
+		inner.add_child(_card_select_confirm_btn)
 	
 	if show_cancel:
 		var cancel_btn = Button.new()
@@ -1229,7 +1255,7 @@ func enter_card_select_mode(prompt: String, min_select: int, max_select: int, ca
 
 ## 弃牌攻击专用选牌模式：不显示"跳过"按钮，普通攻击按钮转为"取消选择"
 func enter_attack_card_select(prompt: String, callback: Callable) -> void:
-	enter_card_select_mode(prompt, 1, 1, callback, false)
+	enter_card_select_mode(prompt, 1, 1, callback, false, true)
 	_attack_button_in_card_select = true
 	if target_button:
 		target_button.text = "取消选择"
@@ -1255,6 +1281,9 @@ func _toggle_card_selection(card: CardData) -> void:
 		_card_selected_cards.append(card)
 		_select_card(card)
 	_update_card_select_ui()
+	# 选中即确认：达到最少选择数立即提交（弃牌攻击选中 1 张即弃）
+	if _card_select_auto_confirm and _card_selected_cards.size() >= _card_select_min:
+		_on_card_select_confirm()
 
 func _select_card(card: CardData) -> void:
 	var card_node = current_hand_cards.get(card)
@@ -1384,5 +1413,6 @@ func _exit_card_select_mode() -> void:
 		_card_select_staging.queue_free()
 	_card_select_staging = null
 	_card_select_confirm_btn = null
+	_card_select_auto_confirm = false
 	_card_select_info_label = null
 	_card_selected_cards.clear()

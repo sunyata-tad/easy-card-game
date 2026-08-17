@@ -146,6 +146,16 @@ func _resolve_damage(base_damage: int, source, target) -> Dictionary:
 		return {"success": true, "value": actual, "target": target}
 	return {"success": false, "value": 0}
 
+## 条件伤害：目标拥有指定减益（buff_id）时附加额外伤害（减益利用，如"压制"对易伤目标增伤）
+func _resolve_damage_if_debuff(effect: Dictionary, source, target) -> Dictionary:
+	var buff_id = effect.get("buff_id", "")
+	var base = effect.get("value", 0)
+	var bonus = effect.get("bonus_value", 0)
+	var total = base
+	if target and target.buff_manager and target.buff_manager.has_buff(buff_id):
+		total = base + bonus
+	return _resolve_damage(total, source, target)
+
 ## 结算格挡效果（目标获得格挡值，受 block_mult 倍率影响）
 func _resolve_block(base_block: int, source, target) -> Dictionary:
 	var block_mult: float = 1.0
@@ -391,6 +401,7 @@ func _register_default_handlers() -> void:
 
 	# === 战斗效果（value, source, target） ===
 	register_effect_handler("damage", func(e, s, t): return _resolve_damage(e.get("value", 0), s, t))
+	register_effect_handler("damage_if_debuff", func(e, s, t): return _resolve_damage_if_debuff(e, s, t))
 	register_effect_handler("block",  func(e, s, t): return _resolve_block(e.get("value", 0), s, t))
 	register_effect_handler("heal",   func(e, s, t): return _resolve_heal(e.get("value", 0), s, t))
 

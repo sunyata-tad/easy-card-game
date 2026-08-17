@@ -205,13 +205,27 @@ func set_highlight_for_target(valid: bool):
 		modulate = NORMAL_COLOR
 		z_index = 0
 
-func show_damage_number(amount: int):
+## 在敌人身上弹出飘字：伤害（红）/ 治疗（绿）/ 护甲（蓝）
+func show_damage_number(amount: int, kind: String = "damage"):
 	if amount <= 0:
 		return
 	
+	var text: String
+	var color: Color
+	match kind:
+		"heal":
+			text = "+%d" % amount
+			color = Color(0.35, 0.9, 0.45)
+		"block":
+			text = "+%d" % amount
+			color = Color(0.45, 0.75, 1.0)
+		_:
+			text = "-%d" % amount
+			color = Color.RED
+	
 	var damage_label = Label.new()
-	damage_label.text = "-%d" % amount
-	damage_label.add_theme_color_override("font_color", Color.RED)
+	damage_label.text = text
+	damage_label.add_theme_color_override("font_color", color)
 	damage_label.add_theme_font_size_override("font_size", 28)
 	damage_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	damage_label.position = Vector2(60, 0)

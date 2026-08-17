@@ -33,6 +33,11 @@
 			"参数": "value: 基础伤害值。可选 base_stat(strength/dexterity) + multiplier 基于属性计算",
 			"示例": "{\"effect_type\": \"damage\", \"value\": 8} 或 {\"effect_type\": \"damage\", \"base_stat\": \"strength\", \"multiplier\": 1.0}"
 		},
+		"damage_if_debuff": {
+			"说明": "条件伤害：目标拥有指定减益时附加额外伤害（减益利用）",
+			"参数": "buff_id: 检查的减益id；value: 基础伤害；bonus_value: 目标有该减益时的额外伤害",
+			"示例": "{\"effect_type\": \"damage_if_debuff\", \"buff_id\": \"vulnerable\", \"value\": 4, \"bonus_value\": 4}"
+		},
 		"block": {
 			"说明": "获得护甲",
 			"参数": "value: 护甲值。可选 base_stat + multiplier",

@@ -1,0 +1,20 @@
+{
+	"id": "铁壁",
+	"name": "铁壁",
+	"type": "skill",
+	"description": "获得 5 点护甲",
+	"rarity": "common",
+	"target_type": "self",
+	"tags": ["Skill", "Basic"],
+	"treated_as": [],
+	"effects": [
+		{"effect_type": "block", "value": 5}
+	],
+	"upgrade": {
+		"name": "铁壁+",
+		"description": "获得 8 点护甲",
+		"effects": [
+			{"effect_type": "block", "value": 8}
+		]
+	}
+}

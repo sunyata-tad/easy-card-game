@@ -1,0 +1,20 @@
+{
+	"id": "压制",
+	"name": "压制",
+	"type": "attack",
+	"description": "造成 4 点伤害；目标有易伤时改为 8 点",
+	"rarity": "common",
+	"target_type": "single_enemy",
+	"tags": ["Attack", "Common"],
+	"treated_as": [],
+	"effects": [
+		{"effect_type": "damage_if_debuff", "buff_id": "vulnerable", "value": 4, "bonus_value": 4}
+	],
+	"upgrade": {
+		"name": "压制+",
+		"description": "造成 5 点伤害；目标有易伤时改为 10 点",
+		"effects": [
+			{"effect_type": "damage_if_debuff", "buff_id": "vulnerable", "value": 5, "bonus_value": 5}
+		]
+	}
+}

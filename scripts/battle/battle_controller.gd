@@ -45,6 +45,8 @@ func _connect_signals() -> void:
 	card_system.deck_count_changed.connect(_on_deck_count_changed)
 	enemy_system.enemy_died.connect(_on_enemy_died)
 	enemy_system.enemy_damaged.connect(_on_enemy_damaged)
+	effect_resolver.healing_done.connect(_on_healing_done)
+	effect_resolver.block_gained.connect(_on_block_gained)
 	enemy_system.all_enemies_defeated.connect(_on_all_enemies_defeated)
 	card_system.deck_exhausted.connect(_on_deck_exhausted)
 	player_manager.hp_changed.connect(_on_player_hp_changed)
@@ -464,6 +466,16 @@ func _on_enemy_damaged(enemy: EnemyUnit, amount: int) -> void:
 	ui_controller.update_single_enemy(enemy)
 	ui_controller.show_damage_number(enemy, amount)
 
+## 治疗结算 → 绿色飘字
+func _on_healing_done(target, amount: int) -> void:
+	if ui_controller:
+		ui_controller.show_damage_number(target, amount, "heal")
+
+## 护甲获得结算 → 蓝色飘字
+func _on_block_gained(target, amount: int) -> void:
+	if ui_controller:
+		ui_controller.show_damage_number(target, amount, "block")
+
 func _on_all_enemies_defeated() -> void:
 	if state_machine.is_battle_active():
 		state_machine.change_state(StateMachine.BattleState.VICTORY)
@@ -544,14 +556,29 @@ func _on_ui_card_dropped(card: CardData, target) -> void:
 			card_node.reset_position()
 
 func play_card_with_animation(card: CardData, target, card_node: Control) -> void:
+	# 未显式传入节点时从手牌映射查找（如短按选目标后的 pending_card 流程）
+	if card_node == null and ui_controller:
+		card_node = ui_controller.get_card_node(card)
+	# 从手牌映射摘出节点（不释放），避免结算触发的 hand_changed 重排释放它，节点改由动画接管
+	if card_node and ui_controller:
+		ui_controller.detach_card_node(card)
+	# 第一步：飞向屏幕中央
 	if card_node:
-		if target:
-			ui_controller.play_card_animation(card, card_node, target)
-		else:
-			if card_node.has_method("play_play_animation"):
-				card_node.play_play_animation(Vector2(400, 200))
-		await get_tree().create_timer(0.15).timeout
-	play_card(card, target)
+		await card_node.fly_to_center()
+	# 第二步：结算效果（同步），卡牌悬停在中央；play_card 内部 await 0.3s 即悬停展示时间
+	var played: bool = await play_card(card, target)
+	if not played:
+		# 打牌失败：节点放回手牌并恢复布局
+		if card_node:
+			if ui_controller:
+				ui_controller.reattach_card_node(card, card_node)
+			card_node.reset_position()
+			ui_controller.ensure_cards_layout_state()
+		return
+	# 第三步：飞向弃牌堆并消散（弃牌堆计数已在 play_card 结算时同步更新）
+	if card_node:
+		var discard_pos: Vector2 = ui_controller.get_discard_pile_global_pos() if ui_controller else Vector2(120, 360)
+		await card_node.fly_to_discard(discard_pos)
 
 func _on_ui_enemy_selected(enemy: EnemyUnit) -> void:
 	player_manager.selected_target = enemy

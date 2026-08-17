@@ -13,7 +13,6 @@ extends Control
 @onready var name_label: Label = $NameLabel
 @onready var type_label: Label = $TypeLabel
 @onready var desc_label: Label = $DescLabel
-@onready var icon: TextureRect = $Icon
 
 var card_data: CardData               ## 关联的卡牌数据
 var player_manager: PlayerManager     ## 玩家状态引用（用于动态计算伤害预览）
@@ -32,6 +31,7 @@ var is_awaiting_target: bool = false  ## 是否在等待选择目标
 var tooltip_panel: PanelContainer = null   ## 悬停提示面板
 var drag_exited_hand: bool = false    ## 拖拽是否已离开手牌区域
 var is_select_mode: bool = false      ## 是否处于选择模式
+var is_playing_animation: bool = false ## 打出动画播放中（飞向中央/弃牌堆时阻止悬停干扰）
 
 ## 交互信号
 signal card_clicked(card: CardData)                              ## 卡牌被点击
@@ -47,15 +47,7 @@ signal target_mode_ended(card: CardData)                         ## 退出目标
 signal card_play_requested(card: CardData)                       ## 请求直接打出（无需目标）
 
 ## 卡牌类型对应颜色（深色系，保证白色文字可读）
-const ATTACK_COLOR := Color(0.62, 0.16, 0.18, 1.0)   ## 攻击（深红）
-const SKILL_COLOR := Color(0.15, 0.33, 0.62, 1.0)    ## 技能（深蓝）
-const POWER_COLOR := Color(0.42, 0.24, 0.60, 1.0)    ## 能力（深紫）
-const DEFAULT_COLOR := Color(0.27, 0.28, 0.34, 1.0)  ## 默认（深灰）
-
-## 卡牌类型图标（来自 Raven Fantasy Icons 64x64）
-const ICON_ATTACK := preload("res://assets/Free - Raven Fantasy Icons/Separated Files/64x64/fc4.png")
-const ICON_SKILL := preload("res://assets/Free - Raven Fantasy Icons/Separated Files/64x64/fc5.png")
-const ICON_POWER := preload("res://assets/Free - Raven Fantasy Icons/Separated Files/64x64/fc36.png")
+const CARD_BG_COLOR := Color(0.13, 0.14, 0.18, 1.0)   ## 卡面统一底色（深色）
 
 ## buff 数据库缓存（从 data/buffs.json 加载，用于悬浮显示卡牌附带的 buff 详情）
 static var _buff_db: Dictionary = {}
@@ -115,9 +107,9 @@ func setup(card: CardData, pm: PlayerManager = null):
 	if desc_lbl:
 		desc_lbl.text = _get_display_text()
 	
-	# 根据卡牌类型设置卡面颜色
-	_set_card_color(card.type)
-	_set_type_icon(card.type)
+	# 根据稀有度设置卡面（底色/边框/底角色带/角标）
+	_set_card_color(card.rarity)
+	_set_rarity(card.rarity)
 	
 	size = Vector2(140, 180)
 	pivot_offset = Vector2(size.x / 2.0, size.y)  # 以底边中点为轴：扇形旋转与悬浮放大都更自然
@@ -159,36 +151,35 @@ func _get_display_text() -> String:
 	
 	return card_data.get_description_text()
 
-## 根据卡牌类型给卡面（Frame 面板）上色
-func _set_card_color(type: String) -> void:
+## 设置卡面样式：统一深色底 + 稀有度边框色 + 稀有度色光晕
+func _set_card_color(rarity: String) -> void:
 	var frm := get_node_or_null("Frame") as Panel
 	if frm == null:
 		return
 	var base: StyleBoxFlat = frm.get_theme_stylebox("panel") as StyleBoxFlat
 	if base == null:
 		return
+	var rarity_color := _get_rarity_color(rarity)
 	var sb := base.duplicate() as StyleBoxFlat
-	sb.bg_color = _get_type_color(type)
+	sb.bg_color = CARD_BG_COLOR
+	sb.border_color = rarity_color
+	sb.shadow_color = Color(rarity_color.r, rarity_color.g, rarity_color.b, 0.55)
 	frm.add_theme_stylebox_override("panel", sb)
 
-
-func _get_type_color(type: String) -> Color:
-	match type:
-		"attack": return ATTACK_COLOR
-		"skill": return SKILL_COLOR
-		"power": return POWER_COLOR
-		_: return DEFAULT_COLOR
-
-## 根据卡牌类型设置右上角类型图标
-func _set_type_icon(type: String) -> void:
-	var ic := get_node_or_null("Icon") as TextureRect
-	if ic == null:
+## 设置底部稀有度区域（底角色带 + 角标文字）
+func _set_rarity(rarity: String) -> void:
+	var band := get_node_or_null("RarityBand") as Panel
+	if band:
+		var band_base: StyleBoxFlat = band.get_theme_stylebox("panel") as StyleBoxFlat
+		if band_base:
+			var sb := band_base.duplicate() as StyleBoxFlat
+			sb.bg_color = _get_rarity_color(rarity)
+			band.add_theme_stylebox_override("panel", sb)
+	var lbl := get_node_or_null("RarityLabel") as Label
+	if lbl == null:
 		return
-	match type:
-		"attack": ic.texture = ICON_ATTACK
-		"skill": ic.texture = ICON_SKILL
-		"power": ic.texture = ICON_POWER
-		_: ic.texture = null
+	lbl.text = _get_rarity_text(rarity)
+	lbl.add_theme_color_override("font_color", Color(1, 1, 1, 1))
 
 func _get_type_text(type: String) -> String:
 	match type:
@@ -199,8 +190,8 @@ func _get_type_text(type: String) -> String:
 
 ## 鼠标悬停动画：放大卡牌本体（便于阅读效果）+ 摆正 + 轻微高亮
 func _animate_hover(hover: bool):
-	# 按下中/目标选择中/选择模式中跳过悬停动画
-	if is_pressed or is_awaiting_target or is_select_mode:
+	# 按下中/目标选择中/选择模式中/打出动画播放中跳过悬停动画
+	if is_pressed or is_awaiting_target or is_select_mode or is_playing_animation:
 		return
 
 	if hover:
@@ -397,17 +388,27 @@ func end_drag():
 	drag_ended.emit(card_data, end_pos)
 	drag_updated.emit(card_data, end_pos)
 
-func play_play_animation(target_pos: Vector2, callback: Callable = Callable()):
-	var start_pos = position
+## 卡牌打出流程第一步：从手牌飞向屏幕中央（等待效果结算期间悬停于此）。
+func fly_to_center() -> void:
+	is_playing_animation = true
+	var vp_size = get_viewport_rect().size
+	var center = Vector2(vp_size.x / 2.0 - size.x / 2.0, vp_size.y / 2.0 - size.y / 2.0 - 50.0)
 	var tween = create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(self, "position", target_pos, 0.15)
-	tween.tween_property(self, "scale", Vector2(0.8, 0.8), 0.15)
-	tween.tween_property(self, "modulate:a", 0.0, 0.15)
-	tween.chain()
-	if callback.is_valid():
-		tween.tween_callback(callback)
-	tween.tween_callback(queue_free)
+	tween.tween_property(self, "global_position", center, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(self, "rotation_degrees", 0.0, 0.2)
+	tween.tween_property(self, "scale", Vector2(1.15, 1.15), 0.2)
+	await tween.finished
+
+## 卡牌打出流程最后一步：飞向弃牌堆位置并淡出消散（由调用方编排时序）。
+func fly_to_discard(target_center: Vector2) -> void:
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(self, "global_position", target_center - size / 2.0, 0.2).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(self, "scale", Vector2(0.6, 0.6), 0.2)
+	tween.tween_property(self, "modulate:a", 0.0, 0.2)
+	await tween.finished
+	queue_free()
 
 func reset_position():
 	_hide_buff_tooltip()
@@ -417,6 +418,7 @@ func reset_position():
 	is_dragging = false
 	is_pressed = false
 	is_awaiting_target = false
+	is_playing_animation = false
 	
 	if press_tween and press_tween.is_valid():
 		press_tween.kill()
@@ -426,6 +428,7 @@ func restore_to_layout_state():
 	is_dragging = false
 	is_pressed = false
 	is_awaiting_target = false
+	is_playing_animation = false
 	
 	if press_tween and press_tween.is_valid():
 		press_tween.kill()
@@ -543,8 +546,17 @@ func _hide_buff_tooltip() -> void:
 
 func _get_rarity_color(rarity: String) -> Color:
 	match rarity:
-		"common": return Color(0.8, 0.8, 0.8)
-		"uncommon": return Color(0.2, 0.8, 0.4)
-		"rare": return Color(0.3, 0.5, 0.9)
-		"epic": return Color(0.7, 0.3, 0.9)
+		"common": return Color(0.72, 0.72, 0.75)
+		"uncommon": return Color(0.3, 0.8, 0.5)
+		"rare": return Color(0.35, 0.6, 1.0)
+		"epic": return Color(0.7, 0.4, 0.95)
 		_: return Color(0.7, 0.7, 0.7)
+
+## 稀有度中文名（角标显示）
+func _get_rarity_text(rarity: String) -> String:
+	match rarity:
+		"common": return "普通"
+		"uncommon": return "罕见"
+		"rare": return "稀有"
+		"epic": return "史诗"
+		_: return rarity

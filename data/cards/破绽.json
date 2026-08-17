@@ -1,0 +1,20 @@
+{
+	"id": "破绽",
+	"name": "破绽",
+	"type": "skill",
+	"description": "使 1 名敌人获得 2 层易伤",
+	"rarity": "common",
+	"target_type": "single_enemy",
+	"tags": ["Skill", "Debuff", "Common"],
+	"treated_as": [],
+	"effects": [
+		{"effect_type": "apply_debuff", "buff_id": "vulnerable", "value": 2}
+	],
+	"upgrade": {
+		"name": "破绽+",
+		"description": "使 1 名敌人获得 3 层易伤",
+		"effects": [
+			{"effect_type": "apply_debuff", "buff_id": "vulnerable", "value": 3}
+		]
+	}
+}

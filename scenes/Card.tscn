@@ -1,21 +1,26 @@
-[gd_scene load_steps=3 format=3 uid="uid://8xc335n74o87"]
+[gd_scene load_steps=4 format=3 uid="uid://8xc335n74o87"]
 
 [ext_resource type="Script" uid="uid://302mdp60w4jp" path="res://scripts/ui/card_ui.gd" id="1_yiag5"]
 
 [sub_resource type="StyleBoxFlat" id="card_base"]
-bg_color = Color(0.27, 0.28, 0.34, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 1, 1, 0.22)
+bg_color = Color(0.13, 0.14, 0.18, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.72, 0.72, 0.75, 1)
 corner_radius_top_left = 10
 corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
-shadow_color = Color(0, 0, 0, 0.45)
+shadow_color = Color(0, 0, 0, 0.5)
 shadow_size = 6
 shadow_offset = Vector2(0, 3)
+
+[sub_resource type="StyleBoxFlat" id="rarity_band"]
+bg_color = Color(0.72, 0.72, 0.75, 1)
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
 
 [node name="Card" type="Control" unique_id=1382513959]
 custom_minimum_size = Vector2(140, 180)
@@ -36,12 +41,24 @@ grow_vertical = 2
 theme_override_styles/panel = SubResource("card_base")
 mouse_filter = 2
 
+[node name="RarityBand" type="Panel" parent="." unique_id=2100000003]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -10.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("rarity_band")
+mouse_filter = 2
+
 [node name="NameLabel" type="Label" parent="." unique_id=161470106]
 layout_mode = 1
 offset_left = 8.0
-offset_top = 9.0
+offset_top = 10.0
 offset_right = 132.0
-offset_bottom = 34.0
+offset_bottom = 36.0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.6)
 theme_override_constants/outline_size = 3
@@ -54,8 +71,8 @@ layout_mode = 1
 offset_left = 8.0
 offset_top = 38.0
 offset_right = 132.0
-offset_bottom = 58.0
-theme_override_colors/font_color = Color(0.9, 0.9, 0.95, 0.85)
+offset_bottom = 56.0
+theme_override_colors/font_color = Color(0.85, 0.85, 0.9, 0.7)
 theme_override_font_sizes/font_size = 12
 horizontal_alignment = 1
 mouse_filter = 2
@@ -63,9 +80,9 @@ mouse_filter = 2
 [node name="DescLabel" type="Label" parent="." unique_id=1371116370]
 layout_mode = 1
 offset_left = 10.0
-offset_top = 64.0
+offset_top = 60.0
 offset_right = 130.0
-offset_bottom = 172.0
+offset_bottom = 166.0
 theme_override_colors/font_color = Color(1, 1, 1, 0.95)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.45)
 theme_override_constants/outline_size = 2
@@ -73,12 +90,15 @@ theme_override_font_sizes/font_size = 14
 autowrap_mode = 3
 mouse_filter = 2
 
-[node name="Icon" type="TextureRect" parent="." unique_id=1410416969]
-layout_mode = 0
-offset_left = 108.0
-offset_top = 8.0
+[node name="RarityLabel" type="Label" parent="." unique_id=2100000002]
+layout_mode = 1
+offset_left = 8.0
+offset_top = 170.0
 offset_right = 132.0
-offset_bottom = 32.0
-expand_mode = 1
-stretch_mode = 5
+offset_bottom = 180.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.7)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 11
+horizontal_alignment = 1
 mouse_filter = 2
