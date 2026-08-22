@@ -111,12 +111,14 @@ func _create_top_section() -> Control:
 	status_button.custom_minimum_size = Vector2(88, 34)
 	status_button.pressed.connect(_on_status_pressed)
 	header.add_child(status_button)
+	UIStyle.attach_button_anim(status_button)
 	
 	relic_button = Button.new()
 	relic_button.text = "遗物"
 	relic_button.custom_minimum_size = Vector2(88, 34)
 	relic_button.pressed.connect(_on_relic_pressed)
 	header.add_child(relic_button)
+	UIStyle.attach_button_anim(relic_button)
 	
 	var spacer_left = Control.new()
 	spacer_left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -138,12 +140,14 @@ func _create_top_section() -> Control:
 	settings_button.custom_minimum_size = Vector2(88, 34)
 	settings_button.pressed.connect(_on_settings_pressed)
 	header.add_child(settings_button)
+	UIStyle.attach_button_anim(settings_button)
 
 	var overview_btn = Button.new()
 	overview_btn.text = "地图"
 	overview_btn.custom_minimum_size = Vector2(88, 34)
 	overview_btn.pressed.connect(_on_map_overview_pressed)
 	header.add_child(overview_btn)
+	UIStyle.attach_button_anim(overview_btn)
 	
 	var info_container = VBoxContainer.new()
 	info_container.custom_minimum_size = Vector2(0, 95)
@@ -225,6 +229,7 @@ func _create_node(location_id: String, location_data: Dictionary, pos: Vector2, 
 		btn.pressed.connect(_on_node_pressed.bind(location_id))
 	
 	node_container.add_child(btn)
+	UIStyle.attach_button_anim(btn)
 	return btn
 
 func _on_node_pressed(location_id: String):
@@ -419,6 +424,7 @@ func _update_interactables():
 		var interactable_id = interactable.id
 		btn.pressed.connect(_on_interactable_pressed.bind(interactable_id))
 		hbox.add_child(btn)
+		UIStyle.attach_button_anim(btn)
 		
 		interactables_container.add_child(hbox)
 
@@ -453,12 +459,14 @@ func _on_interactable_selected(interactable_data: Dictionary):
 			btn.text = action
 			btn.pressed.connect(_on_interaction_action_pressed.bind(interactable_data.id, action))
 			btn_container.add_child(btn)
+			UIStyle.attach_button_anim(btn)
 		
 		var cancel_btn = Button.new()
 		cancel_btn.custom_minimum_size = Vector2(0, 34)
 		cancel_btn.text = "取消"
 		cancel_btn.pressed.connect(_on_cancel_interaction_pressed)
 		btn_container.add_child(cancel_btn)
+		UIStyle.attach_button_anim(cancel_btn)
 		
 		interaction_panel.add_child(btn_container)
 
@@ -796,6 +804,7 @@ func _build_status_panel_content() -> void:
 	close_btn.custom_minimum_size = Vector2(60, 28)
 	close_btn.pressed.connect(_close_status_panel)
 	header.add_child(close_btn)
+	UIStyle.attach_button_anim(close_btn)
 	status_panel_content.add_child(header)
 	
 	_add_panel_separator()
@@ -963,6 +972,7 @@ func _add_stat_value_with_btn(grid: GridContainer, value_text: String, on_presse
 		add_btn.add_theme_font_size_override("font_size", 14)
 		add_btn.pressed.connect(on_pressed)
 		hbox.add_child(add_btn)
+		UIStyle.attach_button_anim(add_btn)
 	
 	grid.add_child(hbox)
 
@@ -1026,6 +1036,7 @@ func _show_deck_workbench() -> void:
 		remove_btn.custom_minimum_size = Vector2(28, 24)
 		remove_btn.pressed.connect(_on_deck_remove_card.bind(card_id, popup))
 		row.add_child(remove_btn)
+		UIStyle.attach_button_anim(remove_btn)
 		deck_list.add_child(row)
 	
 	var deck_size_label = Label.new()
@@ -1064,6 +1075,7 @@ func _show_deck_workbench() -> void:
 		add_btn.custom_minimum_size = Vector2(28, 24)
 		add_btn.pressed.connect(_on_deck_add_card.bind(cid, popup))
 		row.add_child(add_btn)
+		UIStyle.attach_button_anim(add_btn)
 		lib_list.add_child(row)
 	
 	hbox.add_child(lib_vbox)
@@ -1075,6 +1087,7 @@ func _show_deck_workbench() -> void:
 	close_btn.custom_minimum_size = Vector2(200, 36)
 	close_btn.pressed.connect(func(): popup.hide())
 	main_vbox.add_child(close_btn)
+	UIStyle.attach_button_anim(close_btn)
 	
 	popup.add_child(main_vbox)
 	add_child(popup)
@@ -1152,18 +1165,21 @@ func _show_settings_dialog() -> void:
 	save_menu_btn.custom_minimum_size = Vector2(220, 36)
 	save_menu_btn.pressed.connect(func(): popup.hide(); SaveManager.save_map_state(); GameManager.go_to_main_menu())
 	vbox.add_child(save_menu_btn)
+	UIStyle.attach_button_anim(save_menu_btn)
 	
 	var save_exit_btn = Button.new()
 	save_exit_btn.text = "保存并退出游戏"
 	save_exit_btn.custom_minimum_size = Vector2(220, 36)
 	save_exit_btn.pressed.connect(func(): popup.hide(); SaveManager.save_map_state(); get_tree().quit())
 	vbox.add_child(save_exit_btn)
+	UIStyle.attach_button_anim(save_exit_btn)
 	
 	var cancel_btn = Button.new()
 	cancel_btn.text = "取消"
 	cancel_btn.custom_minimum_size = Vector2(220, 36)
 	cancel_btn.pressed.connect(func(): popup.hide())
 	vbox.add_child(cancel_btn)
+	UIStyle.attach_button_anim(cancel_btn)
 	
 	popup.add_child(vbox)
 	add_child(popup)
@@ -1238,6 +1254,7 @@ func _on_map_overview_pressed():
 	back_btn.custom_minimum_size = Vector2(60, 28)
 	back_btn.visible = false
 	title_bar.add_child(back_btn)
+	UIStyle.attach_button_anim(back_btn)
 
 	var title_lbl = Label.new()
 	title_lbl.text = "世界地图"
@@ -1250,6 +1267,7 @@ func _on_map_overview_pressed():
 	close_btn.text = "关闭"
 	close_btn.pressed.connect(func(): popup.hide())
 	title_bar.add_child(close_btn)
+	UIStyle.attach_button_anim(close_btn)
 	vbox.add_child(title_bar)
 	vbox.add_child(HSeparator.new())
 
@@ -1373,6 +1391,7 @@ func _on_map_overview_pressed():
 			enter_btn.text = "进入"
 			enter_btn.pressed.connect(show_region.bind(r.id))
 			entry_hbox.add_child(enter_btn)
+			UIStyle.attach_button_anim(enter_btn)
 
 			entry.add_child(entry_hbox)
 			world_vbox.add_child(entry)

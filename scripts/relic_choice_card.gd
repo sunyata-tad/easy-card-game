@@ -21,6 +21,7 @@ func setup(relic: RelicData) -> void:
 		$Margin/VBox/FlavorLabel.visible = true
 		$Margin/VBox/FlavorLabel.text = "—— %s ——" % relic.flavor_text
 	$Margin/VBox/PickButton.pressed.connect(_on_pick_pressed)
+	UIStyle.attach_button_anim($Margin/VBox/PickButton)
 
 func _on_pick_pressed() -> void:
 	if _relic:

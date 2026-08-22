@@ -123,6 +123,7 @@ func _setup_target_button() -> void:
 	
 	target_button.pressed.connect(_on_target_button_pressed)
 	root_node.add_child(target_button)
+	UIStyle.attach_button_anim(target_button)
 
 ## 创建目标标记 UI（使用 target_marker.gd 脚本）
 ## set_script 动态给 Control 节点附加脚本（类似 Python 的运行时添加方法）
@@ -276,6 +277,7 @@ func _find_ui_nodes() -> void:
 func _setup_signals() -> void:
 	if end_turn_button:
 		end_turn_button.pressed.connect(_on_end_turn_pressed)
+		UIStyle.attach_button_anim(end_turn_button)
 
 func _load_card_scene() -> void:
 	card_scene = load("res://scenes/Card.tscn")
@@ -1138,6 +1140,7 @@ func _build_discard_select_ui(prompt: String) -> void:
 		btn.add_theme_font_size_override("font_size", 13)
 		btn.toggled.connect(_on_discard_select_toggled.bind(card, btn))
 		grid.add_child(btn)
+		UIStyle.attach_button_anim(btn)
 
 	var btn_row := HBoxContainer.new()
 	btn_row.add_theme_constant_override("separation", 10)
@@ -1148,12 +1151,14 @@ func _build_discard_select_ui(prompt: String) -> void:
 	confirm.custom_minimum_size = Vector2(120, 36)
 	confirm.pressed.connect(_on_discard_select_confirm)
 	btn_row.add_child(confirm)
+	UIStyle.attach_button_anim(confirm)
 
 	var cancel := Button.new()
 	cancel.text = "取消"
 	cancel.custom_minimum_size = Vector2(120, 36)
 	cancel.pressed.connect(_on_discard_select_cancel)
 	btn_row.add_child(cancel)
+	UIStyle.attach_button_anim(cancel)
 
 func _on_discard_select_toggled(pressed: bool, card, btn: Button) -> void:
 	if pressed:
@@ -1230,6 +1235,7 @@ func enter_card_select_mode(prompt: String, min_select: int, max_select: int, ca
 		_card_select_confirm_btn.custom_minimum_size = Vector2(100, 32)
 		_card_select_confirm_btn.pressed.connect(_on_card_select_confirm)
 		inner.add_child(_card_select_confirm_btn)
+		UIStyle.attach_button_anim(_card_select_confirm_btn)
 	
 	if show_cancel:
 		var cancel_btn = Button.new()
@@ -1238,6 +1244,7 @@ func enter_card_select_mode(prompt: String, min_select: int, max_select: int, ca
 		cancel_btn.custom_minimum_size = Vector2(100, 32)
 		cancel_btn.pressed.connect(_on_card_select_cancel)
 		inner.add_child(cancel_btn)
+		UIStyle.attach_button_anim(cancel_btn)
 	
 	_update_card_select_ui()
 	

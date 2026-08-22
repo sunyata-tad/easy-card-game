@@ -18,6 +18,7 @@ func _setup_exit_button():
 	var exit_button = get_node_or_null("ExitButton")
 	if exit_button:
 		exit_button.pressed.connect(_on_exit_pressed)
+		UIStyle.attach_button_anim(exit_button)
 
 ## 测试辅助：秒杀敌人按钮（仅 test_mode 战斗显示）
 func _setup_kill_enemies_button():
@@ -28,6 +29,7 @@ func _setup_kill_enemies_button():
 	kill_btn.custom_minimum_size = Vector2(110, 34)
 	kill_btn.pressed.connect(_on_kill_enemies_pressed)
 	add_child(kill_btn)
+	UIStyle.attach_button_anim(kill_btn)
 
 func _on_kill_enemies_pressed():
 	if battle_controller and battle_controller.enemy_system:
@@ -43,6 +45,7 @@ func _setup_relic_button():
 	relic_btn.custom_minimum_size = Vector2(90, 34)
 	relic_btn.pressed.connect(_show_relic_popup)
 	add_child(relic_btn)
+	UIStyle.attach_button_anim(relic_btn)
 
 ## 弹出持有遗物列表：悬浮查看详细效果（复用通用面板，适配任意数量遗物）
 func _show_relic_popup():
@@ -223,6 +226,7 @@ func _show_victory_screen():
 	continue_button.position = Vector2(-40, 30)
 	continue_button.pressed.connect(_on_continue_pressed)
 	add_child(continue_button)
+	UIStyle.attach_button_anim(continue_button)
 
 func _show_defeat_screen():
 	var defeat_label = Label.new()
@@ -240,6 +244,7 @@ func _show_defeat_screen():
 	retry_button.position = Vector2(-40, 30)
 	retry_button.pressed.connect(_on_retry_pressed)
 	add_child(retry_button)
+	UIStyle.attach_button_anim(retry_button)
 
 func _on_continue_pressed():
 	if GameData:

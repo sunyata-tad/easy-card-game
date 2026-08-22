@@ -35,12 +35,16 @@ func _connect_signals():
 func _setup_buttons():
 	if create_button:
 		create_button.pressed.connect(_on_create_pressed)
+		UIStyle.attach_button_anim(create_button)
 	if select_button:
 		select_button.pressed.connect(_on_select_pressed)
+		UIStyle.attach_button_anim(select_button)
 	if delete_button:
 		delete_button.pressed.connect(_on_delete_pressed)
+		UIStyle.attach_button_anim(delete_button)
 	if back_button:
 		back_button.pressed.connect(_on_back_pressed)
+		UIStyle.attach_button_anim(back_button)
 
 ## 刷新角色列表（从 CharacterManager 加载）
 func _refresh_character_list():
@@ -77,6 +81,7 @@ func _create_character_row(char_data: CharacterData) -> Control:
 	select_btn.button_group = _get_or_create_button_group()
 	select_btn.pressed.connect(_on_character_row_selected.bind(char_data.id))
 	row.add_child(select_btn)
+	UIStyle.attach_button_anim(select_btn)
 
 	var info = VBoxContainer.new()
 	info.add_theme_constant_override("separation", 2)

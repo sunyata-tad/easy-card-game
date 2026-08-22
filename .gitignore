@@ -24,6 +24,10 @@ Thumbs.db
 CLAUDE.md
 .clinerules
 
+# Huawei Cloud CodeArts generated (unrelated to project)
+.codeartsdoer/
+.codegraph/
+
 # IDE specific
 .vscode/
 .idea/

@@ -7,6 +7,7 @@ var _confirmation_dialog: ConfirmationDialog = null  ## 新游戏确认对话框
 func _ready():
 	_setup_buttons()
 	_update_continue_button()
+	_play_entry_animation()
 
 ## 连接按钮信号，动态创建测试按钮
 func _setup_buttons():
@@ -17,14 +18,19 @@ func _setup_buttons():
 	if start_button:
 		if UIStyle:
 			UIStyle.style_primary_button(start_button)
+			UIStyle.attach_button_anim(start_button)
 		if not start_button.pressed.is_connected(_on_start_pressed):
 			start_button.pressed.connect(_on_start_pressed)
 
 	if continue_button:
+		if UIStyle:
+			UIStyle.attach_button_anim(continue_button)
 		if not continue_button.pressed.is_connected(_on_continue_pressed):
 			continue_button.pressed.connect(_on_continue_pressed)
 
 	if exit_button:
+		if UIStyle:
+			UIStyle.attach_button_anim(exit_button)
 		if not exit_button.pressed.is_connected(_on_exit_pressed):
 			exit_button.pressed.connect(_on_exit_pressed)
 
@@ -47,6 +53,21 @@ func _update_continue_button():
 		var has_save = SaveManager.has_save()
 		continue_button.visible = has_save
 		continue_button.disabled = not has_save
+
+## 主菜单入场：可见按钮从下方错峰滑入并淡入（4.7 Offset Transform）
+func _play_entry_animation() -> void:
+	var btns: Array = []
+	var sb = get_node_or_null("MenuCenter/MenuBox/Button_start")
+	var cb = get_node_or_null("MenuCenter/MenuBox/Button_continue")
+	var eb = get_node_or_null("MenuCenter/MenuBox/Button_exit")
+	if sb:
+		btns.append(sb)
+	if cb and cb.visible:
+		btns.append(cb)
+	if eb:
+		btns.append(eb)
+	if UIStyle and btns.size() > 0:
+		UIStyle.stagger_in(btns)
 
 ## 新游戏：有存档时先弹确认框，无存档直接开始
 func _on_start_pressed() -> void:

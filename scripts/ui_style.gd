@@ -231,3 +231,96 @@ func strip_button_box(btn: Button) -> void:
 	btn.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 	btn.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
 	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+
+
+# ====================== 4.7 Offset Transform 动画 ======================
+## 给按钮注入悬停放大/点击挤压动画（基于 4.7 Control.offset_transform_*）。
+## 纯视觉（offset_transform_visual_only 默认 true），Container 内缩放不挤动兄弟节点。
+## 可重复调用，已注入则跳过。
+func attach_button_anim(btn: Button, hover_scale: Vector2 = Vector2(1.08, 1.08),
+		press_scale: Vector2 = Vector2(0.94, 0.94),
+		hover_time: float = 0.12, press_time: float = 0.08) -> Button:
+	if btn.get_meta("anim_attached", false):
+		return btn
+	btn.set_meta("anim_attached", true)
+	btn.offset_transform_enabled = true
+	btn.set_meta("anim_hover_scale", hover_scale)
+	btn.set_meta("anim_press_scale", press_scale)
+	btn.set_meta("anim_hover_time", hover_time)
+	btn.set_meta("anim_press_time", press_time)
+	btn.set_meta("anim_hovered", false)
+	btn.mouse_entered.connect(_on_anim_mouse_entered.bind(btn))
+	btn.mouse_exited.connect(_on_anim_mouse_exited.bind(btn))
+	btn.button_down.connect(_on_anim_button_down.bind(btn))
+	btn.button_up.connect(_on_anim_button_up.bind(btn))
+	return btn
+
+
+func _on_anim_mouse_entered(btn: Button) -> void:
+	btn.set_meta("anim_hovered", true)
+	_anim_tween_scale(btn, btn.get_meta("anim_hover_scale", Vector2(1.08, 1.08)),
+		btn.get_meta("anim_hover_time", 0.12))
+
+
+func _on_anim_mouse_exited(btn: Button) -> void:
+	btn.set_meta("anim_hovered", false)
+	_anim_tween_scale(btn, Vector2.ONE, btn.get_meta("anim_hover_time", 0.12))
+
+
+func _on_anim_button_down(btn: Button) -> void:
+	_anim_tween_scale(btn, btn.get_meta("anim_press_scale", Vector2(0.94, 0.94)),
+		btn.get_meta("anim_press_time", 0.08))
+
+
+func _on_anim_button_up(btn: Button) -> void:
+	var target: Vector2 = btn.get_meta("anim_hover_scale", Vector2(1.08, 1.08)) if btn.get_meta("anim_hovered", false) else Vector2.ONE
+	_anim_tween_scale(btn, target, btn.get_meta("anim_press_time", 0.08))
+
+
+func _anim_tween_scale(btn: Button, target: Vector2, duration: float) -> void:
+	if btn.has_meta("anim_tween"):
+		var old: Variant = btn.get_meta("anim_tween")
+		if old is Tween and old.is_valid():
+			old.kill()
+	var tw: Tween = btn.create_tween()
+	tw.tween_property(btn, "offset_transform_scale", target, duration) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	btn.set_meta("anim_tween", tw)
+
+
+## 滑入：从 from_offset 偏移位置 + 淡入（offset_transform_position → 0, modulate:a → 1）。返回 Tween。
+func slide_in(control: Control, from_offset: Vector2 = Vector2(0, 80),
+		duration: float = 0.3, delay: float = 0.0) -> Tween:
+	control.offset_transform_enabled = true
+	control.offset_transform_position = from_offset
+	control.modulate.a = 0.0
+	control.visible = true
+	var tw: Tween = control.create_tween()
+	if delay > 0.0:
+		tw.tween_interval(delay)
+	tw.tween_property(control, "offset_transform_position", Vector2.ZERO, duration) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.parallel().tween_property(control, "modulate:a", 1.0, duration)
+	return tw
+
+
+## 错峰滑入：多个控件依次出现，第 i 个延迟 i*stagger。返回 Tween 数组。
+func stagger_in(controls: Array, from_offset: Vector2 = Vector2(0, 80),
+		duration: float = 0.3, stagger: float = 0.06) -> Array:
+	var tweens: Array = []
+	for i in controls.size():
+		tweens.append(slide_in(controls[i], from_offset, duration, float(i) * stagger))
+	return tweens
+
+
+## 滑出：到 to_offset + 淡出，结束后 visible=false。返回 Tween。
+func slide_out(control: Control, to_offset: Vector2 = Vector2(0, 80),
+		duration: float = 0.3) -> Tween:
+	control.offset_transform_enabled = true
+	control.visible = true
+	var tw: Tween = control.create_tween()
+	tw.tween_property(control, "offset_transform_position", to_offset, duration) \
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+	tw.parallel().tween_property(control, "modulate:a", 0.0, duration)
+	tw.tween_callback(func(): control.visible = false)
+	return tw

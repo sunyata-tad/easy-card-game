@@ -46,10 +46,13 @@ func _ready():
 func _setup_buttons():
 	if prev_button:
 		prev_button.pressed.connect(_on_prev_pressed)
+		UIStyle.attach_button_anim(prev_button)
 	if next_button:
 		next_button.pressed.connect(_on_next_pressed)
+		UIStyle.attach_button_anim(next_button)
 	if cancel_button:
 		cancel_button.pressed.connect(_on_cancel_pressed)
+		UIStyle.attach_button_anim(cancel_button)
 
 ## 初始化预设牌组（3张斩击 + 3张格挡 + 2张破甲 + 2张招架）
 func _setup_initial_stats():
@@ -214,16 +217,19 @@ func _show_stats_step():
 		minus_btn.text = "-"
 		minus_btn.pressed.connect(_on_stat_decrease.bind(config.key, config.step, config.min))
 		row.add_child(minus_btn)
+		UIStyle.attach_button_anim(minus_btn)
 
 		var plus_btn = Button.new()
 		plus_btn.text = "+"
 		plus_btn.pressed.connect(_on_stat_increase.bind(config.key, config.step, config.max))
 		row.add_child(plus_btn)
+		UIStyle.attach_button_anim(plus_btn)
 
 	var random_btn = Button.new()
 	random_btn.text = "随机分配"
 	random_btn.pressed.connect(_on_randomize_stats)
 	vbox.add_child(random_btn)
+	UIStyle.attach_button_anim(random_btn)
 
 ## 属性增减（.bind() 将额外参数附加到回调）
 func _on_stat_increase(stat_key: String, step: int, max_val: int):
@@ -294,12 +300,14 @@ func _show_deck_step():
 			add_btn.disabled = creation_data.deck_card_ids.size() >= MAX_DECK_SIZE
 			add_btn.pressed.connect(_on_add_card_to_deck.bind(card_id))
 			row.add_child(add_btn)
+			UIStyle.attach_button_anim(add_btn)
 
 			var remove_btn = Button.new()
 			remove_btn.text = "-"
 			remove_btn.disabled = count <= 0
 			remove_btn.pressed.connect(_on_remove_card_from_deck.bind(card_id))
 			row.add_child(remove_btn)
+			UIStyle.attach_button_anim(remove_btn)
 
 func _on_add_card_to_deck(card_id: String):
 	if creation_data.deck_card_ids.size() < MAX_DECK_SIZE:

@@ -46,6 +46,7 @@ func _setup_ui():
 	return_btn.custom_minimum_size = Vector2(200, 40)
 	return_btn.pressed.connect(_on_return_to_map)
 	reward_container.add_child(return_btn)
+	UIStyle.attach_button_anim(return_btn)
 
 ## 保存地图状态并返回地图
 func _on_return_to_map():

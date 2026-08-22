@@ -25,6 +25,7 @@ func setup(relics: Array) -> void:
 		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		row.mouse_entered.connect(_on_hover.bind(relic))
 		list_container.add_child(row)
+		UIStyle.attach_button_anim(row)
 	# 默认展示第一个
 	_on_hover(relics[0])
 

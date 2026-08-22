@@ -20,8 +20,10 @@ func _ready():
 func _connect_buttons():
 	if restart_button:
 		restart_button.pressed.connect(_on_restart_pressed)
+		UIStyle.attach_button_anim(restart_button)
 	if quit_button:
 		quit_button.pressed.connect(_on_quit_pressed)
+		UIStyle.attach_button_anim(quit_button)
 
 ## 根据传入的统计数据更新 UI 显示
 func _setup_ui():
