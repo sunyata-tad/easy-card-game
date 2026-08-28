@@ -20,7 +20,7 @@ func _run():
 	add_child(btn)
 	UIStyle.attach_button_anim(btn)
 	UIStyle.play_one_shot_disappear(btn, func(): _callback_called = true)
-	_check(btn.disabled, "按钮已禁用")
+	_check(btn.get_meta("oneshot_done", false), "oneshot_done 标志位已设")
 	await get_tree().create_timer(0.3).timeout
 	_check(btn.offset_transform_scale.y < 0.1, "消失 scale.y≈0 (实际:%s)" % btn.offset_transform_scale.y)
 	_check(btn.modulate.a < 0.1, "消失 modulate.a≈0 (实际:%s)" % btn.modulate.a)

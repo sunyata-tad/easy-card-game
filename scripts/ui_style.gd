@@ -239,7 +239,7 @@ func strip_button_box(btn: Button) -> void:
 ## 可重复调用，已注入则跳过。
 func attach_button_anim(btn: Button, hover_scale: Vector2 = Vector2(1.08, 1.08),
 		press_scale: Vector2 = Vector2(0.94, 0.94),
-		hover_time: float = 0.12, press_time: float = 0.08) -> Button:
+		hover_time: float = 0.12, press_time: float = 0.05) -> Button:
 	if btn.get_meta("anim_attached", false):
 		return btn
 	btn.set_meta("anim_attached", true)
@@ -269,7 +269,7 @@ func _on_anim_mouse_exited(btn: Button) -> void:
 
 func _on_anim_button_down(btn: Button) -> void:
 	_anim_tween_scale(btn, btn.get_meta("anim_press_scale", Vector2(0.94, 0.94)),
-		btn.get_meta("anim_press_time", 0.08))
+		btn.get_meta("anim_press_time", 0.05))
 	play_press_ripple(btn)
 
 
@@ -351,8 +351,9 @@ func play_one_shot_disappear(btn: Control, on_done: Callable = Callable()) -> vo
 		if on_done.is_valid():
 			on_done.call()
 		return
-	btn.disabled = true
-	btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if btn.has_meta("oneshot_done") and btn.get_meta("oneshot_done", false):
+		return
+	btn.set_meta("oneshot_done", true)
 	play_button_vanish(btn, 0.2)
 	spawn_shards(btn)
 	var tw: Tween = get_tree().create_tween()
@@ -380,6 +381,7 @@ func spawn_shards(btn: Control, count: int = 12) -> void:
 		shard.size = Vector2(s, s)
 		shard.position = center - Vector2(s / 2.0, s / 2.0)
 		shard.modulate.a = 1.0
+		shard.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.add_child(shard)
 		var angle := rng.randf_range(0.0, TAU)
 		var dist := rng.randf_range(40.0, 110.0)
@@ -414,6 +416,7 @@ func play_press_ripple(btn: Control) -> void:
 	ring.pivot_offset = Vector2(size / 2.0, size / 2.0)
 	ring.position = center - Vector2(size / 2.0, size / 2.0)
 	ring.modulate.a = 1.0
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(ring)
 	var duration := 0.35
 	var tw: Tween = ring.create_tween()
