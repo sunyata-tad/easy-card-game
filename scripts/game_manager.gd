@@ -10,8 +10,7 @@ extends Node
 ## 游戏场景枚举
 enum GameScene {
 	MAIN_MENU,         ## 主菜单
-	CHARACTER_SELECT,  ## 角色选择
-	CHARACTER_CREATION,## 角色创建
+
 	MAP,               ## 地图
 	BATTLE,            ## 战斗
 	REWARD,            ## 奖励
@@ -22,8 +21,7 @@ enum GameScene {
 ## 场景路径映射表
 const SCENES := {
 	GameScene.MAIN_MENU: "res://scenes/start.tscn",
-	GameScene.CHARACTER_SELECT: "res://scenes/CharacterSelectScreen.tscn",
-	GameScene.CHARACTER_CREATION: "res://scenes/CharacterCreationScreen.tscn",
+
 	GameScene.MAP: "res://scenes/MapScreen.tscn",
 	GameScene.BATTLE: "res://scenes/BattleScene.tscn",
 	GameScene.REWARD: "res://scenes/RewardScreen.tscn",
@@ -85,11 +83,6 @@ func _notify_scene_data(scene: Node, data: Dictionary) -> void:
 func go_to_main_menu() -> void:
 	change_scene(GameScene.MAIN_MENU)
 
-func go_to_character_select() -> void:
-	change_scene(GameScene.CHARACTER_SELECT)
-
-func go_to_character_creation() -> void:
-	change_scene(GameScene.CHARACTER_CREATION)
 
 ## 跳转到无尽地图模式
 ## @param map_state: 可选，恢复地图状态（用于继续游戏）

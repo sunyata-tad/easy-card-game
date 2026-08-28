@@ -1,9 +1,9 @@
-[gd_scene load_steps=3 format=3 uid="uid://char_creation_001"]
+[gd_scene format=3 uid="uid://dhlg7vg75acm8"]
 
 [ext_resource type="Script" path="res://scripts/character_creation_screen.gd" id="1_creation"]
-[ext_resource type="Texture2D" path="res://assets/Large 1024x1024/Purple Nebula/Purple_Nebula_05-1024x1024.png" id="2_bg"]
+[ext_resource type="Texture2D" uid="uid://d1ow7bm5x8gk5" path="res://assets/Large 1024x1024/Purple Nebula/Purple_Nebula_05-1024x1024.png" id="2_bg"]
 
-[node name="CharacterCreationScreen" type="Control"]
+[node name="CharacterCreationScreen" type="Control" unique_id=1178405013]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -12,29 +12,29 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_creation")
 
-[node name="Background" type="TextureRect" parent="."]
+[node name="Background" type="TextureRect" parent="." unique_id=1188664278]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 texture = ExtResource("2_bg")
 expand_mode = 1
 stretch_mode = 6
-mouse_filter = 2
 
-[node name="Overlay" type="ColorRect" parent="."]
+[node name="Overlay" type="ColorRect" parent="." unique_id=339208187]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.02, 0.025, 0.05, 0.2)
 mouse_filter = 2
+color = Color(0.02, 0.025, 0.05, 0.2)
 
-[node name="TitleLabel" type="Label" parent="."]
+[node name="TitleLabel" type="Label" parent="." unique_id=636936794]
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
@@ -43,14 +43,15 @@ offset_left = -140.0
 offset_top = 24.0
 offset_right = 140.0
 offset_bottom = 64.0
+grow_horizontal = 2
 theme_override_colors/font_color = Color(1, 0.85, 0.5, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.6)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 34
-horizontal_alignment = 1
 text = "角色创建"
+horizontal_alignment = 1
 
-[node name="StepIndicator" type="HBoxContainer" parent="."]
+[node name="StepIndicator" type="HBoxContainer" parent="." unique_id=1707407016]
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
@@ -59,11 +60,11 @@ offset_left = -200.0
 offset_top = 74.0
 offset_right = 200.0
 offset_bottom = 104.0
+grow_horizontal = 2
 alignment = 1
 
-[node name="ContentArea" type="Control" parent="."]
+[node name="ContentArea" type="Control" parent="." unique_id=661876684]
 layout_mode = 1
-anchors_preset = 14
 anchor_top = 0.15
 anchor_right = 1.0
 anchor_bottom = 0.85
@@ -72,7 +73,7 @@ offset_bottom = -20.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="ButtonContainer" type="HBoxContainer" parent="."]
+[node name="ButtonContainer" type="HBoxContainer" parent="." unique_id=313388151]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
@@ -85,17 +86,17 @@ offset_right = 200.0
 offset_bottom = -20.0
 grow_horizontal = 2
 grow_vertical = 0
-alignment = 1
 theme_override_constants/separation = 20
+alignment = 1
 
-[node name="CancelButton" type="Button" parent="ButtonContainer"]
+[node name="CancelButton" type="Button" parent="ButtonContainer" unique_id=1148213403]
 layout_mode = 2
 text = "取消"
 
-[node name="PrevButton" type="Button" parent="ButtonContainer"]
+[node name="PrevButton" type="Button" parent="ButtonContainer" unique_id=245501464]
 layout_mode = 2
 text = "上一步"
 
-[node name="NextButton" type="Button" parent="ButtonContainer"]
+[node name="NextButton" type="Button" parent="ButtonContainer" unique_id=8693021]
 layout_mode = 2
 text = "下一步"

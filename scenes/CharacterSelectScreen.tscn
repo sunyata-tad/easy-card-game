@@ -1,9 +1,9 @@
-[gd_scene load_steps=3 format=3 uid="uid://char_select_001"]
+[gd_scene format=3 uid="uid://cx3wiiwhb0413"]
 
 [ext_resource type="Script" path="res://scripts/character_select_screen.gd" id="1_select"]
-[ext_resource type="Texture2D" path="res://assets/Large 1024x1024/Green Nebula/Green_Nebula_03-1024x1024.png" id="2_bg"]
+[ext_resource type="Texture2D" uid="uid://874e3ibq6bdp" path="res://assets/Large 1024x1024/Green Nebula/Green_Nebula_03-1024x1024.png" id="2_bg"]
 
-[node name="CharacterSelectScreen" type="Control"]
+[node name="CharacterSelectScreen" type="Control" unique_id=189364534]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -12,29 +12,29 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_select")
 
-[node name="Background" type="TextureRect" parent="."]
+[node name="Background" type="TextureRect" parent="." unique_id=414057655]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 texture = ExtResource("2_bg")
 expand_mode = 1
 stretch_mode = 6
-mouse_filter = 2
 
-[node name="Overlay" type="ColorRect" parent="."]
+[node name="Overlay" type="ColorRect" parent="." unique_id=1098862636]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.02, 0.025, 0.05, 0.2)
 mouse_filter = 2
+color = Color(0.02, 0.025, 0.05, 0.2)
 
-[node name="TitleLabel" type="Label" parent="."]
+[node name="TitleLabel" type="Label" parent="." unique_id=403976387]
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
@@ -43,16 +43,17 @@ offset_left = -140.0
 offset_top = 26.0
 offset_right = 140.0
 offset_bottom = 68.0
+grow_horizontal = 2
 theme_override_colors/font_color = Color(1, 0.85, 0.5, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.6)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 34
-horizontal_alignment = 1
 text = "选择角色"
+horizontal_alignment = 1
 
-[node name="ScrollContainer" type="ScrollContainer" parent="."]
+[node name="ScrollContainer" type="ScrollContainer" parent="." unique_id=222161301]
 layout_mode = 1
-anchors_preset = 14
+anchors_preset = -1
 anchor_top = 0.1
 anchor_right = 1.0
 anchor_bottom = 0.85
@@ -61,11 +62,12 @@ offset_bottom = -20.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="CharacterList" type="VBoxContainer" parent="ScrollContainer"]
+[node name="CharacterList" type="VBoxContainer" parent="ScrollContainer" unique_id=1176863571]
+layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
 
-[node name="ButtonContainer" type="HBoxContainer" parent="."]
+[node name="ButtonContainer" type="HBoxContainer" parent="." unique_id=1423423345]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
@@ -78,23 +80,23 @@ offset_right = 250.0
 offset_bottom = -20.0
 grow_horizontal = 2
 grow_vertical = 0
-alignment = 1
 theme_override_constants/separation = 15
+alignment = 1
 
-[node name="BackButton" type="Button" parent="ButtonContainer"]
+[node name="BackButton" type="Button" parent="ButtonContainer" unique_id=1530110972]
 layout_mode = 2
 text = "返回"
 
-[node name="CreateButton" type="Button" parent="ButtonContainer"]
+[node name="CreateButton" type="Button" parent="ButtonContainer" unique_id=435800113]
 layout_mode = 2
 text = "创建新角色"
 
-[node name="SelectButton" type="Button" parent="ButtonContainer"]
+[node name="SelectButton" type="Button" parent="ButtonContainer" unique_id=192945392]
 layout_mode = 2
 disabled = true
 text = "选择并开始"
 
-[node name="DeleteButton" type="Button" parent="ButtonContainer"]
+[node name="DeleteButton" type="Button" parent="ButtonContainer" unique_id=384167748]
 layout_mode = 2
 disabled = true
 text = "删除"

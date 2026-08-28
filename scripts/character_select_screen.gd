@@ -164,13 +164,13 @@ func _on_back_pressed():
 func _on_character_selected(character: CharacterData):
 	GameData.initialize_run_from_character(character)
 	print("选择角色: HP=%d, 力量=%d, 敏捷=%d" % [character.get_max_hp(), character.get_strength(), character.get_dexterity()])
-	GameManager.go_to_map("test_map")
+	TransitionManager.transition(GameManager.go_to_map.bind("test_map"), select_button)
 
 func _on_create_new_character():
-	GameManager.go_to_character_creation()
+	TransitionManager.transition(GameManager.go_to_character_creation, create_button)
 
 func _on_back_to_menu():
-	GameManager.go_to_main_menu()
+	TransitionManager.transition(GameManager.go_to_main_menu, back_button)
 
 ## 接收场景切换数据并刷新角色列表
 func receive_data(data: Dictionary) -> void:
