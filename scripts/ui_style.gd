@@ -344,6 +344,23 @@ func play_button_vanish(btn: Control, duration: float = 0.2) -> void:
 	btn.set_meta("vanish_tween", tw)
 
 
+## 一次性按钮消失：禁用按钮 + 播放消失动画（压缩+粒子），动画完成后调用 on_done。
+## 用于按一次即消失的按钮（如宝箱打开、营地休息），可复用。
+func play_one_shot_disappear(btn: Control, on_done: Callable = Callable()) -> void:
+	if not is_instance_valid(btn):
+		if on_done.is_valid():
+			on_done.call()
+		return
+	btn.disabled = true
+	btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	play_button_vanish(btn, 0.2)
+	spawn_shards(btn)
+	var tw: Tween = get_tree().create_tween()
+	tw.tween_interval(0.2)
+	if on_done.is_valid():
+		tw.tween_callback(on_done)
+
+
 ## 碎片飞散：从按钮中心向随机方向飞出小色块，淡出+旋转，无素材依赖。
 func spawn_shards(btn: Control, count: int = 12) -> void:
 	if not is_instance_valid(btn):

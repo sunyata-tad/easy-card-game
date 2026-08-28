@@ -457,24 +457,25 @@ func _on_interactable_selected(interactable_data: Dictionary):
 			var btn = Button.new()
 			btn.custom_minimum_size = Vector2(0, 34)
 			btn.text = action
-			btn.pressed.connect(_on_interaction_action_pressed.bind(interactable_data.id, action))
+			btn.pressed.connect(_on_interaction_action_pressed.bind(interactable_data.id, action, btn))
 			btn_container.add_child(btn)
 			UIStyle.attach_button_anim(btn)
 		
-		var cancel_btn = Button.new()
-		cancel_btn.custom_minimum_size = Vector2(0, 34)
-		cancel_btn.text = "取消"
-		cancel_btn.pressed.connect(_on_cancel_interaction_pressed)
-		btn_container.add_child(cancel_btn)
-		UIStyle.attach_button_anim(cancel_btn)
-		
+
 		interaction_panel.add_child(btn_container)
 
 func _on_interactable_deselected():
 	interaction_panel.visible = false
 	location_info_panel.visible = true
 
-func _on_interaction_action_pressed(interactable_id: String, action: String):
+func _on_interaction_action_pressed(interactable_id: String, action: String, btn: Button = null):
+	# 一次性消失动作：先播消失动画再执行逻辑
+	if btn and is_instance_valid(btn) and (action == "打开" or action == "休息"):
+		UIStyle.play_one_shot_disappear(btn, func(): _execute_interaction(interactable_id, action))
+		return
+	_execute_interaction(interactable_id, action)
+
+func _execute_interaction(interactable_id: String, action: String):
 	var result = map_controller.execute_interaction(interactable_id, action)
 	
 	if result.get("success", false):
@@ -500,8 +501,11 @@ func _on_interaction_action_pressed(interactable_id: String, action: String):
 			_update_interactables()
 			map_controller.select_interactable(interactable_id)
 
-func _on_cancel_interaction_pressed():
-	map_controller.deselect_interactable()
+
+func _unhandled_input(event: InputEvent):
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if interaction_panel and interaction_panel.visible:
+			map_controller.deselect_interactable()
 
 func _update_node_appearance(btn: Button, is_current: bool, location_id: String) -> void:
 	if is_current:
