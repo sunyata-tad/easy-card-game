@@ -74,4 +74,4 @@ func _on_pick(relic: RelicData) -> void:
 	SaveManager.save_map_state()
 	var cached = SaveManager.get_cached_map_state()
 	var map_id = "test" if cached.get("test_mode", false) else "endless"
-	GameManager.go_to_map(map_id, cached)
+	TransitionManager.transition(GameManager.go_to_map.bind(map_id, cached), null)

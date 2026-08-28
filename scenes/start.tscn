@@ -65,6 +65,3 @@ layout_mode = 2
 button_mask = 7
 text = "退出游戏"
 
-[connection signal="pressed" from="MenuCenter/MenuBox/Button_start" to="." method="_on_button_start_pressed"]
-[connection signal="pressed" from="MenuCenter/MenuBox/Button_continue" to="." method="_on_button_continue_pressed"]
-[connection signal="pressed" from="MenuCenter/MenuBox/Button_exit" to="." method="_on_button_exit_pressed"]

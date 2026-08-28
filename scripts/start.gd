@@ -7,7 +7,8 @@ var _confirmation_dialog: ConfirmationDialog = null  ## 新游戏确认对话框
 func _ready():
 	_setup_buttons()
 	_update_continue_button()
-	_play_entry_animation()
+	if TransitionManager == null or not TransitionManager.is_transitioning():
+		call_deferred("play_entry_animation")
 
 ## 连接按钮信号，动态创建测试按钮
 func _setup_buttons():
@@ -55,7 +56,8 @@ func _update_continue_button():
 		continue_button.disabled = not has_save
 
 ## 主菜单入场：可见按钮从下方错峰滑入并淡入（4.7 Offset Transform）
-func _play_entry_animation() -> void:
+## 公共方法：供 TransitionManager 切换到本场景后调用；首次启动由 _ready 自播。
+func play_entry_animation() -> void:
 	var btns: Array = []
 	var sb = get_node_or_null("MenuCenter/MenuBox/Button_start")
 	var cb = get_node_or_null("MenuCenter/MenuBox/Button_continue")
@@ -90,12 +92,15 @@ func _show_new_game_confirmation():
 
 ## 开始新游戏：清除存档，初始化数据，跳转到无尽地图
 func _start_new_game():
+	if _confirmation_dialog and is_instance_valid(_confirmation_dialog):
+		_confirmation_dialog.hide()
 	SaveManager.delete_save()
 	GameData.initialize_new_run()
 	GameData.player_strength = 5
 	GameData.player_dexterity = 5
 	CardPoolManager.initialize_with_starter_cards()
-	GameManager.go_to_endless_map()
+	var start_button = get_node_or_null("MenuCenter/MenuBox/Button_start")
+	TransitionManager.transition(GameManager.go_to_endless_map, start_button)
 
 func _on_cancel_new_game():
 	pass
@@ -116,8 +121,10 @@ func _on_continue_pressed() -> void:
 	var progress = int(save_data.get("progress", SaveManager.GameProgress.IN_MAP))
 	var map_id = save_data.get("map_id", "endless")
 	var map_state = save_data.get("map_state", {})
-	var enemy_id = save_data.get("enemy_id", "")
+	var continue_button = get_node_or_null("MenuCenter/MenuBox/Button_continue")
+	TransitionManager.transition(func(): _continue_to_scene(progress, map_id, map_state), continue_button)
 
+func _continue_to_scene(progress: int, map_id: String, map_state: Dictionary) -> void:
 	match progress:
 		SaveManager.GameProgress.IN_MAP:
 			if map_id == "endless":
@@ -138,10 +145,12 @@ func _on_continue_pressed() -> void:
 				GameManager.go_to_map(map_id, map_state)
 
 func _on_exit_pressed() -> void:
-	get_tree().quit()
+	var exit_button = get_node_or_null("MenuCenter/MenuBox/Button_exit")
+	TransitionManager.transition(func(): get_tree().quit(), exit_button)
 
 func _on_test_pressed() -> void:
-	GameManager.go_to_test_map()
+	var test_button = get_node_or_null("Button_test")
+	TransitionManager.transition(GameManager.go_to_test_map, test_button)
 
 func _on_button_start_pressed() -> void:
 	_on_start_pressed()

@@ -1163,14 +1163,14 @@ func _show_settings_dialog() -> void:
 	var save_menu_btn = Button.new()
 	save_menu_btn.text = "保存并返回主菜单"
 	save_menu_btn.custom_minimum_size = Vector2(220, 36)
-	save_menu_btn.pressed.connect(func(): popup.hide(); SaveManager.save_map_state(); GameManager.go_to_main_menu())
+	save_menu_btn.pressed.connect(func(): popup.hide(); SaveManager.save_map_state(); TransitionManager.transition(GameManager.go_to_main_menu, save_menu_btn))
 	vbox.add_child(save_menu_btn)
 	UIStyle.attach_button_anim(save_menu_btn)
 	
 	var save_exit_btn = Button.new()
 	save_exit_btn.text = "保存并退出游戏"
 	save_exit_btn.custom_minimum_size = Vector2(220, 36)
-	save_exit_btn.pressed.connect(func(): popup.hide(); SaveManager.save_map_state(); get_tree().quit())
+	save_exit_btn.pressed.connect(func(): popup.hide(); SaveManager.save_map_state(); TransitionManager.transition(func(): get_tree().quit(), save_exit_btn))
 	vbox.add_child(save_exit_btn)
 	UIStyle.attach_button_anim(save_exit_btn)
 	
@@ -1196,7 +1196,7 @@ func _on_battle_request_internal(enemy_id: String):
 	var enemy = enemy_db.get_enemy(enemy_id)
 	if enemy:
 		SaveManager.save_before_battle(enemy_id, map_controller.map_state.current_map_id)
-		GameManager.start_battle([enemy], map_controller.test_mode)
+		TransitionManager.transition(GameManager.start_battle.bind([enemy], map_controller.test_mode), null)
 
 ## 启动群体战斗（支持多个敌人ID）
 func _start_group_battle(enemy_ids: Array, layer: int) -> void:
@@ -1221,7 +1221,7 @@ func _start_group_battle(enemy_ids: Array, layer: int) -> void:
 	else:
 		SaveManager.save_before_battle(primary_id, map_controller.map_state.current_map_id, 0)
 	
-	GameManager.start_battle(enemies, map_controller.test_mode)
+	TransitionManager.transition(GameManager.start_battle.bind(enemies, map_controller.test_mode), null)
 
 func get_map_state() -> Dictionary:
 	return map_controller.serialize_state()

@@ -6,6 +6,7 @@ extends Control
 @onready var reward_container: VBoxContainer = $ScrollContainer/RewardContainer  ## 奖励内容容器
 
 var _battle_stats: Dictionary = {}  ## 战斗统计数据（由 receive_data 传入）
+var _return_btn: Button = null  ## 返回地图按钮（过渡用）
 
 func _ready():
 	_setup_ui()
@@ -47,9 +48,10 @@ func _setup_ui():
 	return_btn.pressed.connect(_on_return_to_map)
 	reward_container.add_child(return_btn)
 	UIStyle.attach_button_anim(return_btn)
+	_return_btn = return_btn
 
 ## 保存地图状态并返回地图
 func _on_return_to_map():
 	SaveManager.save_map_state()
 	var cached_state = SaveManager.get_cached_map_state()
-	GameManager.go_to_map("test_map", cached_state)
+	TransitionManager.transition(GameManager.go_to_map.bind("test_map", cached_state), _return_btn)

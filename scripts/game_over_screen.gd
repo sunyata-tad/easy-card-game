@@ -42,7 +42,7 @@ func _setup_ui():
 ## 重新开始：初始化新 run 并回到主菜单
 func _on_restart_pressed() -> void:
 	GameData.initialize_new_run()
-	GameManager.go_to_main_menu()
+	TransitionManager.transition(GameManager.go_to_main_menu, restart_button)
 
 func _on_quit_pressed() -> void:
-	get_tree().quit()
+	TransitionManager.transition(func(): get_tree().quit(), quit_button)

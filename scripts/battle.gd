@@ -10,6 +10,8 @@ var battle_stats: Dictionary = {         ## 本场战斗统计
 	"cards_played": 0
 }
 var is_initialized: bool = false         ## 是否已初始化（防止重复初始化）
+var _victory_continue_btn: Button = null   ## 战斗胜利继续按钮（过渡用）
+var _defeat_retry_btn: Button = null      ## 战斗失败重试按钮（过渡用）
 
 func _ready():
 	_setup_exit_button()
@@ -132,11 +134,11 @@ func _save_and_exit():
 	
 	# 测试模式下不保存，直接返回测试地图
 	if is_test:
-		GameManager.go_to_map("test", SaveManager.get_cached_map_state())
+		TransitionManager.transition(GameManager.go_to_map.bind("test", SaveManager.get_cached_map_state()), get_node_or_null("ExitButton"))
 		return
 	
 	SaveManager.save_map_state()
-	GameManager.go_to_map(map_id, SaveManager.get_cached_map_state())
+	TransitionManager.transition(GameManager.go_to_map.bind(map_id, SaveManager.get_cached_map_state()), get_node_or_null("ExitButton"))
 
 ## 战斗结束时：胜利 → 地图 / 失败 → 结束画面
 func _on_battle_ended(victory: bool):
@@ -176,11 +178,11 @@ func _on_battle_ended(victory: bool):
 			if endless_layer > 0:
 				if endless_layer % 10 == 0 or additional.get("is_boss", false):
 					# Boss 战后：遗物三选一
-					GameManager.go_to_relic_reward()
+					TransitionManager.transition(GameManager.go_to_relic_reward, null)
 				else:
-					GameManager.go_to_map(return_map_id, SaveManager.get_cached_map_state())
+					TransitionManager.transition(GameManager.go_to_map.bind(return_map_id, SaveManager.get_cached_map_state()), null)
 			else:
-				GameManager.go_to_reward(battle_stats)
+				TransitionManager.transition(GameManager.go_to_reward.bind(battle_stats), null)
 		else:
 			_show_victory_screen()
 	else:
@@ -188,7 +190,7 @@ func _on_battle_ended(victory: bool):
 		if GameData:
 			var stats = GameData.get_battle_stats()
 			stats.victory = false
-			GameManager.go_to_game_over(stats)
+			TransitionManager.transition(GameManager.go_to_game_over.bind(stats), null)
 		else:
 			_show_defeat_screen()
 
@@ -227,6 +229,7 @@ func _show_victory_screen():
 	continue_button.pressed.connect(_on_continue_pressed)
 	add_child(continue_button)
 	UIStyle.attach_button_anim(continue_button)
+	_victory_continue_btn = continue_button
 
 func _show_defeat_screen():
 	var defeat_label = Label.new()
@@ -245,18 +248,19 @@ func _show_defeat_screen():
 	retry_button.pressed.connect(_on_retry_pressed)
 	add_child(retry_button)
 	UIStyle.attach_button_anim(retry_button)
+	_defeat_retry_btn = retry_button
 
 func _on_continue_pressed():
 	if GameData:
 		GameData.record_battle_won()
 		SaveManager.save_map_state()
-		GameManager.go_to_map("test_map", SaveManager.get_cached_map_state())
+		TransitionManager.transition(GameManager.go_to_map.bind("test_map", SaveManager.get_cached_map_state()), _victory_continue_btn)
 
 func _on_retry_pressed():
 	if GameData:
 		SaveManager.delete_save()
 		GameData.initialize_new_run()
-		GameManager.go_to_main_menu()
+		TransitionManager.transition(GameManager.go_to_main_menu, _defeat_retry_btn)
 
 func start_new_battle(enemies: Array = []):
 	if battle_controller:
