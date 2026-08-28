@@ -1,6 +1,6 @@
 # 游戏设计文档
 
-> 最后更新：2026-08-12（交互反馈 + 初始卡组重做 + 卡牌 UI 视觉；新增第 10 章）
+> 最后更新：2026-08-28（UI 交互动画 + 场景过渡系统 + 连点修复；新增 7.5/10.6 节）
 > 项目路径：`D:/游戏开发/项目文件/card`
 > 引擎：Godot 4.7 + GDScript
 > 本文档说明：描述**设计目标**与**当前已采用的实现决策**；标有"规划/待定"的项为未来方向。
@@ -242,6 +242,20 @@ INIT → DRAW_PHASE → PLAYER_TURN → RESOLVING → ENEMY_TURN → TURN_END，
 实现：`card_ui.gd` 的 `_set_card_color` / `_set_rarity` / `_get_rarity_color` / `_get_rarity_text`
 > 类型小图标（原 `Icon` 节点）与顶部类型色带（`TypeBand`）已移除；稀有度为四档（无 `basic`）
 
+### 7.5 按钮交互动画与场景过渡（2026-08-28 新增）
+
+- **按钮动画（UIStyle.attach_button_anim）**：基于 Godot 4.7 `Control.offset_transform_*`（`offset_transform_visual_only=true`，纯视觉不影响布局/命中）
+  - 悬停放大（hover_scale 1.08，0.12s）/ 点击挤压（press_scale 0.94，0.05s）/ 按下涟漪（play_press_ripple，0.35s 圆环扩散）
+  - 点击动画：button_down → tween 从当前 scale 缩回 press_scale + 涟漪；button_up → tween 复原；**复原期间可点**（tween kill 重启，连点跟手）
+  - 铺开至全部 ~49 个按钮（菜单/战斗/地图/弹窗/角色等）
+- **涟漪/碎片 mouse_filter=IGNORE**：涟漪 Panel（CanvasLayer layer=98）/ 碎片 ColorRect（layer=99）设 IGNORE，不拦截后续点击（修复快速连点只触发一次）
+- **场景过渡（TransitionManager Autoload）**：transition(callable, from_btn) = 按钮消失+碎片 → 黑屏淡入 → callable.call() → 黑屏淡出 + 新场景 play_entry_animation()
+  - `_transition_token` 版本号抢占保护，修复重复进退游戏崩溃
+  - 接入所有切场景按钮 + 自动切场景（战斗结束/遗物选择后）
+- **一次性按钮消失（play_one_shot_disappear）**：压缩+粒子消失→回调；宝箱"打开"/营地"休息"使用；`oneshot_done` 标志位防重复触发（不禁用视觉，消失期间仍可点但不重复触发逻辑）
+- **菜单入场动画**：slide_in / stagger_in / slide_out（offset_transform_position + 淡入淡出）
+- **互动面板取消按钮**：改为点击空白处返回（`_unhandled_input`）
+
 ---
 
 ## 8. 待定与规划
@@ -345,3 +359,11 @@ INIT → DRAW_PHASE → PLAYER_TURN → RESOLVING → ENEMY_TURN → TURN_END，
 - 卡牌打出瞬间「扩散光环」——用户否决（改为三段式）
 - 反击伤害单独配色——用户否决（保持红）
 - 音效系统——本轮纯视觉，不纳入（后续单独规划）
+
+### 10.6 按钮交互动画与场景过渡（2026-08-28 新增）
+
+详见 §7.5。要点：
+- 按钮悬停放大/点击挤压/涟漪基于 4.7 Offset Transform，纯视觉不影响布局与命中
+- 连点跟手：按下 tween 从当前 scale 缩回（复原期间可点），涟漪/碎片 mouse_filter=IGNORE 不拦截后续点击
+- 场景过渡：TransitionManager 黑屏淡入/淡出 + 按钮消失/碎片，`_transition_token` 重入保护
+- 一次性按钮（宝箱/营地）：play_one_shot_disappear 压缩+粒子消失，oneshot_done 防重复

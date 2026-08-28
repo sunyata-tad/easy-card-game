@@ -1,6 +1,6 @@
 # 卡牌游戏项目状态文档
 
-> 最后更新：2026-08-12（交互反馈三色飘字 + 三段式打牌；初始卡组重做）
+> 最后更新：2026-08-28（UI 交互动画 + 场景过渡系统 + 连点修复）
 > 项目路径：`D:/游戏开发/项目文件/card`
 > 引擎：Godot 4.7（Forward Plus）
 > 语言：GDScript（数据驱动，JSON 配置）
@@ -8,7 +8,18 @@
 
 ---
 
-## 近期重大变更（2026-08-12）
+## 近期重大变更（2026-08-28）
+
+- **UI 交互动画（基于 Godot 4.7 Offset Transform）**：`UIStyle.attach_button_anim` 给按钮注入悬停放大/点击挤压 + 按下涟漪；`scripts/ui/animated_button.gd` 独立脚本；铺开至全部 ~49 个按钮
+- **场景过渡系统（TransitionManager Autoload）**：黑屏淡入/淡出包装场景切换，含按钮消失 + 碎片飞散；`_transition_token` 版本号抢占保护，修复重复进退游戏崩溃；所有切场景按钮接入
+- **一次性按钮消失动画**：`UIStyle.play_one_shot_disappear`（压缩+粒子消失→回调）；宝箱"打开"/营地"休息"播消失动画后执行逻辑；用 `oneshot_done` 标志位防重复触发（不禁用视觉）
+- **互动面板取消按钮改为点击空白处返回**（`_unhandled_input`）
+- **连点修复**：涟漪 Panel / 碎片 ColorRect 设 `mouse_filter=IGNORE`，修复 CanvasLayer 覆盖按钮拦截后续点击（快速连点只触发一次）；`press_time` 0.08→0.05，按下 tween 从当前 scale 缩回（复原期间可点 + 缩回动画）
+- **删除废弃场景**：CharacterSelectScreen / CharacterCreationScreen（.gd/.tscn）+ GameManager enum/SCENES/方法清理
+
+---
+
+## 历史变更（2026-08-12）
 
 - **自动攻击移除** → 主动**弃牌攻击**（回合中弃 1 张手牌 → get_strength() 走完整攻击链，一回合一次）
 - **蓄力/ skip_attack 删除**：`store_damage` / `pending_stored_damage` / 蓄力·蓄势 卡移除
@@ -82,8 +93,7 @@ card/
 ├── scenes/                    # Godot 场景（.tscn）
 │   ├── main.tscn / start.tscn # 主入口 / 主菜单
 │   ├── BattleScene.tscn / Card.tscn / EnemyUI.tscn
-│   ├── MapScreen.tscn / RewardScreen.tscn / GameOverScreen.tscn
-│   └── CharacterSelectScreen.tscn / CharacterCreationScreen.tscn
+│   └── MapScreen.tscn / RewardScreen.tscn / GameOverScreen.tscn
 ├── scripts/
 │   ├── battle/                # 战斗系统
 │   │   ├── battle_controller.gd   # 战斗总控
@@ -103,7 +113,10 @@ card/
 │   ├── ui/                    # UI 组件
 │   │   ├── card_ui.gd / enemy_ui.gd / player_ui.gd
 │   │   ├── hand_layout_presets.gd / drag_arrow.gd / target_marker.gd
+│   │   └── animated_button.gd     # Offset Transform 动画按钮脚本
 │   ├── battle.gd              # 战斗场景入口（接收敌人、经验结算、退出保存）
+│   ├── transition_manager.gd  # 场景过渡管理器（Autoload，黑屏过渡）
+│   ├── ui_style.gd            # UI 样式 + 按钮动画注入（Autoload）
 │   ├── game_manager.gd        # 全局场景管理（Autoload）
 │   ├── game_data.gd           # 全局数据（Autoload）
 │   ├── save_manager.gd        # 存档管理（Autoload）
@@ -113,7 +126,7 @@ card/
 │   ├── enemy_data.gd / enemy_database.gd
 │   ├── map_controller.gd / map_screen.gd / map_database.gd / map_state.gd
 │   ├── reward_screen.gd / game_over_screen.gd / start.gd
-│   ├── character_data.gd / character_select_screen.gd / character_creation_screen.gd
+│   ├── character_data.gd
 └── data/                      # JSON 数据
     ├── cards/                 # 卡牌定义（含 _模板_卡牌名.json）
     ├── enemies/               # 敌人定义
@@ -130,6 +143,8 @@ card/
 | SaveManager | save_manager.gd | 存档（user://savegame.json） |
 | CharacterManager | character_manager.gd | 角色持久化（user://characters.json） |
 | CardPoolManager | card_pool_manager.gd | 永久卡池（user://card_pool.json） |
+| UIStyle | ui_style.gd | UI 样式 + 按钮动画注入（attach_button_anim/slide_in 等） |
+| TransitionManager | transition_manager.gd | 场景过渡（黑屏淡入/淡出 + 按钮消失/碎片） |
 
 ### 3.3 场景流程与模式
 
@@ -142,7 +157,7 @@ card/
                               └─ 失败 → 游戏结束(GameOverScreen)
 ```
 
-GameManager 场景枚举：MAIN_MENU, CHARACTER_SELECT, CHARACTER_CREATION, MAP, BATTLE, REWARD, GAME_OVER
+GameManager 场景枚举：MAIN_MENU, MAP, BATTLE, REWARD, GAME_OVER（CHARACTER_SELECT/CHARACTER_CREATION 已删除 2026-08-28）
 
 ---
 
@@ -334,6 +349,23 @@ damage / block / heal / damage_boost(永久改 base_strength) / temp_damage_boos
 - CARD_WIDTH = 140.0；IDEAL_SPACINGS / ROTATION_CURVE（max_rotation/curve_factor）
 - 动态 spacing = min(ideal, max_spacing)；弧形布局
 
+### 5.5 UI 交互动画（UIStyle + Offset Transform，2026-08-28）
+
+- **attach_button_anim(btn)**：给按钮注入悬停放大（hover_scale 1.08）/ 点击挤压（press_scale 0.94）+ 按下涟漪（play_press_ripple）；基于 Godot 4.7 `Control.offset_transform_*`（`offset_transform_visual_only=true`，不影响布局/命中）；铺开至全部 ~49 个按钮
+- **点击动画**：button_down → tween 从当前 scale 缩回 press_scale（0.05s）+ 涟漪；button_up → tween 复原；**复原期间可点**（tween kill 重启，连点跟手）
+- **涟漪/碎片 mouse_filter=IGNORE**：涟漪 Panel（CanvasLayer layer=98）/ 碎片 ColorRect（layer=99）设 IGNORE，不拦截后续点击（修复连点只触发一次）
+- **菜单入场动画**：slide_in / stagger_in / slide_out（offset_transform_position + 淡入淡出）
+- **一次性按钮消失**：play_one_shot_disappear（play_button_vanish 向下压扁+横向拉伸+淡出 + spawn_shards 碎片飞散）；用 `oneshot_done` 标志位防重复触发（不禁用视觉，消失期间仍可点但不重复触发逻辑）
+- **独立脚本**：`scripts/ui/animated_button.gd`（extends Button，同逻辑，未大规模使用）
+
+### 5.6 场景过渡（TransitionManager，2026-08-28）
+
+- **transition(callable, from_btn)**：按钮消失 + 碎片 → 黑屏淡入 → callable.call()（场景切换）→ 黑屏淡出 + 新场景 play_entry_animation()
+- **Autoload**：黑屏 CanvasLayer 跨场景存活
+- **重入保护**：`_transition_token` 版本号；过渡中重入时 token+1，旧协程 await 后检测 token 不匹配安全退出
+- **接入**：主菜单/地图/战斗/奖励/游戏结束/遗物奖励 所有切场景按钮 + 自动切场景（battle.gd _on_battle_ended、relic_reward_screen 遗物选择后）
+- **涟漪/碎片坐标**：用 `get_viewport().get_mouse_position()`（主 viewport 鼠标坐标），修复 PopupPanel 内按钮错位
+
 ---
 
 ## 6. 数据定义
@@ -406,6 +438,11 @@ action type：attack / defend / buff / debuff，均带 intent_text / intent_icon
 - [x] 存档系统：GameProgress、战斗前存档、战斗后存活敌人恢复
 - [x] 角色系统：CharacterData/CharacterManager 持久化（未接入主流程）
 - [x] 2026-08-05 死代码剪枝：删除 166 行完全失效代码（详见 git diff）
+- [x] 2026-08-28 UI 交互动画：Offset Transform 悬停放大/点击挤压/涟漪，铺开 ~49 按钮
+- [x] 2026-08-28 场景过渡系统：TransitionManager 黑屏过渡 + 按钮消失/碎片 + 重入保护
+- [x] 2026-08-28 一次性按钮消失动画：宝箱/营地消失动画 + oneshot_done 防重复
+- [x] 2026-08-28 连点修复：涟漪/碎片 mouse_filter=IGNORE，消除快速连点只触发一次
+- [x] 2026-08-28 删除废弃角色选择/创建场景
 
 ---
 
@@ -499,3 +536,4 @@ battle_controller._connect_signals():
 | 2026-05-24 | 初始创建（旧架构描述） |
 | 2026-08-05 | **全面重写**：反映重构后的伤害模型（裸属性+hook）、蓄力 pending_stored_damage、效果注册表、无尽模式、存档 GameProgress、5 敌人、死代码剪枝；同步已知问题真实状态（BUG-1~5） |
 | 2026-08-12 | **交互反馈 + 卡牌重做 + UI**：飘字三色区分；卡牌打出三段式流程；初始卡组重做为裂击/破绽/压制/铁壁；新增 `damage_if_debuff` 条件伤害；卡牌 UI 稀有度边框+光晕+底带、取消类型颜色、弃牌攻击选中即弃 |
+| 2026-08-28 | **UI 动画 + 场景过渡 + 连点修复**：基于 4.7 Offset Transform 的按钮交互动画（悬停/点击/涟漪）铺开 ~49 按钮；TransitionManager 黑屏过渡 + 按钮消失/碎片 + 重入保护；一次性按钮消失动画（oneshot_done 防重复）；互动面板取消按钮改空白点击返回；涟漪/碎片 mouse_filter=IGNORE 修复连点只触发一次；press_time 0.05 跟手；删除废弃角色选择/创建场景 |

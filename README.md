@@ -1,6 +1,6 @@
 # Easy Card Game
 
-一款使用 Godot 4.6 开发的卡牌游戏。
+一款使用 Godot 4.7 开发的卡牌游戏。
 
 ## 功能特性
 
@@ -24,9 +24,15 @@
 - 自动保存游戏进度
 - 支持继续游戏功能
 
+### UI 交互动画与场景过渡（2026-08-28）
+- 基于 Godot 4.7 Offset Transform 的按钮动画：悬停放大 / 点击挤压 / 按下涟漪
+- 场景过渡：黑屏淡入/淡出 + 按钮消失/碎片飞散（TransitionManager）
+- 一次性按钮消失动画（宝箱打开 / 营地休息）
+- 连点优化：涟漪/碎片不拦截点击，快速连点跟手
+
 ## 技术栈
 
-- **引擎**: Godot 4.6
+- **引擎**: Godot 4.7
 - **语言**: GDScript
 - **架构**: MVC 模式、状态机模式
 
@@ -34,22 +40,24 @@
 
 ```
 card/
-├── data/              # 数据文件
+├── data/              # 数据文件（JSON）
 │   ├── cards/         # 卡牌定义
 │   ├── enemies/       # 敌人定义
-│   └── tags.json      # 标签配置
-├── scenes/            # 场景文件
+│   └── maps/          # 地图定义
+├── scenes/            # 场景文件（.tscn）
 ├── scripts/           # 脚本文件
 │   ├── battle/        # 战斗系统
 │   ├── effects/       # 效果系统
 │   ├── systems/       # 核心系统
-│   └── ui/            # UI脚本
+│   ├── ui/            # UI 组件（含 animated_button.gd）
+│   ├── ui_style.gd           # UI 样式 + 按钮动画注入（Autoload）
+│   └── transition_manager.gd # 场景过渡管理器（Autoload）
 └── project.godot      # 项目配置
 ```
 
 ## 运行方式
 
-1. 安装 Godot 4.6
+1. 安装 Godot 4.7
 2. 打开项目：导入 `project.godot`
 3. 运行：按 F5 或点击运行按钮
 
