@@ -23,6 +23,7 @@ SaveManager="*res://scripts/save_manager.gd"
 CharacterManager="*res://scripts/character_manager.gd"
 CardPoolManager="*res://scripts/card_pool_manager.gd"
 UIStyle="*res://scripts/ui_style.gd"
+TransitionManager="*res://scripts/transition_manager.gd"
 
 [dotnet]
 

@@ -270,6 +270,7 @@ func _on_anim_mouse_exited(btn: Button) -> void:
 func _on_anim_button_down(btn: Button) -> void:
 	_anim_tween_scale(btn, btn.get_meta("anim_press_scale", Vector2(0.94, 0.94)),
 		btn.get_meta("anim_press_time", 0.08))
+	play_press_ripple(btn)
 
 
 func _on_anim_button_up(btn: Button) -> void:
@@ -324,3 +325,91 @@ func slide_out(control: Control, to_offset: Vector2 = Vector2(0, 80),
 	tw.parallel().tween_property(control, "modulate:a", 0.0, duration)
 	tw.tween_callback(func(): control.visible = false)
 	return tw
+
+
+## 按钮消失动画：向下压扁（pivot 底部）+ 横向拉伸 + 淡出。用于场景切换/一次性按钮消失。
+func play_button_vanish(btn: Control, duration: float = 0.2) -> void:
+	if not is_instance_valid(btn):
+		return
+	btn.offset_transform_enabled = true
+	btn.offset_transform_pivot_ratio = Vector2(0.5, 1.0)
+	if btn.has_meta("vanish_tween"):
+		var oldv: Variant = btn.get_meta("vanish_tween")
+		if oldv is Tween and oldv.is_valid():
+			oldv.kill()
+	var tw: Tween = btn.create_tween()
+	tw.tween_property(btn, "offset_transform_scale", Vector2(1.15, 0.0), duration) \
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+	tw.parallel().tween_property(btn, "modulate:a", 0.0, duration)
+	btn.set_meta("vanish_tween", tw)
+
+
+## 碎片飞散：从按钮中心向随机方向飞出小色块，淡出+旋转，无素材依赖。
+func spawn_shards(btn: Control, count: int = 12) -> void:
+	if not is_instance_valid(btn):
+		return
+	var layer: CanvasLayer = CanvasLayer.new()
+	layer.layer = 99
+	get_tree().root.add_child(layer)
+	var center: Vector2 = get_viewport().get_mouse_position()
+	var color: Color = _sample_button_color(btn)
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var duration := 0.45
+	for i in count:
+		var shard: ColorRect = ColorRect.new()
+		var s := rng.randf_range(4.0, 9.0)
+		shard.color = color
+		shard.size = Vector2(s, s)
+		shard.position = center - Vector2(s / 2.0, s / 2.0)
+		shard.modulate.a = 1.0
+		layer.add_child(shard)
+		var angle := rng.randf_range(0.0, TAU)
+		var dist := rng.randf_range(40.0, 110.0)
+		var tw: Tween = shard.create_tween()
+		tw.tween_property(shard, "position", center + Vector2.from_angle(angle) * dist - Vector2(s / 2.0, s / 2.0), duration) \
+			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		tw.parallel().tween_property(shard, "modulate:a", 0.0, duration)
+		tw.parallel().tween_property(shard, "rotation", rng.randf_range(-PI, PI), duration)
+	var cleanup: Tween = get_tree().create_tween()
+	cleanup.tween_interval(duration + 0.05)
+	cleanup.tween_callback(layer.queue_free)
+
+
+## 按下涟漪：从按钮中心扩散一个圆环 + 淡出。所有按钮按下时触发。
+func play_press_ripple(btn: Control) -> void:
+	if not is_instance_valid(btn):
+		return
+	var layer: CanvasLayer = CanvasLayer.new()
+	layer.layer = 98
+	get_tree().root.add_child(layer)
+	var center: Vector2 = get_viewport().get_mouse_position()
+	var size: float = minf(btn.size.x, btn.size.y)
+	if size < 1.0:
+		size = 20.0
+	var ring: Panel = Panel.new()
+	var sb: StyleBoxFlat = StyleBoxFlat.new()
+	sb.bg_color = Color(1, 1, 1, 0.5)
+	sb.set_corner_radius_all(int(size))
+	sb.set_content_margin_all(0)
+	ring.add_theme_stylebox_override("panel", sb)
+	ring.size = Vector2(size, size)
+	ring.pivot_offset = Vector2(size / 2.0, size / 2.0)
+	ring.position = center - Vector2(size / 2.0, size / 2.0)
+	ring.modulate.a = 1.0
+	layer.add_child(ring)
+	var duration := 0.35
+	var tw: Tween = ring.create_tween()
+	tw.tween_property(ring, "scale", Vector2(2.2, 2.2), duration) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.parallel().tween_property(ring, "modulate:a", 0.0, duration)
+	var cleanup: Tween = get_tree().create_tween()
+	cleanup.tween_interval(duration + 0.05)
+	cleanup.tween_callback(layer.queue_free)
+
+
+func _sample_button_color(btn: Control) -> Color:
+	var c: Color = btn.get_theme_color("font_color") if btn.has_theme_color("font_color") else Color(0.9, 0.85, 0.5)
+	if c.a < 0.1:
+		c = Color(0.9, 0.85, 0.5)
+	return c
