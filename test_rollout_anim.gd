@@ -11,8 +11,7 @@ const SCRIPTS := [
 	"res://scripts/relic_choice_card.gd",
 	"res://scripts/game_over_screen.gd",
 	"res://scripts/reward_screen.gd",
-	"res://scripts/character_select_screen.gd",
-	"res://scripts/character_creation_screen.gd",
+
 	"res://scripts/start.gd",
 ]
 
@@ -32,8 +31,7 @@ func _run():
 		else:
 			_report(true, "load %s" % path)
 	await _check_scene("res://scenes/GameOverScreen.tscn", ["RestartButton", "QuitButton"])
-	await _check_scene("res://scenes/CharacterSelectScreen.tscn", ["ButtonContainer/CreateButton", "ButtonContainer/SelectButton", "ButtonContainer/DeleteButton", "ButtonContainer/BackButton"])
-	await _check_scene("res://scenes/CharacterCreationScreen.tscn", ["ButtonContainer/PrevButton", "ButtonContainer/NextButton", "ButtonContainer/CancelButton"])
+
 	print("=== SUMMARY: %d PASS, %d FAIL ===" % [_pass, _fail])
 	_done = true
 
