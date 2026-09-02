@@ -1449,8 +1449,8 @@ func _build_overview_map(layout: Dictionary, zoom: float) -> Control:
 	canvas.custom_minimum_size = Vector2(canvas_w, canvas_h)
 
 	var grid_offset = Vector2(
-		-min_x * (ov_btn_w + ov_gap_x) + ov_gap_x / 2,
-		-min_y * (ov_btn_h + ov_gap_y) + ov_gap_y / 2
+		-min_x * (ov_btn_w + ov_gap_x) + ov_gap_x / 2.0,
+		-min_y * (ov_btn_h + ov_gap_y) + ov_gap_y / 2.0
 	)
 
 	var current_id = map_state_data.current_location_id
@@ -1468,8 +1468,8 @@ func _build_overview_map(layout: Dictionary, zoom: float) -> Control:
 			continue
 		drawn_pairs.append(pkey)
 
-		var from_pixel = Vector2(from_grid) * Vector2(ov_btn_w + ov_gap_x, ov_btn_h + ov_gap_y) + grid_offset + Vector2(ov_btn_w / 2, ov_btn_h / 2)
-		var to_pixel = Vector2(to_grid) * Vector2(ov_btn_w + ov_gap_x, ov_btn_h + ov_gap_y) + grid_offset + Vector2(ov_btn_w / 2, ov_btn_h / 2)
+		var from_pixel = Vector2(from_grid) * Vector2(ov_btn_w + ov_gap_x, ov_btn_h + ov_gap_y) + grid_offset + Vector2(ov_btn_w / 2.0, ov_btn_h / 2.0)
+		var to_pixel = Vector2(to_grid) * Vector2(ov_btn_w + ov_gap_x, ov_btn_h + ov_gap_y) + grid_offset + Vector2(ov_btn_w / 2.0, ov_btn_h / 2.0)
 
 		var line = Line2D.new()
 		line.points = [from_pixel, to_pixel]
@@ -1513,7 +1513,7 @@ func _build_overview_map(layout: Dictionary, zoom: float) -> Control:
 			lbl.text = loc_data.get("name", loc_id)
 		else:
 			lbl.text = "???"
-		lbl.position = pixel_pos + Vector2(6, (ov_btn_h - font_size) / 2)
+		lbl.position = pixel_pos + Vector2(6, (ov_btn_h - font_size) / 2.0)
 		lbl.add_theme_font_size_override("font_size", font_size)
 		if is_current:
 			lbl.add_theme_color_override("font_color", Color(1, 0.85, 0.3))

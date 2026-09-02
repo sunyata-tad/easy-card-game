@@ -3,7 +3,7 @@
 ## 运行方式：godot --headless --path . res://test_scene/test_discard_attack.tscn
 extends Node
 
-var bc                        ## BattleController 实例
+var bc: BattleController      ## BattleController 实例
 var fail_count: int = 0       ## 失败断言计数
 var _elapsed: float = 0.0
 

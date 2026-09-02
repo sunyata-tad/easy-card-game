@@ -3,7 +3,7 @@
 ## 运行方式：godot --headless --path . res://test_scene/test_new_cards.tscn
 extends Node
 
-var bc
+var bc: BattleController
 var fail_count: int = 0
 var _elapsed: float = 0.0
 
