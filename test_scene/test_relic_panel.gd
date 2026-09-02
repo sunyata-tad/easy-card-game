@@ -1,6 +1,6 @@
 ## 无头测试：通用持有遗物面板（RelicListPanel）
 ## 覆盖：多遗物填充 / 标题计数 / 行数与默认详情 / 空列表兜底
-## 运行方式：godot --headless --path . res://test_relic_panel.tscn
+## 运行方式：godot --headless --path . res://test_scene/test_relic_panel.tscn
 extends Node
 
 var fail_count: int = 0

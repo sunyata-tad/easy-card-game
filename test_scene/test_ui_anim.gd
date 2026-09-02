@@ -1,5 +1,5 @@
 ## 无头测试：4.7 Offset Transform UI 动画（AnimatedButton 注入/脚本 + slide_in/stagger_in/slide_out）
-## 运行方式：godot --headless --path . res://test_ui_anim.tscn
+## 运行方式：godot --headless --path . res://test_scene/test_ui_anim.tscn
 extends Node
 
 var fail_count: int = 0

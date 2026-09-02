@@ -1,6 +1,0 @@
-[gd_scene load_steps=2 format=3 uid="uid://btransitionanim01"]
-
-[ext_resource type="Script" path="res://test_transition_anim.gd" id="1"]
-
-[node name="Root" type="Node"]
-script = ExtResource("1")

@@ -1,6 +1,6 @@
 ## 无头测试：新卡机制（2026-08-12）
 ## 覆盖：热寂（支付生命+伤害）/ 生死轮转（换牌堆）/ 批命（迷惑眩晕+消耗）/ 逆流（出牌条件）/ 契约（击杀永久上限-1）/ 支付生命触发终末轮回
-## 运行方式：godot --headless --path . res://test_new_cards.tscn
+## 运行方式：godot --headless --path . res://test_scene/test_new_cards.tscn
 extends Node
 
 var bc

@@ -1,6 +1,6 @@
 ## 无头测试：Boss 战后遗物奖励流程（端到端）
 ## 覆盖：is_boss 存档 → 测试战斗 victory → go_to_relic_reward
-## 运行方式：godot --headless --path . res://test_boss_relic_flow.tscn
+## 运行方式：godot --headless --path . res://test_scene/test_boss_relic_flow.tscn
 extends Node
 
 var fail_count: int = 0

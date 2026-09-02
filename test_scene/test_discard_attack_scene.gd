@@ -1,6 +1,6 @@
 ## 无头测试：弃牌攻击机制（2026-08-12 重构后）
 ## 覆盖：弃牌攻击基本流程 / 一回合一次 / 回合末无自动攻击 / 蓄力已删除
-## 运行方式：godot --headless --path . res://test_discard_attack.tscn
+## 运行方式：godot --headless --path . res://test_scene/test_discard_attack.tscn
 extends Node
 
 var bc                        ## BattleController 实例

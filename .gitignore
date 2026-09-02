@@ -1,51 +1,63 @@
-# Godot 4+ specific ignores
+# ============================================================
+# .gitignore (混合模式)
+#   根目录：白名单 —— 只记录下方显式列出的文件/目录
+#   源码目录内部：不限制 —— 新增文件自动纳入版本控制
+# ============================================================
+
+# --- 根目录白名单：默认忽略根目录下所有直接子项 ---
+/*
+
+# 项目配置文件
+!.gitignore
+!.gitattributes
+!.editorconfig
+!project.godot
+!icon.svg
+!icon.svg.import
+!export_presets.cfg
+
+# 项目文档
+!README.md
+!GAME_DESIGN.md
+!PROJECT_STATE.md
+!EFFECT_HOOKS.md
+!开发计划.txt
+
+# 源码与资源目录（目录内部全部记录，新增文件自动纳入版本控制）
+!scenes/
+!scripts/
+!ui/
+!data/
+!assets/
+!test_scene/
+
+# --- 全局忽略：任何位置都不记录 ---
+
+# Godot 编辑器缓存
 .godot/
-/android/
 
-# Godot-specific binary files
-*.import
-
-# Imported translations (auto-generated)
-*.translation
-
-# Mono-specific ignores
-.mono/
-data_*/
-mono_crash.*.json
-
-# System/tool-specific ignores
-.directory
+# 系统文件
 .DS_Store
 Thumbs.db
+.directory
 
-# Tool-specific
-.claude/
-.arts/
-CLAUDE.md
-.clinerules
-
-# Huawei Cloud CodeArts generated (unrelated to project)
-.codeartsdoer/
-.codegraph/
-
-# IDE specific
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Build outputs
+# 构建产物
 *.apk
 *.aab
 *.ipa
 *.dmg
 *.exe
+*.pck
+*.zip
 *.x86_64
 *.x86
 *.arm64
 *.arm
-*.pck
-*.zip
 
-# Logs
+# 日志
 *.log
+
+# 临时/交换文件
+*.swp
+*.swo
+*~
