@@ -552,6 +552,10 @@ func _on_ui_card_cancelled(card: CardData) -> void:
 func _on_ui_card_dropped(card: CardData, target) -> void:
 	if card == null:
 		return
+	# 打出时确保箭头与目标高亮彻底清理（防止箭头残留）
+	if ui_controller:
+		ui_controller.drag_arrow.hide_arrow()
+		ui_controller.clear_target_highlights()
 	var card_node = ui_controller.get_card_node(card) if ui_controller else null
 	if target == null:
 		if card_node and card_node.has_method("reset_position"):

@@ -467,6 +467,8 @@ func _setup_card_interaction(card_node: Control, card: CardData) -> void:
 		card_node.target_mode_started.connect(_on_target_mode_started)
 	if card_node.has_signal("target_mode_ended"):
 		card_node.target_mode_ended.connect(_on_target_mode_ended)
+	if card_node.has_signal("target_mode_paused"):
+		card_node.target_mode_paused.connect(_on_target_mode_paused)
 	if card_node.has_signal("card_play_requested"):
 		card_node.card_play_requested.connect(_on_card_play_requested)
 	if not card_node.has_method("setup"):
@@ -962,24 +964,21 @@ func _on_card_drag_started(card: CardData, start_pos: Vector2, card_node: Contro
 	is_dragging = true
 	dragging_card = card
 	drag_card_node = card_node
-	
-	var needs_target = card.target_type == "single_enemy" or card.target_type == "single_ally"
-	if needs_target:
-		highlight_valid_targets(card)
-		drag_arrow.show_arrow()
-	else:
-		clear_target_highlights()
-		drag_arrow.hide_arrow()
+	# 新行为：箭头与目标高亮只在 target_mode_started（需要目标的卡牌拖出手牌区后）时显示
+	# 拖拽开始时不显示箭头，让卡牌自由跟随鼠标
+	clear_target_highlights()
+	drag_arrow.hide_arrow()
 
 func _on_card_drag_updated(card: CardData, current_pos: Vector2) -> void:
 	if not is_dragging or drag_card_node == null:
 		return
-	
-	var card_center = drag_card_node.global_position + drag_card_node.size / 2
-	drag_arrow.set_points(card_center, current_pos)
-	
-	var hover_target = _get_target_at_position(current_pos)
-	_update_hover_highlight(hover_target)
+	# 只在目标瞄准模式（箭头已可见）时更新箭头与悬停高亮
+	# 避免普通拖拽时 set_points 重新显示箭头
+	if drag_arrow.is_visible:
+		var card_center = drag_card_node.global_position + drag_card_node.size / 2
+		drag_arrow.set_points(card_center, current_pos)
+		var hover_target = _get_target_at_position(current_pos)
+		_update_hover_highlight(hover_target)
 
 func _on_card_drag_ended(card: CardData, end_pos: Vector2) -> void:
 	if not is_dragging:
@@ -1070,6 +1069,12 @@ func _on_target_mode_ended(_card: CardData) -> void:
 	drag_card_node = null
 	
 	ensure_cards_layout_state()
+
+## 目标瞄准模式暂停：鼠标回到手牌区域，恢复为拖拽模式
+## 隐藏箭头与高亮，但保持 is_dragging=true 和 dragging_card 不变（不重排手牌）
+func _on_target_mode_paused(_card: CardData) -> void:
+	drag_arrow.hide_arrow()
+	clear_target_highlights()
 
 func ensure_cards_layout_state() -> void:
 	for card in current_hand_cards:

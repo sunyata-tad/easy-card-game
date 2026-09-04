@@ -27,11 +27,12 @@ var drag_start_pos: Vector2           ## 拖拽起始位置
 var is_pressed: bool = false          ## 是否被按下
 var press_tween: Tween = null         ## 按下动画的 tween 对象
 var mouse_inside: bool = true         ## 鼠标是否在卡牌区域内
-var is_awaiting_target: bool = false  ## 是否在等待选择目标
+var is_awaiting_target: bool = false  ## 是否在等待选择目标（需要目标的卡牌拖出手牌区后进入箭头瞄准模式）
 var tooltip_panel: PanelContainer = null   ## 悬停提示面板
 var drag_exited_hand: bool = false    ## 拖拽是否已离开手牌区域
 var is_select_mode: bool = false      ## 是否处于选择模式
 var is_playing_animation: bool = false ## 打出动画播放中（飞向中央/弃牌堆时阻止悬停干扰）
+var is_selected: bool = false         ## 短按选中状态：放大悬停于原位，等待再次点击打出或拖动
 
 ## 交互信号
 signal card_clicked(card: CardData)                              ## 卡牌被点击
@@ -44,6 +45,7 @@ signal card_released(card: CardData)                             ## 卡牌释放
 signal card_cancelled(card: CardData)                            ## 卡牌操作取消
 signal target_mode_started(card: CardData)                       ## 进入目标选择模式
 signal target_mode_ended(card: CardData)                         ## 退出目标选择模式
+signal target_mode_paused(card: CardData)                        ## 目标瞄准模式暂停：鼠标回到手牌区，恢复为拖拽模式
 signal card_play_requested(card: CardData)                       ## 请求直接打出（无需目标）
 
 ## 卡牌类型对应颜色（深色系，保证白色文字可读）
@@ -51,6 +53,19 @@ const CARD_BG_COLOR := Color(0.13, 0.14, 0.18, 1.0)   ## 卡面统一底色（�
 
 ## buff 数据库缓存（从 data/buffs.json 加载，用于悬浮显示卡牌附带的 buff 详情）
 static var _buff_db: Dictionary = {}
+
+## 当前正在交互的卡牌实例（按下/拖拽/选中/瞄准目标时设置）
+## 其他卡牌在悬停时检查此变量，避免拖动中误放大其他卡牌
+static var _interacting_card: CardUI = null
+
+## 标记本卡牌为当前交互卡牌
+func _set_interacting():
+	_interacting_card = self
+
+## 清除本卡牌的交互标记（仅当本卡牌是当前交互卡牌时才清除）
+func _clear_interacting():
+	if _interacting_card == self:
+		_interacting_card = null
 
 func _load_buff_db() -> void:
 	if not _buff_db.is_empty():
@@ -190,8 +205,8 @@ func _get_type_text(type: String) -> String:
 
 ## 鼠标悬停动画：放大卡牌本体（便于阅读效果）+ 摆正 + 轻微高亮
 func _animate_hover(hover: bool):
-	# 按下中/目标选择中/选择模式中/打出动画播放中跳过悬停动画
-	if is_pressed or is_awaiting_target or is_select_mode or is_playing_animation:
+	# 按下中/目标选择中/选择模式中/打出动画播放中/选中状态中跳过悬停动画
+	if is_pressed or is_awaiting_target or is_select_mode or is_playing_animation or is_selected:
 		return
 
 	if hover:
@@ -210,99 +225,212 @@ func _animate_hover(hover: bool):
 	tween.tween_property(self, "modulate", target_modulate, 0.12)
 
 ## 处理此节点范围内的鼠标输入事件（类似 Unity UI 的 OnPointerDown/Up）
-## 交互逻辑：
-## 1. 左键按下 → 播放按下动画，记录起始位置
-## 2. 鼠标移动超过 10px → 进入拖拽模式
-## 3. 左键释放 → 根据状态决定：点击/拖拽到目标/打出/取消
-## 4. 右键 → 取消当前操作
+## 新交互逻辑（更丝滑的拖拽体验）：
+## 1. 左键按下 → 卡牌放大至 1.55（看清文本），记录起始位置
+## 2. 鼠标移动超过 10px → 进入拖拽模式（卡牌跟随鼠标）
+## 3. 短按（未拖拽）释放 → 进入选中状态（保持放大），再次点击打出
+## 4. 拖拽中释放：
+##    - 不需要目标 + 拖出手牌区 → 打出
+##    - 不需要目标 + 仍在手牌区 → 回原位取消
+##    - 需要目标 + 仍在手牌区 → 回原位取消
+## 5. 需要目标的卡牌拖出手牌区 → 自动回原位保持放大 + 显示箭头瞄准
+## 6. 选中状态下再次点击：不需要目标直接打出，需要目标进入箭头瞄准
+## 7. 右键 → 取消当前操作
 func _gui_input(event: InputEvent):
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
 				if card_data:
-					is_pressed = true
-					mouse_inside = true
-					drag_exited_hand = false
-					drag_start_pos = get_global_mouse_position()
-					
-					if is_awaiting_target:
+					if is_selected:
+						# 选中状态下再次点击 = 打出
+						is_selected = false
+						if _needs_target():
+							_enter_target_aim_mode()
+						else:
+							card_play_requested.emit(card_data)
+					elif is_awaiting_target:
 						cancel_target_mode()
 					elif is_select_mode:
 						pass  # 选择模式中不处理普通点击
 					else:
+						is_pressed = true
+						mouse_inside = true
+						drag_exited_hand = false
+						drag_start_pos = get_global_mouse_position()
+						_set_interacting()
 						_animate_press_down()
 				accept_event()
-			elif event.is_released():
-				if is_pressed:
-					is_pressed = false
-					
-					if is_awaiting_target:
-						pass
-					elif is_select_mode:
-						if mouse_inside:
-							card_clicked.emit(card_data)
-						is_pressed = false
-					elif is_dragging:
-						# 拖拽中释放：需要目标的卡牌等待拖放，不需要目标的直接打出
-						if _needs_target():
-							end_drag()
-						elif drag_exited_hand:
-							card_play_requested.emit(card_data)
-							end_drag()
-						else:
-							_cancel_press()
-					elif _needs_target():
-						# 需要目标的卡牌短按 → 进入目标选择模式
-						if mouse_inside:
-							start_target_mode()
-						else:
-							_cancel_press()
-					else:
-						# 普通卡牌短按 = 点击打出
-						if mouse_inside and not is_dragging:
-							card_clicked.emit(card_data)
-						_cancel_press()
-				accept_event()
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			# 右键取消：取消目标选择模式或取消拖拽
-			if is_pressed or is_awaiting_target:
-				cancel_target_mode()
-				is_pressed = false
-				is_dragging = false
+			# 右键取消：取消目标选择/拖拽/选中
+			if is_pressed or is_awaiting_target or is_selected:
+				_cancel_press()
 				card_cancelled.emit(card_data)
 			accept_event()
 
-## 全局输入事件处理（用于跟踪鼠标移动，即使鼠标离开卡牌区域也能检测）
-## Godot 中 _input 接收所有未被 _gui_input 消费的输入
+## 全局输入事件处理（用于跟踪鼠标移动与释放，即使鼠标离开卡牌区域也能检测）
+## 新行为：
+## - 鼠标释放（全局）→ 统一由 _handle_mouse_release 处理
+## - 选中状态下点击非本卡牌 → 取消选中
+## - 鼠标移动超过阈值 → 进入拖拽
+## - 拖拽中：不需要目标跟随鼠标；需要目标区域内跟随、拖出区域回原位+箭头瞄准
 func _input(event: InputEvent):
-	if not (is_pressed or is_awaiting_target):
+	if not (is_pressed or is_awaiting_target or is_selected):
+		return
+	
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			# 选中状态下点击非本卡牌 → 取消选中
+			if is_selected and not _is_mouse_on_card():
+				_cancel_press()
+		else:
+			_handle_mouse_release()
 		return
 	
 	if event is InputEventMouseMotion:
-		# 鼠标移动超过阈值 → 开始拖拽
+		var global_mouse_pos = get_global_mouse_position()
+		
+		# 选中状态下移动 > 阈值 → 进入拖拽
+		if is_selected and not is_dragging:
+			var distance = global_mouse_pos.distance_to(drag_start_pos)
+			if distance > 10.0:
+				is_selected = false
+				is_pressed = true
+				start_drag()
+		
+		# 按下状态下移动 > 阈值 → 进入拖拽
 		if is_pressed and not is_dragging and not is_awaiting_target and not is_select_mode:
-			var current_pos = get_global_mouse_position()
-			var distance = current_pos.distance_to(drag_start_pos)
+			var distance = global_mouse_pos.distance_to(drag_start_pos)
 			if distance > 10.0:
 				start_drag()
 		
 		if is_dragging:
-			var global_mouse_pos = get_global_mouse_position()
 			if _needs_target():
-				pass  # 需要目标的卡牌不跟随鼠标移动
+				# 需要目标的卡牌：区域内跟随鼠标，拖出区域回原位+箭头瞄准
+				if _is_in_hand_area(global_mouse_pos):
+					global_position = global_mouse_pos - size / 2
+					drag_exited_hand = false
+				else:
+					_enter_target_aim_mode_from_drag()
 			else:
-				global_position = global_mouse_pos - size / 2  # 卡牌跟随鼠标
-			drag_updated.emit(card_data, global_mouse_pos)
-			if not _needs_target():
-				# 检查是否拖出放手牌区域
+				# 不需要目标：始终跟随鼠标（区域内外一致）
+				global_position = global_mouse_pos - size / 2
 				drag_exited_hand = not _is_in_hand_area(global_mouse_pos)
-		elif is_awaiting_target:
-			var global_mouse_pos = get_global_mouse_position()
 			drag_updated.emit(card_data, global_mouse_pos)
+		elif is_awaiting_target:
+			# 目标瞄准模式：鼠标回到手牌区域 → 恢复为拖拽模式（卡牌跟随鼠标）
+			if _is_in_hand_area(global_mouse_pos):
+				_exit_target_aim_to_drag(global_mouse_pos)
+			else:
+				drag_updated.emit(card_data, global_mouse_pos)
+
+## 鼠标释放统一处理（全局，由 _input 调用）
+func _handle_mouse_release():
+	if is_awaiting_target:
+		# 目标瞄准模式释放：检查鼠标是否指向目标
+		var end_pos = get_global_mouse_position()
+		is_awaiting_target = false
+		# 先发射 drag_ended 让 ui_controller 检查目标并决定打出/取消
+		drag_ended.emit(card_data, end_pos)
+		drag_updated.emit(card_data, end_pos)
+		# 然后发射 target_mode_ended 清理箭头与高亮
+		target_mode_ended.emit(card_data)
+		_clear_interacting()
+		return
+	
+	if not is_pressed:
+		return
+	
+	is_pressed = false
+	
+	if is_select_mode:
+		if mouse_inside:
+			card_clicked.emit(card_data)
+		return
+	
+	if is_dragging:
+		if _needs_target():
+			# 需要目标且拖拽中（仍在区域内）→ 回原位取消
+			_cancel_press()
+		elif drag_exited_hand:
+			# 不需要目标且拖出手牌区 → 打出
+			card_play_requested.emit(card_data)
+			end_drag()
+		else:
+			# 不需要目标且仍在手牌区 → 回原位取消
+			_cancel_press()
+	else:
+		# 短按（未拖拽）→ 进入选中状态（保持放大等待再次点击）
+		if mouse_inside:
+			_enter_selected_state()
+		else:
+			_cancel_press()
+
+## 判断鼠标是否在本卡牌上（用于选中状态下点击非本卡牌取消选中）
+func _is_mouse_on_card() -> bool:
+	return get_global_rect().has_point(get_global_mouse_position())
+
+## 进入选中状态：保持放大悬停于原位，等待再次点击打出或拖动
+func _enter_selected_state():
+	is_selected = true
+	z_index = 50
+	_set_interacting()
+
+## 选中状态下再次点击进入目标瞄准模式（需要目标的卡牌）
+func _enter_target_aim_mode():
+	is_awaiting_target = true
+	is_selected = false
+	drag_start_pos = get_global_mouse_position()
+	z_index = 50
+	_set_interacting()
+	target_mode_started.emit(card_data)
+
+## 拖拽中拖出手牌区进入目标瞄准模式：卡牌回原位保持放大 + 显示箭头替代卡牌
+func _enter_target_aim_mode_from_drag():
+	is_dragging = false
+	is_awaiting_target = true
+	drag_exited_hand = true
+	_set_interacting()
+	
+	if press_tween and press_tween.is_valid():
+		press_tween.kill()
+	
+	z_index = 50
+	press_tween = create_tween()
+	press_tween.set_parallel(true)
+	press_tween.tween_property(self, "position", original_position, 0.12)
+	press_tween.tween_property(self, "scale", Vector2(1.55, 1.55), 0.12)
+	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.12)
+	
+	# 通知 ui_controller 显示箭头、高亮目标
+	target_mode_started.emit(card_data)
+
+## 目标瞄准模式下鼠标回到手牌区域：恢复为拖拽模式
+## 卡牌从原位移动向鼠标位置（回到正常拖拽状态），箭头消失
+func _exit_target_aim_to_drag(mouse_pos: Vector2):
+	is_awaiting_target = false
+	is_dragging = true
+	drag_exited_hand = false
+	
+	if press_tween and press_tween.is_valid():
+		press_tween.kill()
+	
+	z_index = 50
+	# 卡牌从原位平滑移动到鼠标位置，保持放大 1.55
+	press_tween = create_tween()
+	press_tween.set_parallel(true)
+	press_tween.tween_property(self, "global_position", mouse_pos - size / 2, 0.1)
+	press_tween.tween_property(self, "scale", Vector2(1.55, 1.55), 0.1)
+	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.1)
+	
+	# 通知 ui_controller 隐藏箭头、清除高亮（保持 is_dragging=true 不重排）
+	target_mode_paused.emit(card_data)
 
 func _on_mouse_entered():
 	is_hovered = true
 	mouse_inside = true
+	# 如果其他卡牌正在交互（按下/拖拽/选中/瞄准），不播放悬停动画
+	if _interacting_card != null and _interacting_card != self and is_instance_valid(_interacting_card):
+		return
 	_animate_hover(true)
 	card_hovered.emit(card_data)
 	_show_buff_tooltip()
@@ -310,6 +438,9 @@ func _on_mouse_entered():
 func _on_mouse_exited():
 	is_hovered = false
 	mouse_inside = false
+	# 如果其他卡牌正在交互，不播放悬停动画
+	if _interacting_card != null and _interacting_card != self and is_instance_valid(_interacting_card):
+		return
 	_animate_hover(false)
 	card_unhovered.emit(card_data)
 	_hide_buff_tooltip()
@@ -321,20 +452,19 @@ func _needs_target() -> bool:
 	var target_type = card_data.target_type
 	return target_type == "single_enemy" or target_type == "single_ally"
 
-## 按下动画：略微放大并上移
+## 按下动画：放大至 1.55（看清文本），摆正，轻微高亮
 func _animate_press_down():
 	if press_tween and press_tween.is_valid():
 		press_tween.kill()
 	
+	z_index = 50
 	press_tween = create_tween()
 	press_tween.set_parallel(true)
-	press_tween.tween_property(self, "scale", Vector2(1.18, 1.18), 0.08)
-	press_tween.tween_property(self, "modulate", Color(1.3, 1.3, 1.0, 1.0), 0.08)
-	
-	if not _needs_target():
-		press_tween.tween_property(self, "position:y", original_position.y - 20, 0.08)
+	press_tween.tween_property(self, "scale", Vector2(1.55, 1.55), 0.12)
+	press_tween.tween_property(self, "modulate", Color(1.1, 1.1, 1.0, 1.0), 0.12)
+	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.12)
 
-## 取消按下状态，恢复原始位置
+## 取消按下状态，恢复原始位置与缩放
 func _cancel_press():
 	if press_tween and press_tween.is_valid():
 		press_tween.kill()
@@ -342,48 +472,54 @@ func _cancel_press():
 	is_pressed = false
 	is_dragging = false
 	is_awaiting_target = false
+	is_selected = false
+	_clear_interacting()
 	
+	z_index = 0
 	press_tween = create_tween()
 	press_tween.set_parallel(true)
 	press_tween.tween_property(self, "scale", original_scale, 0.12)
 	press_tween.tween_property(self, "modulate", Color.WHITE, 0.12)
 	press_tween.tween_property(self, "position", original_position, 0.12)
-	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.12)
+	press_tween.tween_property(self, "rotation_degrees", original_rotation, 0.12)
 
-## 开始拖拽：发射信号，播放拖拽动画
+## 开始拖拽：发射信号，播放拖拽动画（放大至 1.55，不再飞向中央）
 func start_drag():
 	is_dragging = true
 	drag_exited_hand = false
 	drag_start_pos = get_global_mouse_position()
+	_set_interacting()
 	drag_started.emit(card_data, drag_start_pos)
 	
 	if press_tween and press_tween.is_valid():
 		press_tween.kill()
 	
+	z_index = 50
 	press_tween = create_tween()
 	press_tween.set_parallel(true)
-	press_tween.tween_property(self, "scale", Vector2(1.15, 1.15), 0.08)
+	press_tween.tween_property(self, "scale", Vector2(1.55, 1.55), 0.08)
 	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.08)
-	
-	# 需要目标的卡牌移到屏幕中央，等待用户选择目标
-	if _needs_target():
-		var vp_size = get_viewport_rect().size
-		var center = Vector2(vp_size.x / 2 - size.x / 2, vp_size.y / 2 - size.y / 2 - 50)
-		press_tween.tween_property(self, "global_position", center, 0.15)
-		press_tween.tween_property(self, "modulate", Color(1.1, 1.1, 1.0, 0.8), 0.15)
-	else:
-		press_tween.tween_property(self, "modulate", Color(1.1, 1.1, 1.0, 0.85), 0.08)
+	press_tween.tween_property(self, "modulate", Color(1.1, 1.1, 1.0, 0.9), 0.08)
 
 func _is_in_hand_area(pos: Vector2) -> bool:
 	var parent = get_parent()
 	if parent == null:
 		return false
 	var hand_rect = parent.get_global_rect()
-	return hand_rect.has_point(pos)
+	var vp_size = get_viewport_rect().size
+	# 手牌判定矩形：从 HandArea 左上角到屏幕右下角
+	# - 左侧角色区域（x < hand_rect.position.x）不判断（可能存在指向玩家的卡牌）
+	# - 下方填满到屏幕底部（只有交互按钮，无目标，扩大拖动范围）
+	var judge_rect := Rect2(
+		hand_rect.position,
+		Vector2(vp_size.x - hand_rect.position.x, vp_size.y - hand_rect.position.y)
+	)
+	return judge_rect.has_point(pos)
 	
 func end_drag():
 	is_dragging = false
 	drag_exited_hand = false
+	_clear_interacting()
 	var end_pos = get_global_mouse_position()
 	drag_ended.emit(card_data, end_pos)
 	drag_updated.emit(card_data, end_pos)
@@ -414,27 +550,33 @@ func reset_position():
 	_hide_buff_tooltip()
 	position = original_position
 	scale = original_scale
-	rotation_degrees = 0.0
+	rotation_degrees = original_rotation
 	is_dragging = false
 	is_pressed = false
 	is_awaiting_target = false
 	is_playing_animation = false
+	is_selected = false
+	_clear_interacting()
 	
 	if press_tween and press_tween.is_valid():
 		press_tween.kill()
 	modulate = Color.WHITE
+	z_index = 0
 
 func restore_to_layout_state():
 	is_dragging = false
 	is_pressed = false
 	is_awaiting_target = false
 	is_playing_animation = false
+	is_selected = false
+	_clear_interacting()
 	
 	if press_tween and press_tween.is_valid():
 		press_tween.kill()
 	
 	modulate = Color.WHITE
 	scale = original_scale
+	z_index = 0
 
 func is_dragging_card() -> bool:
 	return is_dragging
@@ -444,25 +586,26 @@ func is_in_target_mode() -> bool:
 
 func start_target_mode():
 	is_awaiting_target = true
+	is_selected = false
 	drag_start_pos = get_global_mouse_position()
-	
-	var tween = create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(self, "scale", Vector2(1.15, 1.15), 0.08)
-	tween.tween_property(self, "modulate", Color(1.2, 1.2, 1.0, 1.0), 0.08)
-	tween.tween_property(self, "rotation_degrees", 0.0, 0.08)
+	z_index = 50
+	_set_interacting()
 	
 	target_mode_started.emit(card_data)
-	drag_started.emit(card_data, drag_start_pos)
 
 func cancel_target_mode():
 	is_awaiting_target = false
+	is_selected = false
+	_clear_interacting()
 	target_mode_ended.emit(card_data)
 	
+	z_index = 0
 	var tween = create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(self, "scale", original_scale, 0.12)
 	tween.tween_property(self, "modulate", Color.WHITE, 0.12)
+	tween.tween_property(self, "position", original_position, 0.12)
+	tween.tween_property(self, "rotation_degrees", original_rotation, 0.12)
 
 func set_original_position(pos: Vector2):
 	original_position = pos
