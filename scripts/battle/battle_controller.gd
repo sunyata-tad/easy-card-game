@@ -201,7 +201,7 @@ func _discard_card_with_animation(card: CardData) -> void:
 		ui_controller.detach_card_node(card)
 	card_system.discard_specific_card(card)
 	if card_node:
-		var discard_pos = ui_controller.get_discard_pile_global_pos() if ui_controller else Vector2(120, 360)
+		var discard_pos = ui_controller.get_discard_pile_global_pos() if ui_controller else Vector2(120, card_node.get_viewport_rect().size.y - 288)
 		card_node.fly_to_discard(discard_pos)  # 不 await：动画后台播放，不阻塞后续逻辑
 
 func confirm_discard_cards(cards_to_discard: Array) -> void:
@@ -591,7 +591,7 @@ func play_card_with_animation(card: CardData, target, card_node: Control) -> voi
 		return
 	# 第三步：飞向弃牌堆并消散（弃牌堆计数已在 play_card 结算时同步更新）
 	if card_node:
-		var discard_pos: Vector2 = ui_controller.get_discard_pile_global_pos() if ui_controller else Vector2(120, 360)
+		var discard_pos: Vector2 = ui_controller.get_discard_pile_global_pos() if ui_controller else Vector2(120, card_node.get_viewport_rect().size.y - 288)
 		await card_node.fly_to_discard(discard_pos)
 
 func _on_ui_enemy_selected(enemy: EnemyUnit) -> void:

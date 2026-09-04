@@ -251,7 +251,10 @@ func _gui_input(event: InputEvent):
 					elif is_awaiting_target:
 						cancel_target_mode()
 					elif is_select_mode:
-						pass  # 选择模式中不处理普通点击
+						is_pressed = true
+						mouse_inside = true
+						drag_start_pos = get_global_mouse_position()
+						_set_interacting()
 					else:
 						is_pressed = true
 						mouse_inside = true
@@ -345,6 +348,7 @@ func _handle_mouse_release():
 	if is_select_mode:
 		if mouse_inside:
 			card_clicked.emit(card_data)
+		_clear_interacting()
 		return
 	
 	if is_dragging:

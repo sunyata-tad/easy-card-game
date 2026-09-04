@@ -256,7 +256,7 @@ func _on_node_pressed(location_id: String):
 func _get_center_pos() -> Vector2:
 	var container_size = node_container.size
 	if container_size.x < 1 or container_size.y < 1:
-		container_size = Vector2(1152, 280)
+		container_size = Vector2(get_viewport_rect().size.x, 280)
 	return container_size / 2 - Vector2(BTN_W, BTN_H) / 2
 
 func _get_grid_position(grid_index: int, center_pos: Vector2) -> Vector2:
