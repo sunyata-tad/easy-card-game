@@ -96,6 +96,7 @@ func has_all_tags(check_tags: Array) -> bool:
 	return true
 
 ## 获取所有标签（tags + treated_as 去重合并）
+## [未调用] 获取卡牌所有标签。若已实现调用方，请删除此标记注释。
 func get_all_tags() -> Array:
 	var all_tags = tags.duplicate()
 	for tag in treated_as:
@@ -103,17 +104,21 @@ func get_all_tags() -> Array:
 			all_tags.append(tag)
 	return all_tags
 
+## [未调用] 添加标签。若已实现调用方，请删除此标记注释。
 func add_tag(tag: String) -> void:
 	if not tags.has(tag):
 		tags.append(tag)
 
+## [未调用] 移除标签。若已实现调用方，请删除此标记注释。
 func remove_tag(tag: String) -> void:
 	tags.erase(tag)
 
 ## 添加"视为"标签
+## [未调用] 添加视为另一张卡的ID。若已实现调用方，请删除此标记注释。
 func add_treated_as(tag: String) -> void:
 	if not treated_as.has(tag):
 		treated_as.append(tag)
 
+## [未调用] 移除视为另一张卡的ID。若已实现调用方，请删除此标记注释。
 func remove_treated_as(tag: String) -> void:
 	treated_as.erase(tag)

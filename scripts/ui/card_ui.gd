@@ -36,7 +36,9 @@ var is_selected: bool = false         ## 短按选中状态：放大悬停于原
 
 ## 交互信号
 signal card_clicked(card: CardData)                              ## 卡牌被点击
+## [未连接] 鼠标进入卡牌通知。若已连接接收方，请删除此标记注释。
 signal card_hovered(card: CardData)                              ## 鼠标进入
+## [未连接] 鼠标离开卡牌通知。若已连接接收方，请删除此标记注释。
 signal card_unhovered(card: CardData)                            ## 鼠标离开
 signal drag_started(card: CardData, start_pos: Vector2)          ## 开始拖拽
 signal drag_updated(card: CardData, current_pos: Vector2)        ## 拖拽中
@@ -588,6 +590,7 @@ func is_dragging_card() -> bool:
 func is_in_target_mode() -> bool:
 	return is_awaiting_target
 
+## [未调用] 进入目标选择模式。若已实现调用方，请删除此标记注释。
 func start_target_mode():
 	is_awaiting_target = true
 	is_selected = false

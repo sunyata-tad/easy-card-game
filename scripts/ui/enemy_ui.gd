@@ -10,6 +10,7 @@ var enemy_unit: EnemyUnit
 var player_manager: PlayerManager = null
 var original_scale: Vector2 = Vector2.ONE
 
+## [未连接] 敌人点击通知。若已连接接收方，请删除此标记注释。
 signal enemy_clicked(enemy: EnemyUnit)
 signal enemy_selected(enemy: EnemyUnit)
 

@@ -1111,14 +1111,6 @@ func _on_deck_add_card(card_id: String, popup: PopupPanel) -> void:
 		popup.hide()
 		_show_deck_workbench()
 
-func _count_card_in_deck(card_id: String) -> int:
-	if not GameData:
-		return 0
-	var count = 0
-	for c in GameData.player_deck:
-		if c.id == card_id:
-			count += 1
-	return count
 
 func _open_chest_reward(layer: int) -> void:
 	if not GameData:
@@ -1230,6 +1222,7 @@ func _start_group_battle(enemy_ids: Array, layer: int) -> void:
 func get_map_state() -> Dictionary:
 	return map_controller.serialize_state()
 
+## [未调用] 加载地图状态。若已实现调用方，请删除此标记注释。
 func load_map_state(state_data: Dictionary) -> void:
 	map_controller.deserialize_state(state_data)
 

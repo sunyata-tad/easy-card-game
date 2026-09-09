@@ -12,6 +12,7 @@ var enabled_connections: Dictionary = {}  ## 已启用的连接 { location_id: [
 var interaction_log: Array = []          ## 交互日志
 
 signal location_changed(location_id: String)                              ## 位置变化
+## [未连接] 交互物状态变化通知。若已连接接收方，请删除此标记注释。
 signal interactable_state_changed(location_id: String, interactable_id: String)  ## 交互物状态变化
 signal log_added(entry: Dictionary)                                        ## 新日志条目
 
@@ -54,11 +55,13 @@ func set_interactable_state(location_id: String, interactable_id: String, state:
 	interactable_state_changed.emit(location_id, interactable_id)
 
 ## 检查某个位置的某个方向连接是否已启用
+## [未调用] 检查连接是否启用。若已实现调用方，请删除此标记注释。
 func is_connection_enabled(location_id: String, direction: String) -> bool:
 	var location_enabled = enabled_connections.get(location_id, [])
 	return direction in location_enabled
 
 ## 启用某个位置的某个方向连接
+## [未调用] 启用连接。若已实现调用方，请删除此标记注释。
 func enable_connection(location_id: String, direction: String) -> void:
 	if not enabled_connections.has(location_id):
 		enabled_connections[location_id] = []

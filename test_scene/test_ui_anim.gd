@@ -1,4 +1,4 @@
-## 无头测试：4.7 Offset Transform UI 动画（AnimatedButton 注入/脚本 + slide_in/stagger_in/slide_out）
+## 无头测试：4.7 Offset Transform UI 动画（attach_button_anim + slide_in/stagger_in/slide_out）
 ## 运行方式：godot --headless --path . res://test_scene/test_ui_anim.tscn
 extends Node
 
@@ -53,19 +53,6 @@ func _run() -> void:
 	_check(absf(btn.offset_transform_scale.x - 1.0) < 0.01, "释放后 scale 回到 ~1.0 (实际:%s)" % str(btn.offset_transform_scale))
 	btn.queue_free()
 
-	# --- 块1 独立脚本 animated_button.gd ---
-	var btn2 := Button.new()
-	btn2.set_script(load("res://scripts/ui/animated_button.gd"))
-	add_child(btn2)
-	await _wait(0.05)
-	_check(btn2.offset_transform_enabled == true, "animated_button.gd 脚本开启 offset_transform_enabled")
-	btn2.emit_signal("mouse_entered")
-	await _wait(0.2)
-	_check(btn2.offset_transform_scale.x > 1.0, "脚本按钮悬停 scale.x > 1.0 (实际:%s)" % str(btn2.offset_transform_scale))
-	btn2.emit_signal("mouse_exited")
-	await _wait(0.2)
-	_check(absf(btn2.offset_transform_scale.x - 1.0) < 0.01, "脚本按钮移出 scale 回到 ~1.0")
-	btn2.queue_free()
 
 	# --- 块2 slide_in / stagger_in ---
 	var c1 := Control.new()

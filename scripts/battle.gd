@@ -262,10 +262,6 @@ func _on_retry_pressed():
 		GameData.initialize_new_run()
 		TransitionManager.transition(GameManager.go_to_main_menu, _defeat_retry_btn)
 
-func start_new_battle(enemies: Array = []):
-	if battle_controller:
-		battle_controller.setup_battle(self, [], enemies)
-		battle_controller.start_battle()
 
 func record_damage_dealt(amount: int):
 	battle_stats.damage_dealt += amount

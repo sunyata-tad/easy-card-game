@@ -17,10 +17,12 @@ var is_discard_phase: bool = false
 var discard_attack_available: bool = true   ## 本回合是否还能使用弃牌攻击（基础：一回合一次）
 var _is_discard_attack_aiming: bool = false ## 弃牌攻击：是否处于"已弃牌、等待选择攻击目标"阶段
 
+## [未连接] 战斗开始通知。若已连接接收方，请删除此标记注释。
 signal battle_started()
 signal battle_ended(victory: bool)
 signal turn_changed(is_player_turn: bool)
 signal discard_phase_started(cards_to_discard: int)
+## [未连接] 弃牌阶段结束通知。若已连接接收方，请删除此标记注释。
 signal discard_phase_ended()
 
 func _init():

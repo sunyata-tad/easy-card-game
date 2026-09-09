@@ -16,8 +16,11 @@ var hook_chain: HookChain = null
 ## 完整钩子列表（名字 + 注释）见 scripts/effects/hook_registry.gd
 
 ## buff 变化相关信号
+## [未连接] buff应用通知。若已连接接收方，请删除此标记注释。
 signal buff_applied(buff: BuffData)   ## buff 被应用时触发
+## [未连接] buff移除通知。若已连接接收方，请删除此标记注释。
 signal buff_removed(buff: BuffData)   ## buff 被移除时触发
+## [未连接] buff到期通知。若已连接接收方，请删除此标记注释。
 signal buff_expired(buff: BuffData)   ## buff 到期时触发
 signal buffs_changed()               ## 任何 buff 变化时触发
 
@@ -99,6 +102,7 @@ func apply_buff(buff: BuffData) -> void:
 	buff_applied.emit(buff); buffs_changed.emit()
 
 ## 移除指定 buff
+## [未调用] 移除buff。若已实现调用方，请删除此标记注释。
 func remove_buff(buff_id: String) -> void:
 	var buff = get_buff_by_id(buff_id)
 	if buff != null: _unregister_buff_hook(buff_id); buffs.erase(buff); buff_removed.emit(buff); buffs_changed.emit()
@@ -109,6 +113,7 @@ func get_buff_by_id(buff_id: String) -> BuffData:
 	return null
 
 ## 获取所有 buff 的副本（防止外部直接修改内部数组）
+## [未调用] 获取所有buff。若已实现调用方，请删除此标记注释。
 func get_all_buffs() -> Array: return buffs.duplicate()
 
 ## 检查是否拥有指定 buff
@@ -150,6 +155,7 @@ func decrease_durations() -> void:
 	if expired.size() > 0: buffs_changed.emit()
 
 ## 在特定事件触发时衰减 buff 层数（如 "on_card_played"）
+## [未调用] 按事件衰减。若已实现调用方，请删除此标记注释。
 func decay_on_event(event: String) -> void:
 	var expired: Array = []
 	for buff in buffs:
@@ -159,6 +165,7 @@ func decay_on_event(event: String) -> void:
 	if expired.size() > 0: buffs_changed.emit()
 
 ## 清除所有 buff
+## [未调用] 清除所有buff。若已实现调用方，请删除此标记注释。
 func clear_all_buffs() -> void:
 	for buff in buffs: _unregister_buff_hook(buff.id)
 	buffs.clear(); buffs_changed.emit()

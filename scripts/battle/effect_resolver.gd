@@ -20,11 +20,15 @@ var _temp_hook_ids: Array = []          ## 临时攻击力钩子的 id 列表，
 ## Callable 签名为 func(effect: Dictionary, source, target) -> Dictionary
 var _handlers: Dictionary = {}
 
+## [未连接] 效果结算完成通知。若已连接接收方，请删除此标记注释。
 signal effect_resolved(effect_type: int, result: Dictionary)  ## 效果结算完成
+## [未连接] 造成伤害通知。若已连接接收方，请删除此标记注释。
 signal damage_dealt(target, amount: int)    ## 造成了伤害
 signal block_gained(target, amount: int)    ## 获得了格挡
 signal healing_done(target, amount: int)    ## 完成了治疗
+## [未连接] 抽牌通知。若已连接接收方，请删除此标记注释。
 signal cards_drawn(count: int)              ## 抽了牌
+## [未连接] 施加buff通知。若已连接接收方，请删除此标记注释。
 signal buff_applied(target, buff: BuffData) ## 施加了 buff
 
 func _init():
@@ -50,6 +54,7 @@ func has_handler(effect_type: String) -> bool:
 	return _handlers.has(effect_type)
 
 ## 获取所有已注册的效果类型列表
+## [未调用] 获取已注册效果类型。若已实现调用方，请删除此标记注释。
 func get_registered_effect_types() -> Array:
 	return _handlers.keys()
 

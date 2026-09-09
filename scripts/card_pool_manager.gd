@@ -8,18 +8,21 @@ extends Node
 const CARD_POOL_PATH := "user://card_pool.json"  ## 卡牌池存档路径
 var unlocked_card_ids: Array = []  ## 已解锁的卡牌 ID 列表
 
+## [未连接] 卡牌池变化通知。若已连接接收方，请删除此标记注释。
 signal card_pool_changed()  ## 卡牌池发生变化时触发
 
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	load_pool()
 
+## [未调用] 添加单张卡到池。若已实现调用方，请删除此标记注释。
 func add_card(card_id: String) -> void:
 	if not unlocked_card_ids.has(card_id):
 		unlocked_card_ids.append(card_id)
 		save_pool()
 		card_pool_changed.emit()
 
+## [未调用] 批量添加卡到池。若已实现调用方，请删除此标记注释。
 func add_cards(card_ids: Array) -> void:
 	var changed := false
 	for card_id in card_ids:
@@ -30,12 +33,14 @@ func add_cards(card_ids: Array) -> void:
 		save_pool()
 		card_pool_changed.emit()
 
+## [未调用] 检查池中是否有卡。若已实现调用方，请删除此标记注释。
 func has_card(card_id: String) -> bool:
 	return unlocked_card_ids.has(card_id)
 
 func get_all_card_ids() -> Array:
 	return unlocked_card_ids.duplicate()
 
+## [未调用] 获取池中卡牌总数。若已实现调用方，请删除此标记注释。
 func get_card_count() -> int:
 	return unlocked_card_ids.size()
 
@@ -88,6 +93,7 @@ func load_pool() -> void:
 		var data = json.data
 		unlocked_card_ids = data.get("unlocked_card_ids", [])
 
+## [未调用] 清空卡牌池。若已实现调用方，请删除此标记注释。
 func clear_pool() -> void:
 	unlocked_card_ids.clear()
 	save_pool()

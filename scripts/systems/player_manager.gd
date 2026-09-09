@@ -20,8 +20,11 @@ var selected_target: EnemyUnit = null  ## 当前选中的敌人对象
 signal hp_changed(current: int, maximum: int)    ## 血量变化
 signal block_changed(amount: int)                ## 格挡值变化
 signal player_died()                             ## 玩家死亡
+## [未连接] 玩家受伤通知。若已连接接收方，请删除此标记注释。
 signal player_damaged(amount: int)               ## 玩家受到伤害
+## [未连接] 玩家治疗通知。若已连接接收方，请删除此标记注释。
 signal player_healed(amount: int)                ## 玩家受到治疗
+## [未连接] 选中目标通知。若已连接接收方，请删除此标记注释。
 signal target_selected(index: int)               ## 选中目标变化
 signal counter_damage(amount: int)               ## 反击伤害（由 counter_stance buff 触发）
 
@@ -43,6 +46,7 @@ func get_dexterity() -> int:
 	return base_dexterity + (buff.stacks if buff else 0)
 
 ## 获取总伤害加成（基础力量 + 所有 buff 的 damage_add 修正值之和）
+## [未调用] 获取累计伤害。若已实现调用方，请删除此标记注释。
 func get_total_damage() -> int:
 	return base_strength + int(buff_manager.get_flat_add("damage"))
 
@@ -135,11 +139,13 @@ func pay_life(amount: int) -> bool:
 	return true
 
 ## 设置最大血量（当前血量不会超过新的最大值）
+## [未调用] 设置最大血量。若已实现调用方，请删除此标记注释。
 func set_max_hp(value: int) -> void: max_hp = value; current_hp = mini(current_hp, max_hp); hp_changed.emit(current_hp, max_hp)
 
 func is_alive() -> bool: return not is_dead  ## 以 is_dead 为准（遗物觉醒后生命可为负，仍算存活）
 
 ## 获取血量百分比（0.0 ~ 1.0）
+## [未调用] 获取血量百分比。若已实现调用方，请删除此标记注释。
 func get_hp_percent() -> float: return float(current_hp) / float(max_hp)
 
 ## 给玩家施加 buff

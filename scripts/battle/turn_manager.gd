@@ -5,11 +5,16 @@ class_name TurnManager
 var turn_count: int = 0        ## 当前回合数（只在玩家回合开始时递增）
 var is_player_active: bool = true  ## 当前是否为玩家行动
 
+## [未连接] 新回合开始通知。若已连接接收方，请删除此标记注释。
 signal turn_started(turn_number: int, is_player_turn: bool)  ## 新回合开始
+## [未连接] 回合结束通知。若已连接接收方，请删除此标记注释。
 signal turn_ended(turn_number: int)                          ## 当前阶段结束
 signal player_turn_start()   ## 玩家回合开始
+## [未连接] 玩家回合结束通知。若已连接接收方，请删除此标记注释。
 signal player_turn_end()     ## 玩家回合结束
+## [未连接] 敌人回合开始通知。若已连接接收方，请删除此标记注释。
 signal enemy_turn_start()    ## 敌人回合开始
+## [未连接] 敌人回合结束通知。若已连接接收方，请删除此标记注释。
 signal enemy_turn_end()      ## 敌人回合结束
 
 ## 重置回合数和状态

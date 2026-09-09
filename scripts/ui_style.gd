@@ -4,19 +4,10 @@
 extends Node
 
 # ============================ 配色 ============================
-const COLOR_BG_DARK := Color(0.055, 0.065, 0.12)
 const COLOR_PANEL := Color(0.06, 0.07, 0.13, 0.94)
 const COLOR_PANEL_BORDER := Color(0.32, 0.32, 0.52, 0.7)
-const COLOR_GOLD := Color(0.85, 0.66, 0.28)
 const COLOR_GOLD_BRIGHT := Color(1.0, 0.85, 0.5)
-const COLOR_GOLD_DIM := Color(0.6, 0.45, 0.16)
 const COLOR_TEXT := Color(0.9, 0.88, 0.85)
-const COLOR_TEXT_MUTED := Color(0.62, 0.62, 0.72)
-const COLOR_DANGER := Color(0.9, 0.32, 0.32)
-const COLOR_HEALTH := Color(0.85, 0.25, 0.28)
-const COLOR_BLOCK := Color(0.35, 0.75, 0.95)
-const COLOR_SUCCESS := Color(0.4, 0.85, 0.5)
-const COLOR_POWER := Color(0.65, 0.45, 0.9)
 
 # ====================== 星云背景资源 ======================
 const NEBULA_BLUE: Array[String] = [
@@ -83,12 +74,6 @@ func background_for(screen: String) -> Texture2D:
 	var path: String = SCREEN_BG.get(screen, SCREEN_BG["menu"])
 	return _load_texture(path)
 
-
-func random_background(kind: String) -> Texture2D:
-	var paths := _paths_for_kind(kind)
-	if paths.is_empty():
-		return _load_texture(SCREEN_BG["menu"])
-	return _load_texture(paths[randi() % paths.size()])
 
 
 func _paths_for_kind(kind: String) -> Array:
@@ -157,29 +142,6 @@ func panel_style(bg: Color = COLOR_PANEL, border: Color = COLOR_PANEL_BORDER, ra
 	s.set_content_margin_all(12)
 	return s
 
-
-func gold_panel_style() -> StyleBoxFlat:
-	return panel_style(COLOR_PANEL, Color(0.85, 0.66, 0.28, 0.7), 12, 2)
-
-
-func make_title(text: String, size: int = 40, color: Color = COLOR_GOLD_BRIGHT) -> Label:
-	var lbl := Label.new()
-	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", size)
-	lbl.add_theme_color_override("font_color", color)
-	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.65))
-	lbl.add_theme_constant_override("outline_size", 6)
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	return lbl
-
-
-func make_subtitle(text: String, size: int = 16, color: Color = COLOR_TEXT) -> Label:
-	var lbl := Label.new()
-	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", size)
-	lbl.add_theme_color_override("font_color", color)
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	return lbl
 
 
 ## 主行动按钮（金色实心 CTA）：返回 normal / hover / pressed 三态样式
@@ -433,3 +395,4 @@ func _sample_button_color(btn: Control) -> Color:
 	if c.a < 0.1:
 		c = Color(0.9, 0.85, 0.5)
 	return c
+

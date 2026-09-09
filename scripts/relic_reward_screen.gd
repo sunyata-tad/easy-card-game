@@ -37,6 +37,7 @@ func _fit_to_viewport() -> void:
 		$Center.scale = Vector2(s, s)
 
 ## 供测试/外部读取当前展示的遗物选项
+## [未调用] 获取遗物选择列表。若已实现调用方，请删除此标记注释。
 func get_choices() -> Array:
 	return _choices
 

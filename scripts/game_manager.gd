@@ -33,7 +33,9 @@ var current_scene: Node = null          ## 当前活跃的场景节点
 var previous_scene_type: int = -1       ## 上一个场景类型
 var current_scene_type: int = -1        ## 当前场景类型
 
+## [未连接] 场景切换通知。若已连接接收方，请删除此标记注释。
 signal scene_changed(scene_type: int)    ## 场景切换信号
+## [未连接] 战斗开始通知。若已连接接收方，请删除此标记注释。
 signal battle_started()                 ## 战斗开始
 signal battle_ended(victory: bool)       ## 战斗结束
 
@@ -111,19 +113,6 @@ func go_to_test_map() -> void:
 	var data: Dictionary = {"map_id": "test", "test_mode": true}
 	change_scene(GameScene.MAP, data)
 
-## 测试战斗：创建一个测试假人敌人，用预设牌组进入战斗（保留兼容）
-func go_to_test_battle() -> void:
-	var enemy_db = EnemyDatabase.new()
-	var enemy = enemy_db.get_enemy("test_dummy")
-	if enemy:
-		GameData.initialize_new_run()
-		GameData.player_strength = 5
-		GameData.player_dexterity = 5
-		var card_db = CardDatabase.new()
-		GameData.player_deck = card_db.create_deck([
-			{"card_id": "格挡", "count": 20}
-		])
-		start_battle([enemy])
 
 func go_to_map(map_id: String = "test_map", map_state: Dictionary = {}) -> void:
 	var data: Dictionary = {"map_id": map_id}
@@ -138,6 +127,7 @@ func start_battle(enemies: Array = [], test_mode: bool = false) -> void:
 	battle_started.emit()
 
 ## 战斗结束处理
+## [未调用] 结束战斗。若已实现调用方，请删除此标记注释。
 func end_battle(victory: bool, battle_stats: Dictionary = {}) -> void:
 	battle_ended.emit(victory)
 	if victory:
@@ -159,11 +149,14 @@ func go_to_game_over(stats: Dictionary = {}) -> void:
 	var data = {"stats": stats}
 	change_scene(GameScene.GAME_OVER, data)
 
+## [未调用] 重新开始游戏。若已实现调用方，请删除此标记注释。
 func restart_game() -> void:
 	go_to_main_menu()
 
+## [未调用] 获取当前场景类型。若已实现调用方，请删除此标记注释。
 func get_current_scene_type() -> int:
 	return current_scene_type
 
+## [未调用] 是否在战斗中。若已实现调用方，请删除此标记注释。
 func is_in_battle() -> bool:
 	return current_scene_type == GameScene.BATTLE

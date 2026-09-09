@@ -8,8 +8,7 @@ class_name CardSystem
 
 ## 手牌上限（默认 10，可被卡牌效果/被动修改）
 var max_hand_size: int = 10
-## 默认手牌上限（用于重置）
-const DEFAULT_MAX_HAND_SIZE: int = 10
+
 
 var draw_pile: Array = []     ## 抽牌堆（牌库）
 var hand: Array = []          ## 手牌（当前可用的卡牌）
@@ -17,12 +16,16 @@ var discard_pile: Array = []  ## 弃牌堆（使用后进入此处）
 var exhaust_pile: Array = []  ## 消耗堆（本场战斗不再使用）
 
 ## 卡牌相关信号
+## [未连接] 抽到卡牌通知。若已连接接收方，请删除此标记注释。
 signal card_drawn(card: CardData)                               ## 抽到卡牌
 signal card_played(card: CardData, target)                      ## 卡牌被打出
+## [未连接] 卡牌弃置通知。若已连接接收方，请删除此标记注释。
 signal card_discarded(card: CardData)                           ## 卡牌被弃置
+## [未连接] 卡牌消耗通知。若已连接接收方，请删除此标记注释。
 signal card_exhausted(card: CardData)                           ## 卡牌被消耗
 signal hand_changed(hand_array: Array)                          ## 手牌发生变化
 signal deck_count_changed(draw_count: int, discard_count: int)  ## 抽牌堆/弃牌堆数量变化
+## [未连接] 卡牌加入手牌通知。若已连接接收方，请删除此标记注释。
 signal card_added_to_hand(card: CardData)                       ## 卡牌被加入手牌（不经过抽牌流程）
 signal deck_exhausted()                                         ## 牌库已空
 
@@ -84,6 +87,7 @@ func play_card(card: CardData, target = null) -> bool:
 	return true
 
 ## 消耗手牌中的一张卡牌（从手牌移到消耗堆，本场战斗不再出现）
+## [未调用] 消耗卡牌。若已实现调用方，请删除此标记注释。
 func exhaust_card(card: CardData) -> void:
 	if hand.has(card):
 		hand.erase(card)
@@ -93,6 +97,7 @@ func exhaust_card(card: CardData) -> void:
 		_emit_deck_count()
 
 ## 弃置全部手牌
+## [未调用] 弃置整个手牌。若已实现调用方，请删除此标记注释。
 func discard_hand() -> void:
 	while not hand.is_empty():
 		var card = hand.pop_back()
@@ -111,6 +116,7 @@ func add_to_hand(card: CardData) -> void:
 
 ## 将卡牌加入抽牌堆
 ## @param to_top: true 则放在牌堆顶部（下次先抽到），false 放在底部
+## [未调用] 加入抽牌堆。若已实现调用方，请删除此标记注释。
 func add_to_draw_pile(card: CardData, to_top: bool = false) -> void:
 	if to_top:
 		draw_pile.push_front(card.duplicate())
@@ -119,6 +125,7 @@ func add_to_draw_pile(card: CardData, to_top: bool = false) -> void:
 	_emit_deck_count()
 
 ## 将卡牌加入弃牌堆
+## [未调用] 加入弃牌堆。若已实现调用方，请删除此标记注释。
 func add_to_discard(card: CardData) -> void:
 	discard_pile.append(card.duplicate())
 	_emit_deck_count()
@@ -192,6 +199,7 @@ func get_discard_pile_count() -> int:
 	return discard_pile.size()
 
 ## 获取牌组总卡牌数（包含所有四个区域）
+## [未调用] 获取牌库总数。若已实现调用方，请删除此标记注释。
 func get_total_deck_count() -> int:
 	return draw_pile.size() + hand.size() + discard_pile.size() + exhaust_pile.size()
 
@@ -238,6 +246,7 @@ func search_discard_and_draw_by_tag(tag: String) -> CardData:
 	return null
 
 ## 消耗手牌中的指定卡牌
+## [未调用] 消耗手牌中的卡。若已实现调用方，请删除此标记注释。
 func exhaust_hand_card(card: CardData) -> bool:
 	if hand.has(card):
 		hand.erase(card)
@@ -284,6 +293,7 @@ func discard_specific_card(card: CardData) -> bool:
 	return true
 
 ## 获取手牌中所有带有指定标签的卡牌
+## [未调用] 按标签筛选手牌。若已实现调用方，请删除此标记注释。
 func get_cards_in_hand_by_tag(tag: String) -> Array:
 	var result: Array = []
 	for card in hand:
@@ -292,6 +302,7 @@ func get_cards_in_hand_by_tag(tag: String) -> Array:
 	return result
 
 ## 统计手牌中带有指定标签的卡牌数量
+## [未调用] 统计手牌中指定标签数量。若已实现调用方，请删除此标记注释。
 func count_cards_in_hand_with_tag(tag: String) -> int:
 	var count = 0
 	for card in hand:
@@ -300,6 +311,7 @@ func count_cards_in_hand_with_tag(tag: String) -> int:
 	return count
 
 ## 回合结束时弃置超出上限的手牌
+## [未调用] 回合结束弃牌。若已实现调用方，请删除此标记注释。
 func end_turn_discard() -> void:
 	while hand.size() > max_hand_size:
 		var card = hand.pop_back()

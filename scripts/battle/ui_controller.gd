@@ -43,6 +43,7 @@ var _card_select_info_label: Label = null   ## 提示文字
 var _card_select_callback: Callable = Callable()  ## 选择完成后的回调
 var _attack_button_in_card_select: bool = false  ## 普通攻击按钮是否充当"取消选择"（弃牌攻击选牌阶段）
 
+## [未连接] 卡牌选择确认通知。若已连接接收方，请删除此标记注释。
 signal card_select_confirmed(selected_cards: Array)  ## 卡牌选择已确认
 
 ## 拖拽状态
@@ -216,6 +217,7 @@ func update_target_marker(enemy: EnemyUnit) -> void:
 			target_marker.call("set_target", enemy_node)
 
 ## 清除目标标记
+## [未调用] 清除目标标记。若已实现调用方，请删除此标记注释。
 func clear_target_marker() -> void:
 	if target_marker and target_marker.has_method("clear"):
 		target_marker.call("clear")
@@ -1272,11 +1274,6 @@ func enter_attack_card_select(prompt: String, callback: Callable) -> void:
 	if target_button:
 		target_button.text = "取消选择"
 
-func _on_card_select_gui_input(event: InputEvent, card: CardData) -> void:
-	if not _card_select_active:
-		return
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_toggle_card_selection(card)
 
 func _on_card_select_card_clicked(card: CardData) -> void:
 	if not _card_select_active:

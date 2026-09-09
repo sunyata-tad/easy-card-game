@@ -14,10 +14,9 @@
 ## 使用方式：
 ##   - 触发钩子：  unit.hook_chain.trigger(HookRegistry.HOOK_CALC_BASE, v, ctx)
 ##   - 注册回调：  unit.hook_chain.register(HookRegistry.HOOK_CALC_ADD, 回调, priority, id)
-##   - 查阅列表：  HookRegistry.get_hook_docs()  /  HookRegistry.get_hook_desc("...")
 ##
 ## 新增一个钩子（或复用已有钩子实现新效果）的标准流程：
-##   1. 先查 get_hook_docs() 确认钩子是否已存在（能复用就不新建）
+##   1. 先查 _HOOK_DOCS 确认钩子是否已存在（能复用就不新建）
 ##   2. 若不存在：在此定义常量 + 在 _HOOK_DOCS 补一条 {name, stage, value, desc, ctx}
 ##   3. 在效果实现处 register 回调（生效时机由 priority 决定，数值越小越先执行）
 ##   4. 在流程控制处 trigger 触发（值由前一个回调的返回值传入下一个）
@@ -98,27 +97,9 @@ static var _HOOK_DOCS: Array = [
 	 "ctx": "should_end, result, reason"},
 ]
 
-## 获取钩子文档列表的深拷贝（含全部钩子名与注释）
-static func get_hook_docs() -> Array:
-	return _HOOK_DOCS.duplicate(true)
-
-## 获取所有钩子名（仅名称数组）
-static func get_hook_names() -> Array:
-	var names: Array = []
-	for doc in _HOOK_DOCS:
-		names.append(doc.name)
-	return names
-
 ## 判断钩子名是否为已注册/已文档化的钩子（用于 HookChain 调用前校验）
 static func is_known_hook(hook_name: String) -> bool:
 	for doc in _HOOK_DOCS:
 		if doc.name == hook_name:
 			return true
 	return false
-
-## 按名字获取钩子注释，未找到返回空字符串
-static func get_hook_desc(hook_name: String) -> String:
-	for doc in _HOOK_DOCS:
-		if doc.name == hook_name:
-			return doc.desc
-	return ""

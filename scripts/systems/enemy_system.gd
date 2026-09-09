@@ -7,10 +7,13 @@ class_name EnemySystem
 ## 场上所有敌人（包括已死亡的）
 var enemies: Array = []
 
+## [未连接] 敌人添加通知。若已连接接收方，请删除此标记注释。
 signal enemy_added(enemy: EnemyUnit)         ## 敌人被添加到场上
+## [未连接] 敌人移除通知。若已连接接收方，请删除此标记注释。
 signal enemy_removed(enemy: EnemyUnit)       ## 敌人从场上移除
 signal enemy_damaged(enemy: EnemyUnit, amount: int)  ## 敌人受到伤害
 signal enemy_died(enemy: EnemyUnit)          ## 敌人死亡
+## [未连接] 敌人列表变化通知。若已连接接收方，请删除此标记注释。
 signal enemies_changed()                    ## 敌人列表发生变化
 signal all_enemies_defeated()               ## 所有敌人都被击败
 
@@ -33,6 +36,7 @@ func _connect_enemy_signals(enemy: EnemyUnit) -> void:
 	enemy.enemy_damaged.connect(_on_enemy_damaged.bind(enemy))
 
 ## 移除指定敌人
+## [未调用] 移除敌人。若已实现调用方，请删除此标记注释。
 func remove_enemy(enemy: EnemyUnit) -> void:
 	if enemies.has(enemy):
 		enemies.erase(enemy)
@@ -52,6 +56,7 @@ func get_alive_enemies() -> Array:
 			alive.append(enemy)
 	return alive
 
+## [未调用] 获取敌人数量。若已实现调用方，请删除此标记注释。
 func get_enemy_count() -> int:
 	return enemies.size()
 
@@ -75,6 +80,7 @@ func _check_all_defeated() -> void:
 		all_enemies_defeated.emit()
 
 ## 清除所有敌人
+## [未调用] 清除所有敌人。若已实现调用方，请删除此标记注释。
 func clear_all() -> void:
 	enemies.clear()
 	enemies_changed.emit()

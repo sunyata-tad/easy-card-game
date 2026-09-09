@@ -102,8 +102,6 @@ func _start_new_game():
 	var start_button = get_node_or_null("MenuCenter/MenuBox/Button_start")
 	TransitionManager.transition(GameManager.go_to_endless_map, start_button)
 
-func _on_cancel_new_game():
-	pass
 
 ## 继续游戏：读取存档，根据进度跳转到对应场景
 func _on_continue_pressed() -> void:
@@ -151,12 +149,3 @@ func _on_exit_pressed() -> void:
 func _on_test_pressed() -> void:
 	var test_button = get_node_or_null("Button_test")
 	TransitionManager.transition(GameManager.go_to_test_map, test_button)
-
-func _on_button_start_pressed() -> void:
-	_on_start_pressed()
-
-func _on_button_continue_pressed() -> void:
-	_on_continue_pressed()
-
-func _on_button_exit_pressed() -> void:
-	_on_exit_pressed()

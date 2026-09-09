@@ -22,6 +22,7 @@ var card_database: CardDatabase   ## 卡牌数据库
 var enemy_database: EnemyDatabase ## 敌人数据库
 var relic_database: RelicDatabase ## 遗物数据库
 
+## [未连接] 牌组变化通知。若已连接接收方，请删除此标记注释。
 signal deck_changed(deck: Array)                           ## 牌组变化
 signal hp_changed(current: int, maximum: int)              ## 血量变化
 signal gold_changed(amount: int)                           ## 金币变化
@@ -60,30 +61,6 @@ func initialize_new_run() -> void:
 	level_changed.emit(player_level)
 	attribute_points_changed.emit(player_attribute_points)
 
-## 从角色数据初始化 run（用于选角后的开局）
-func initialize_run_from_character(character: CharacterData) -> void:
-	player_max_hp = character.get_max_hp()
-	player_current_hp = player_max_hp
-	player_strength = character.get_strength()
-	player_dexterity = character.get_dexterity()
-	gold = 0
-	battles_won = 0
-	total_damage_dealt = 0
-	cards_played = 0
-	player_exp = 0
-	player_level = 1
-	player_attribute_points = 0
-
-	player_deck.clear()
-	var card_db := CardDatabase.new()
-	for card_id in character.deck_card_ids:
-		var card = card_db.get_card(card_id)
-		if card:
-			player_deck.append(card.duplicate())
-
-	deck_changed.emit(player_deck)
-	hp_changed.emit(player_current_hp, player_max_hp)
-	stats_changed.emit(player_strength, player_dexterity)
 
 ## 获得一个遗物：创建独立实例加入列表（不去重；可重复遗物可拥有多个）
 func grant_relic(relic_id: String) -> void:
@@ -106,6 +83,7 @@ func get_deck() -> Array:
 	return player_deck.duplicate()
 
 ## 升级指定索引的卡牌（增加伤害/护甲值）
+## [未调用] 升级牌组中指定位置的卡。若已实现调用方，请删除此标记注释。
 func upgrade_card_at_index(card_index: int, increase: int = 3) -> bool:
 	if card_index < 0 or card_index >= player_deck.size():
 		return false
@@ -150,6 +128,7 @@ func take_damage(amount: int) -> void:
 	player_current_hp = maxi(player_current_hp - amount, 0)
 	hp_changed.emit(player_current_hp, player_max_hp)
 
+## [未调用] 增加最大血量。若已实现调用方，请删除此标记注释。
 func increase_max_hp(amount: int) -> void:
 	player_max_hp += amount
 	player_current_hp += amount
@@ -159,6 +138,7 @@ func add_gold(amount: int) -> void:
 	gold += amount
 	gold_changed.emit(gold)
 
+## [未调用] 消耗金币。若已实现调用方，请删除此标记注释。
 func spend_gold(amount: int) -> bool:
 	if gold >= amount:
 		gold -= amount
@@ -185,10 +165,12 @@ func get_battle_stats() -> Dictionary:
 		"max_hp": player_max_hp
 	}
 
+## [未调用] 玩家是否存活。若已实现调用方，请删除此标记注释。
 func is_player_alive() -> bool:
 	return player_current_hp > 0
 
 ## 牌组内标签检索
+## [未调用] 按标签筛选牌组。若已实现调用方，请删除此标记注释。
 func get_cards_in_deck_by_tag(tag: String) -> Array:
 	var result: Array = []
 	for card in player_deck:
@@ -196,6 +178,7 @@ func get_cards_in_deck_by_tag(tag: String) -> Array:
 			result.append(card)
 	return result
 
+## [未调用] 按任意标签筛选牌组。若已实现调用方，请删除此标记注释。
 func get_cards_in_deck_by_any_tags(tags: Array) -> Array:
 	var result: Array = []
 	for card in player_deck:
@@ -203,6 +186,7 @@ func get_cards_in_deck_by_any_tags(tags: Array) -> Array:
 			result.append(card)
 	return result
 
+## [未调用] 按全部标签筛选牌组。若已实现调用方，请删除此标记注释。
 func get_cards_in_deck_by_all_tags(tags: Array) -> Array:
 	var result: Array = []
 	for card in player_deck:
@@ -210,6 +194,7 @@ func get_cards_in_deck_by_all_tags(tags: Array) -> Array:
 			result.append(card)
 	return result
 
+## [未调用] 统计牌组中指定标签数量。若已实现调用方，请删除此标记注释。
 func count_cards_with_tag(tag: String) -> int:
 	var count = 0
 	for card in player_deck:
@@ -217,6 +202,7 @@ func count_cards_with_tag(tag: String) -> int:
 			count += 1
 	return count
 
+## [未调用] 牌组中是否有指定标签的卡。若已实现调用方，请删除此标记注释。
 func has_card_with_tag(tag: String) -> bool:
 	for card in player_deck:
 		if card.has_tag(tag):

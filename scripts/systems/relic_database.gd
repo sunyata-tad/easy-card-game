@@ -30,6 +30,7 @@ func get_all_relic_ids() -> Array:
 ## 获取可获得的遗物池（用于 Boss 战后三选一）
 ## @param owned_ids: 已拥有的遗物 id（不可重复者排除）
 ## 可重复遗物始终在池中（保证流程不卡死，如占位遗物"头环"）
+## [未调用] 获取遗物池。若已实现调用方，请删除此标记注释。
 func get_relic_pool(owned_ids: Array) -> Array:
 	var pool: Array = []
 	for rid in _relics:

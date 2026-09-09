@@ -59,6 +59,7 @@ func hide_arrow():
 	is_visible = false
 	queue_redraw()
 
+## [未调用] 设置箭头颜色。若已实现调用方，请删除此标记注释。
 func set_color(color: Color):
 	arrow_color = color
 	if is_visible:

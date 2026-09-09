@@ -76,6 +76,7 @@ func delete_save() -> void:
 		DirAccess.remove_absolute(SAVE_PATH)
 
 ## 获取存档摘要信息（用于 UI 显示）
+## [未调用] 获取存档信息。若已实现调用方，请删除此标记注释。
 func get_save_info() -> Dictionary:
 	if not has_save():
 		return {"exists": false}
@@ -223,10 +224,12 @@ func save_before_battle(enemy_id: String, map_id: String = "endless", endless_la
 func get_cached_map_state() -> Dictionary:
 	return _cached_map_state
 
+## [未调用] 保存游戏结束。若已实现调用方，请删除此标记注释。
 func save_game_over() -> bool:
 	return save_game(GameProgress.GAME_OVER)
 
 ## 获取进度描述文字（用于 UI 显示）
+## [未调用] 获取进度描述。若已实现调用方，请删除此标记注释。
 func get_progress_description(progress: int) -> String:
 	match progress:
 		GameProgress.IN_MAP:

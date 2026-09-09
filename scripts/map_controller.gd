@@ -22,16 +22,6 @@ const DIRECTION_NAMES := {
 	Direction.NORTH_WEST: "north_west"
 }
 
-const DIRECTION_VECTORS := {
-	Direction.NORTH: Vector2i(0, -1),
-	Direction.NORTH_EAST: Vector2i(1, -1),
-	Direction.EAST: Vector2i(1, 0),
-	Direction.SOUTH_EAST: Vector2i(1, 1),
-	Direction.SOUTH: Vector2i(0, 1),
-	Direction.SOUTH_WEST: Vector2i(-1, 1),
-	Direction.WEST: Vector2i(-1, 0),
-	Direction.NORTH_WEST: Vector2i(-1, -1)
-}
 
 var map_database: MapDatabase
 var map_state: MapState
@@ -595,6 +585,7 @@ func deselect_interactable() -> void:
 	selected_interactable_id = ""
 	interactable_deselected.emit()
 
+## [未调用] 获取当前选中的交互物。若已实现调用方，请删除此标记注释。
 func get_selected_interactable() -> Dictionary:
 	if selected_interactable_id.is_empty():
 		return {}
@@ -654,6 +645,7 @@ func remove_dead_enemies(alive_ids: Array) -> void:
 		node_data["interactables"] = list
 		node_data["enemy_ids"] = enemy_ids
 
+## [未调用] 获取当前层数。若已实现调用方，请删除此标记注释。
 func get_current_layer() -> int:
 	return current_layer
 

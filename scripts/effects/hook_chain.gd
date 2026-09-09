@@ -58,6 +58,7 @@ func trigger(hook_name: String, value: Variant = null, context: Dictionary = {})
 	return current_value
 
 ## 检查指定钩子是否有注册的回调
+## [未调用] 是否有钩子。若已实现调用方，请删除此标记注释。
 func has_hooks(hook_name: String) -> bool:
 	return _hooks.has(hook_name) and _hooks[hook_name].size() > 0
 
@@ -66,6 +67,7 @@ func clear() -> void:
 	_hooks.clear()
 
 ## 清空指定名称的所有钩子
+## [未调用] 清除指定钩子。若已实现调用方，请删除此标记注释。
 func clear_hook(hook_name: String) -> void:
 	_hooks.erase(hook_name)
 

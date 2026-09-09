@@ -15,23 +15,23 @@ run/main_scene="uid://bqn0b431n2ass"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
-[display]
-
-window/size/width=1152
-window/size/height=648
-stretch/mode="canvas_items"
-stretch/aspect="expand"
-
 [autoload]
 
 GameManager="*res://scripts/game_manager.gd"
 GameData="*res://scripts/game_data.gd"
 SaveManager="*res://scripts/save_manager.gd"
-CharacterManager="*res://scripts/character_manager.gd"
 CardPoolManager="*res://scripts/card_pool_manager.gd"
 UIStyle="*res://scripts/ui_style.gd"
 TransitionManager="*res://scripts/transition_manager.gd"
 MCPRuntimeProbe="*uid://bsg12huaf1u5i"
+
+[display]
+
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+window/size/width=1152
+window/size/height=648
+window/handheld/orientation=0
 
 [dotnet]
 

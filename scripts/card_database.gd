@@ -41,6 +41,7 @@ func get_card(card_id: String) -> CardData:
 	return null
 
 ## 根据 id 获取卡牌（升级版）
+## [未调用] 获取升级版卡牌。若已实现调用方，请删除此标记注释。
 func get_upgraded_card(card_id: String) -> CardData:
 	if _cards.has(card_id):
 		return CardData.new(_cards[card_id], true)
@@ -80,6 +81,7 @@ func get_cards_by_tag(tag: String) -> Array:
 			result.append(card)
 	return result
 
+## [未调用] 按任意标签筛选。若已实现调用方，请删除此标记注释。
 func get_cards_by_any_tags(tags: Array) -> Array:
 	var result: Array = []
 	for card_id in _cards:
@@ -88,6 +90,7 @@ func get_cards_by_any_tags(tags: Array) -> Array:
 			result.append(card)
 	return result
 
+## [未调用] 按全部标签筛选。若已实现调用方，请删除此标记注释。
 func get_cards_by_all_tags(tags: Array) -> Array:
 	var result: Array = []
 	for card_id in _cards:
@@ -97,6 +100,7 @@ func get_cards_by_all_tags(tags: Array) -> Array:
 	return result
 
 ## 随机获取一张拥有指定标签的卡牌
+## [未调用] 按标签随机取卡。若已实现调用方，请删除此标记注释。
 func get_random_card_by_tag(tag: String) -> CardData:
 	var matching_cards = get_cards_by_tag(tag)
 	if matching_cards.is_empty():
