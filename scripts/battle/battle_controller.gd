@@ -10,6 +10,7 @@ var ui_controller: UIController
 
 var card_database: CardDatabase
 var enemy_database: EnemyDatabase
+var rules: BattleRules
 
 var pending_card: CardData = null
 var is_first_turn: bool = true
@@ -30,11 +31,13 @@ func _init():
 	_connect_signals()
 
 func _initialize_systems() -> void:
+	rules = BattleRules.new()
 	state_machine = StateMachine.new()
 	turn_manager = TurnManager.new()
 	card_system = CardSystem.new()
+	card_system.max_hand_size = rules.max_hand_size
 	enemy_system = EnemySystem.new()
-	player_manager = PlayerManager.new(80)
+	player_manager = PlayerManager.new(rules.initial_max_hp)
 	effect_resolver = EffectResolver.new()
 	card_database = CardDatabase.new()
 	enemy_database = EnemyDatabase.new()
@@ -142,7 +145,7 @@ func _on_draw_phase() -> void:
 	enemy_system.reset_all_block()
 	player_manager.buff_manager.remove_at_turn_end()
 	effect_resolver.clear_all_temp_hooks(player_manager)
-	var draw_count = 5 if is_first_turn else 1
+	var draw_count = rules.initial_draw_count if is_first_turn else rules.turn_draw_count
 	# 遗物"终末轮回"效果②生效后：每回合开始抽卡直到手卡≥10
 	if player_manager.relic_manager and player_manager.relic_manager.is_awakened("immortal_cycle"):
 		draw_count = maxi(card_system.max_hand_size - card_system.hand.size(), 0)
