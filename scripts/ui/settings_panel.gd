@@ -57,14 +57,14 @@ func _build_ui() -> void:
 	var return_btn = Button.new()
 	return_btn.text = "回到主界面"
 	return_btn.custom_minimum_size = Vector2(220, 36)
-	return_btn.pressed.connect(func(): hide(); return_main_requested.emit())
+	return_btn.pressed.connect(func(): hide(); queue_free(); return_main_requested.emit())
 	vbox.add_child(return_btn)
 	UIStyle.attach_button_anim(return_btn)
 
 	var quit_btn = Button.new()
 	quit_btn.text = "退出游戏"
 	quit_btn.custom_minimum_size = Vector2(220, 36)
-	quit_btn.pressed.connect(func(): hide(); quit_game_requested.emit())
+	quit_btn.pressed.connect(func(): hide(); queue_free(); quit_game_requested.emit())
 	vbox.add_child(quit_btn)
 	UIStyle.attach_button_anim(quit_btn)
 
@@ -73,7 +73,7 @@ func _build_ui() -> void:
 	var cancel_btn = Button.new()
 	cancel_btn.text = "取消"
 	cancel_btn.custom_minimum_size = Vector2(220, 36)
-	cancel_btn.pressed.connect(func(): hide())
+	cancel_btn.pressed.connect(func(): hide(); queue_free())
 	vbox.add_child(cancel_btn)
 	UIStyle.attach_button_anim(cancel_btn)
 

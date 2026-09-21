@@ -9,6 +9,8 @@
 ## - is_instance_valid(node) 检查节点是否仍有效
 extends Control
 
+const SettingsPanel = preload("res://scripts/ui/settings_panel.gd")
+
 var map_controller: MapController
 
 var location_label: Label
@@ -1136,50 +1138,17 @@ func _add_panel_separator() -> void:
 	status_panel_content.add_child(sep)
 
 func _show_settings_dialog() -> void:
-	var popup = PopupPanel.new()
-	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.1, 0.16, 1.0)
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(16)
-	popup.add_theme_stylebox_override("panel", style)
-	
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 10)
-	
-	var title = Label.new()
-	title.text = "设置"
-	title.add_theme_font_size_override("font_size", 18)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(title)
-	
-	var sep = HSeparator.new()
-	vbox.add_child(sep)
-	
-	var save_menu_btn = Button.new()
-	save_menu_btn.text = "保存并返回主菜单"
-	save_menu_btn.custom_minimum_size = Vector2(220, 36)
-	save_menu_btn.pressed.connect(func(): popup.hide(); SaveManager.save_map_state(); TransitionManager.transition(GameManager.go_to_main_menu, save_menu_btn))
-	vbox.add_child(save_menu_btn)
-	UIStyle.attach_button_anim(save_menu_btn)
-	
-	var save_exit_btn = Button.new()
-	save_exit_btn.text = "保存并退出游戏"
-	save_exit_btn.custom_minimum_size = Vector2(220, 36)
-	save_exit_btn.pressed.connect(func(): popup.hide(); SaveManager.save_map_state(); TransitionManager.transition(func(): get_tree().quit(), save_exit_btn))
-	vbox.add_child(save_exit_btn)
-	UIStyle.attach_button_anim(save_exit_btn)
-	
-	var cancel_btn = Button.new()
-	cancel_btn.text = "取消"
-	cancel_btn.custom_minimum_size = Vector2(220, 36)
-	cancel_btn.pressed.connect(func(): popup.hide())
-	vbox.add_child(cancel_btn)
-	UIStyle.attach_button_anim(cancel_btn)
-	
-	popup.add_child(vbox)
-	add_child(popup)
-	popup.popup_centered()
+	var panel = SettingsPanel.new()
+	panel.return_main_requested.connect(func():
+		SaveManager.save_map_state()
+		TransitionManager.transition(GameManager.go_to_main_menu)
+	)
+	panel.quit_game_requested.connect(func():
+		SaveManager.save_map_state()
+		TransitionManager.transition(func(): get_tree().quit())
+	)
+	add_child(panel)
+	panel.popup_centered()
 
 func _on_battle_requested(enemy_id: String):
 	battle_requested.emit(enemy_id)
