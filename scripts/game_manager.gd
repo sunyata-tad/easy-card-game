@@ -10,7 +10,7 @@ extends Node
 ## 游戏场景枚举
 enum GameScene {
 	MAIN_MENU,         ## 主菜单
-
+	SETTINGS,          ## 设置（主界面入口）
 	MAP,               ## 地图
 	BATTLE,            ## 战斗
 	REWARD,            ## 奖励
@@ -21,7 +21,7 @@ enum GameScene {
 ## 场景路径映射表
 const SCENES := {
 	GameScene.MAIN_MENU: "res://scenes/start.tscn",
-
+	GameScene.SETTINGS: "res://scenes/SettingsScene.tscn",
 	GameScene.MAP: "res://scenes/MapScreen.tscn",
 	GameScene.BATTLE: "res://scenes/BattleScene.tscn",
 	GameScene.REWARD: "res://scenes/RewardScreen.tscn",
@@ -84,6 +84,10 @@ func _notify_scene_data(scene: Node, data: Dictionary) -> void:
 ## 快捷跳转方法
 func go_to_main_menu() -> void:
 	change_scene(GameScene.MAIN_MENU)
+
+## 跳转到设置场景（从主菜单进入）
+func go_to_settings() -> void:
+	change_scene(GameScene.SETTINGS)
 
 
 ## 跳转到无尽地图模式
