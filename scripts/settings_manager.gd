@@ -21,6 +21,12 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_load()
 	_apply_fullscreen()
+	setting_changed.connect(_on_setting_changed)
+
+## 设置项变化时自动应用需要即时生效的偏好（如全屏）。
+func _on_setting_changed(key: String, _value: Variant) -> void:
+	if key == "fullscreen":
+		_apply_fullscreen()
 
 ## 读取设置项。未声明则返回 default。
 func get_setting(key: String, default: Variant = null) -> Variant:
