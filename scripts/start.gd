@@ -35,6 +35,26 @@ func _setup_buttons():
 		if not exit_button.pressed.is_connected(_on_exit_pressed):
 			exit_button.pressed.connect(_on_exit_pressed)
 
+	# 动态创建设置按钮（插在退出按钮前）
+	var menu_box = get_node_or_null("MenuCenter/MenuBox")
+	if menu_box:
+		var settings_btn = Button.new()
+		settings_btn.name = "Button_settings"
+		settings_btn.text = "设置"
+		settings_btn.custom_minimum_size = Vector2(260, 54)
+		settings_btn.button_mask = 7
+		var exit_btn = menu_box.get_node_or_null("Button_exit")
+		if exit_btn:
+			var exit_idx = exit_btn.get_index()
+			menu_box.add_child(settings_btn)
+			menu_box.move_child(settings_btn, exit_idx)
+		else:
+			menu_box.add_child(settings_btn)
+		if UIStyle:
+			UIStyle.attach_button_anim(settings_btn)
+		if not settings_btn.pressed.is_connected(_on_settings_pressed):
+			settings_btn.pressed.connect(_on_settings_pressed)
+
 	# 动态创建测试按钮（场景中可能不存在）
 	var test_button = get_node_or_null("Button_test")
 	if test_button == null:
@@ -68,6 +88,9 @@ func play_entry_animation() -> void:
 		btns.append(cb)
 	if eb:
 		btns.append(eb)
+	var sb_settings = get_node_or_null("MenuCenter/MenuBox/Button_settings")
+	if sb_settings:
+		btns.append(sb_settings)
 	if UIStyle and btns.size() > 0:
 		UIStyle.stagger_in(btns)
 
@@ -145,6 +168,10 @@ func _continue_to_scene(progress: int, map_id: String, map_state: Dictionary) ->
 func _on_exit_pressed() -> void:
 	var exit_button = get_node_or_null("MenuCenter/MenuBox/Button_exit")
 	TransitionManager.transition(func(): get_tree().quit(), exit_button)
+
+func _on_settings_pressed() -> void:
+	var settings_btn = get_node_or_null("MenuCenter/MenuBox/Button_settings")
+	TransitionManager.transition(GameManager.go_to_settings, settings_btn)
 
 func _on_test_pressed() -> void:
 	var test_button = get_node_or_null("Button_test")
