@@ -843,7 +843,12 @@ func _get_buff_color(buff_id: String) -> Color:
 func show_damage_number(target, amount: int, kind: String = "damage") -> void:
 	if amount <= 0:
 		return
-	
+
+	# 受击屏幕震动（仅伤害类型，按 amount 分档强度）
+	if kind == "damage" and screen_shake:
+		var params := ImpactConfig.get_params(amount)
+		screen_shake.shake(params.shake_amp, params.shake_dur)
+
 	var target_node = null
 	if target is EnemyUnit and current_enemy_nodes.has(target):
 		target_node = current_enemy_nodes[target]
