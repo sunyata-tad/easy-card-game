@@ -876,7 +876,8 @@ func show_damage_number(target, amount: int, kind: String = "damage") -> void:
 	
 	target_node.add_child(damage_label)
 	damage_label.position = Vector2(50, 0)
-	
+
+	ImpactConfig.apply_text_effect(damage_label, amount, root_node)
 	var tween = root_node.create_tween()
 	tween.tween_property(damage_label, "position:y", -20, 1.8)
 	tween.parallel().tween_property(damage_label, "modulate:a", 0.0, 0.3).set_delay(1.5)
