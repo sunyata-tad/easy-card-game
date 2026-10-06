@@ -3,8 +3,10 @@
 extends Control
 
 const RELIC_LIST_PANEL := preload("res://scenes/RelicListPanel.tscn")
+const ScreenShakeScript := preload("res://scripts/battle/screen_shake.gd")
 
 var battle_controller: BattleController  ## 战斗核心控制器
+var screen_shake: Node = null             ## 屏幕震动器
 var battle_stats: Dictionary = {         ## 本场战斗统计
 	"damage_dealt": 0,
 	"cards_played": 0
@@ -15,6 +17,14 @@ var _defeat_retry_btn: Button = null      ## 战斗失败重试按钮（过渡�
 
 func _ready():
 	_setup_exit_button()
+	_setup_screen_shake()
+
+func _setup_screen_shake():
+	var camera = get_node_or_null("BattleCamera")
+	if camera is Camera2D:
+		screen_shake = ScreenShakeScript.new()
+		screen_shake.setup(camera)
+		add_child(screen_shake)
 
 func _setup_exit_button():
 	var exit_button = get_node_or_null("ExitButton")
@@ -90,6 +100,8 @@ func _initialize_battle(data: Dictionary = {}):
 		deck_data = GameData.get_deck()
 
 	battle_controller.setup_battle(self, deck_data, enemies_data)
+	if battle_controller.ui_controller and screen_shake:
+		battle_controller.ui_controller.screen_shake = screen_shake
 	battle_controller.start_battle()
 
 	# 仅测试入口战斗显示秒杀按钮

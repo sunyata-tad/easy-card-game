@@ -12,6 +12,7 @@ class_name UIController
 var root_node: Control              ## 战斗场景的根节点
 var card_scene: PackedScene         ## 卡牌 UI 场景（Card.tscn）
 var player_manager: PlayerManager = null  ## 玩家状态引用
+var screen_shake: Node = null       ## 屏幕震动器（由 battle.gd 注入）
 
 ## UI 节点引用（从场景中查找获取）
 var hand_container: Node       ## 手牌区域的容器节点
