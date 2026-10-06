@@ -582,6 +582,8 @@ func restore_to_layout_state():
 	
 	modulate = Color.WHITE
 	scale = original_scale
+	position = original_position
+	rotation_degrees = original_rotation
 	z_index = 0
 
 func is_dragging_card() -> bool:
@@ -589,6 +591,12 @@ func is_dragging_card() -> bool:
 
 func is_in_target_mode() -> bool:
 	return is_awaiting_target
+
+func is_hovered_card() -> bool:
+	return is_hovered
+
+func is_selected_card() -> bool:
+	return is_selected
 
 ## [未调用] 进入目标选择模式。若已实现调用方，请删除此标记注释。
 func start_target_mode():

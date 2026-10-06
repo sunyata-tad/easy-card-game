@@ -361,6 +361,7 @@ func _update_hand_edge_hints(hand_size: int, visible_count: int) -> void:
 
 func update_hand_display(hand: Array) -> void:
 	last_hand = hand.duplicate()
+	var newly_created: Array = []
 	var hand_size := hand.size()
 	if hand_size == 0:
 		_clear_hand()
@@ -393,6 +394,7 @@ func update_hand_display(hand: Array) -> void:
 				continue
 			hand_container.add_child(card_node)
 			current_hand_cards[card] = card_node
+			newly_created.append(card)
 			_setup_card_interaction(card_node, card)
 
 		# 卡牌选择模式中已选中的卡保持在屏幕中央，不参与扇形重排
@@ -409,17 +411,29 @@ func update_hand_display(hand: Array) -> void:
 		var slot := int(slot_of[card])
 		var layout := HandLayoutPresets.get_card_position(slot, visible_count, container_width)
 
-		# 拖拽中 / 选目标中的卡牌保持原状，不参与重排
-		if (card_node.has_method("is_in_target_mode") and card_node.is_in_target_mode()) or (card_node.has_method("is_dragging_card") and card_node.is_dragging_card()):
+		# 拖拽中 / 选目标中 / 悬停 / 选中的卡牌保持原状，不参与重排
+		if (card_node.has_method("is_in_target_mode") and card_node.is_in_target_mode()) \
+			or (card_node.has_method("is_dragging_card") and card_node.is_dragging_card()) \
+			or (card_node.has_method("is_hovered_card") and card_node.is_hovered_card()) \
+			or (card_node.has_method("is_selected_card") and card_node.is_selected_card()):
 			continue
 
-		card_node.position = layout.position
-		card_node.rotation_degrees = layout.rotation
+		# 首次创建的卡牌直接就位，已存在的卡牌用 tween 平滑移动
+		if card in newly_created:
+			card_node.position = layout.position
+			card_node.rotation_degrees = layout.rotation
+		else:
+			var tween = card_node.create_tween()
+			tween.set_parallel(true)
+			tween.tween_property(card_node, "position", layout.position, 0.18).set_ease(Tween.EASE_OUT)
+			tween.tween_property(card_node, "rotation_degrees", layout.rotation, 0.18).set_ease(Tween.EASE_OUT)
 		card_node.modulate.a = 1.0
 		if card_node.has_method("set_original_position"):
 			card_node.call("set_original_position", layout.position)
 		if "original_rotation" in card_node:
 			card_node.original_rotation = layout.rotation
+		if "original_scale" in card_node:
+			card_node.original_scale = Vector2.ONE
 
 	_update_hand_edge_hints(hand_size, visible_count)
 
