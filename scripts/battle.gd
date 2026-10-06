@@ -20,11 +20,9 @@ func _ready():
 	_setup_screen_shake()
 
 func _setup_screen_shake():
-	var camera = get_node_or_null("BattleCamera")
-	if camera is Camera2D:
-		screen_shake = ScreenShakeScript.new()
-		screen_shake.setup(camera)
-		add_child(screen_shake)
+	screen_shake = ScreenShakeScript.new()
+	screen_shake.setup(self)
+	add_child(screen_shake)
 
 func _setup_exit_button():
 	var exit_button = get_node_or_null("ExitButton")

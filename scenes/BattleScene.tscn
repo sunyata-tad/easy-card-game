@@ -12,8 +12,6 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_gkmpl")
 
-[node name="BattleCamera" type="Camera2D" parent="."]
-make_current = true
 
 [node name="Background" type="TextureRect" parent="." unique_id=111657303]
 layout_mode = 1
