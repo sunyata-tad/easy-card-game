@@ -131,7 +131,8 @@ func setup(card: CardData, pm: PlayerManager = null):
 	size = Vector2(140, 180)
 	pivot_offset = Vector2(size.x / 2.0, size.y)  # 以底边中点为轴：扇形旋转与悬浮放大都更自然
 	original_position = position
-	original_scale = scale
+	original_scale = Vector2(0.72, 0.72)
+	scale = original_scale
 
 ## 获取卡牌描述文字（如果效果涉及玩家属性则动态计算显示值）
 func _get_display_text() -> String:
@@ -216,7 +217,7 @@ func _animate_hover(hover: bool):
 	else:
 		z_index = 0
 
-	var target_scale = Vector2(1.12, 1.12) if hover else original_scale
+	var target_scale = Vector2(1.0, 1.0) if hover else original_scale
 	var target_rotation = 0.0 if hover else original_rotation
 	var target_modulate = Color(1.05, 1.05, 1.0, 1.0) if hover else Color.WHITE
 
@@ -404,9 +405,9 @@ func _enter_target_aim_mode_from_drag():
 	press_tween = create_tween()
 	press_tween.set_parallel(true)
 	press_tween.tween_property(self, "position", original_position, 0.08).set_ease(Tween.EASE_OUT)
-	press_tween.tween_property(self, "scale", Vector2(1.15, 1.15), 0.08).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	press_tween.tween_property(self, "scale", Vector2(1.05, 1.05), 0.08).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.08).set_ease(Tween.EASE_OUT)
-	
+
 	# 通知 ui_controller 显示箭头、高亮目标
 	target_mode_started.emit(card_data)
 
@@ -425,7 +426,7 @@ func _exit_target_aim_to_drag(mouse_pos: Vector2):
 	press_tween = create_tween()
 	press_tween.set_parallel(true)
 	press_tween.tween_property(self, "global_position", mouse_pos - size / 2, 0.1).set_ease(Tween.EASE_OUT)
-	press_tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.1).set_ease(Tween.EASE_OUT)
+	press_tween.tween_property(self, "scale", Vector2(0.9, 0.9), 0.1).set_ease(Tween.EASE_OUT)
 	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.1).set_ease(Tween.EASE_OUT)
 	
 	# 通知 ui_controller 隐藏箭头、清除高亮（保持 is_dragging=true 不重排）
@@ -466,7 +467,7 @@ func _animate_press_down():
 	z_index = 50
 	press_tween = create_tween()
 	press_tween.set_parallel(true)
-	press_tween.tween_property(self, "scale", Vector2(1.15, 1.15), 0.08).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	press_tween.tween_property(self, "scale", Vector2(1.05, 1.05), 0.08).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	press_tween.tween_property(self, "modulate", Color(1.1, 1.1, 1.0, 1.0), 0.08).set_ease(Tween.EASE_OUT)
 	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.08).set_ease(Tween.EASE_OUT)
 
@@ -503,7 +504,7 @@ func start_drag():
 	z_index = 50
 	press_tween = create_tween()
 	press_tween.set_parallel(true)
-	press_tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.08).set_ease(Tween.EASE_OUT)
+	press_tween.tween_property(self, "scale", Vector2(0.9, 0.9), 0.08).set_ease(Tween.EASE_OUT)
 	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.08).set_ease(Tween.EASE_OUT)
 	press_tween.tween_property(self, "modulate", Color(1.1, 1.1, 1.0, 0.9), 0.08).set_ease(Tween.EASE_OUT)
 
@@ -539,7 +540,7 @@ func fly_to_center() -> void:
 	tween.set_parallel(true)
 	tween.tween_property(self, "global_position", center, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 	tween.tween_property(self, "rotation_degrees", 0.0, 0.2)
-	tween.tween_property(self, "scale", Vector2(1.15, 1.15), 0.2)
+	tween.tween_property(self, "scale", Vector2(1.05, 1.05), 0.2)
 	await tween.finished
 
 ## 卡牌打出流程最后一步：飞向弃牌堆位置并淡出消散（由调用方编排时序）。

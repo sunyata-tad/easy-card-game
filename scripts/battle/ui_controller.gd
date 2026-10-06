@@ -60,6 +60,9 @@ var _hand_scroll: int = 0                    ## 最左可见卡牌在手牌中�
 var _hand_scroll_timer: Timer = null         ## 边缘悬浮滚动计时器
 var _edge_left_hint: Label = null            ## 左边缘"还有更多"提示
 var _edge_right_hint: Label = null           ## 右边缘提示
+var _hand_drag_scroll_active: bool = false   ## 手牌区左键拖动滚动中
+var _hand_drag_scroll_last_x: float = 0.0    ## 拖动滚动上次鼠标 x
+var _hand_drag_scroll_accum: float = 0.0     ## 拖动滚动累积移动量
 
 ## 当前手牌 UI 节点映射 { CardData: Control }
 var current_hand_cards: Dictionary = {}
@@ -269,6 +272,8 @@ func show_turn_banner(text: String) -> void:
 
 func _find_ui_nodes() -> void:
 	hand_container = root_node.get_node_or_null("Background/HandArea")
+	if hand_container:
+		hand_container.gui_input.connect(_on_hand_area_input)
 	enemy_container = root_node.get_node_or_null("Background/EnemyArea")
 	player_area = root_node.get_node_or_null("Background/PlayerArea")
 	end_turn_button = root_node.get_node_or_null("EndTurnButton")
@@ -322,6 +327,34 @@ func _make_edge_hint(text: String) -> Label:
 	return lbl
 
 ## 定时检测鼠标是否悬浮在手牌区左右边缘，若是则滚动窗口（轮盘旋转）
+func _on_hand_area_input(event: InputEvent) -> void:
+	if last_hand.size() <= HandLayoutPresets.MAX_VISIBLE:
+		return
+	if _card_select_active or is_selecting_target or is_dragging:
+		return
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT:
+			if mb.pressed:
+				_hand_drag_scroll_active = true
+				_hand_drag_scroll_last_x = mb.global_position.x
+				_hand_drag_scroll_accum = 0.0
+			else:
+				_hand_drag_scroll_active = false
+	elif event is InputEventMouseMotion and _hand_drag_scroll_active:
+		var mm := event as InputEventMouseMotion
+		var dx: float = mm.global_position.x - _hand_drag_scroll_last_x
+		_hand_drag_scroll_last_x = mm.global_position.x
+		_hand_drag_scroll_accum += dx
+		var threshold := 60.0
+		while absf(_hand_drag_scroll_accum) >= threshold:
+			if _hand_drag_scroll_accum > 0:
+				_scroll_hand(-1)
+				_hand_drag_scroll_accum -= threshold
+			else:
+				_scroll_hand(1)
+				_hand_drag_scroll_accum += threshold
+
 func _on_hand_scroll_tick() -> void:
 	if last_hand.size() <= HandLayoutPresets.MAX_VISIBLE:
 		return
@@ -433,7 +466,7 @@ func update_hand_display(hand: Array) -> void:
 		if "original_rotation" in card_node:
 			card_node.original_rotation = layout.rotation
 		if "original_scale" in card_node:
-			card_node.original_scale = Vector2.ONE
+			card_node.original_scale = Vector2(0.72, 0.72)
 
 	_update_hand_edge_hints(hand_size, visible_count)
 
