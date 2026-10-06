@@ -12,7 +12,8 @@ class_name UIController
 var root_node: Control              ## 战斗场景的根节点
 var card_scene: PackedScene         ## 卡牌 UI 场景（Card.tscn）
 var player_manager: PlayerManager = null  ## 玩家状态引用
-var screen_shake: Node = null       ## 屏幕震动器（由 battle.gd 注入）
+var screen_shake: Node = null             ## 屏幕震动器（由 battle.gd 注入）
+var _player_flash_tween: Tween = null     ## 玩家受击闪红 tween（防止叠加）
 
 ## UI 节点引用（从场景中查找获取）
 var hand_container: Node       ## 手牌区域的容器节点
@@ -887,6 +888,19 @@ func show_damage_number(target, amount: int, kind: String = "damage") -> void:
 	tween.tween_property(damage_label, "position:y", -20, 1.8)
 	tween.parallel().tween_property(damage_label, "modulate:a", 0.0, 0.3).set_delay(1.5)
 	tween.tween_callback(damage_label.queue_free)
+
+## 玩家受击闪红：按伤害分档决定闪红强度，叠加在 player_area 上
+func flash_player_area(amount: int) -> void:
+	if player_area == null or not is_instance_valid(player_area):
+		return
+	if _player_flash_tween and _player_flash_tween.is_valid():
+		_player_flash_tween.kill()
+	var params := ImpactConfig.get_params(amount)
+	var red_intensity := clampf((params.scale_peak - 1.0) * 2.0, 0.3, 1.0)
+	var flash_color := Color(1.0 + red_intensity * 0.5, 1.0 - red_intensity * 0.7, 1.0 - red_intensity * 0.7)
+	_player_flash_tween = player_area.create_tween()
+	_player_flash_tween.tween_property(player_area, "modulate", flash_color, 0.05)
+	_player_flash_tween.tween_property(player_area, "modulate", Color.WHITE, 0.15)
 
 func remove_card_from_hand(card: CardData) -> void:
 	if current_hand_cards.has(card):

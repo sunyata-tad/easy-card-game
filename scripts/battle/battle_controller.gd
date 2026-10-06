@@ -58,6 +58,11 @@ func _connect_signals() -> void:
 	player_manager.block_changed.connect(_on_player_block_changed)
 	player_manager.player_died.connect(_on_player_died)
 	player_manager.counter_damage.connect(_on_counter_damage)
+	player_manager.player_damaged.connect(_on_player_damaged)
+
+func _on_player_damaged(amount: int) -> void:
+	if ui_controller:
+		ui_controller.flash_player_area(amount)
 
 func setup_battle(root_node: Control, initial_deck: Array = [], enemies: Array = []) -> void:
 	ui_controller = UIController.new(root_node)
@@ -345,7 +350,8 @@ func _perform_attack(source, target, base_damage: int) -> void:
 			ui_controller.update_single_enemy(target)
 			ui_controller.show_damage_number(target, actual)
 		elif target is PlayerManager:
-			target.take_damage(final_dmg)
+			var actual = target.take_damage(final_dmg)
+			ui_controller.show_damage_number(target, actual)
 		hc.trigger(HookRegistry.HOOK_ON_ATTACK_END, 0, ctx)
 		return
 	if hc:
