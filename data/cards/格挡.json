@@ -5,7 +5,10 @@
 	"description": "获得5点护甲",
 	"rarity": "basic",
 	"target_type": "self",
-	"tags": ["Skill", "Basic"],
+	"tags": [
+		"Skill",
+		"Basic"
+	],
 	"treated_as": [],
 	"effects": [
 		{
@@ -22,5 +25,6 @@
 				"value": 8
 			}
 		]
-	}
+	},
+	"art": "res://art_assets/pixel/card_gedang.png"
 }

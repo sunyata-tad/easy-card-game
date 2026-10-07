@@ -15,6 +15,7 @@ var is_upgraded: bool = false  ## 是否已升级
 var tags: Array = []           ## 标签列表（用于卡牌效果检索，如 "蓄力流"）
 var treated_as: Array = []     ## 视为标签（"视为某标签"但不真正拥有该标签）
 var play_condition: Dictionary = {}  ## 出牌条件（如 {"type": "hp_below_percent", "value": 10}），不满足不可打出
+var art: String = ""              ## 美术资源路径（res://art_assets/pixel/xxx.png）
 
 ## 构造函数：从 JSON 数据创建卡牌，upgraded=true 时读取 upgrade 字段
 func _init(data: Dictionary, upgraded: bool = false):
@@ -38,6 +39,7 @@ func _init(data: Dictionary, upgraded: bool = false):
 	tags = data.get("tags", [])
 	treated_as = data.get("treated_as", [])
 	play_condition = data.get("play_condition", {})
+	art = data.get("art", "")
 
 ## 获取描述文本（替换 {scaling_key} 占位符为实际效果值）
 func get_description_text() -> String:
@@ -62,7 +64,8 @@ func duplicate() -> CardData:
 		"effects": effects.duplicate(true),
 		"tags": tags.duplicate(),
 		"treated_as": treated_as.duplicate(),
-		"play_condition": play_condition.duplicate(true)
+		"play_condition": play_condition.duplicate(true),
+		"art": art
 	}
 	return CardData.new(data, is_upgraded)
 

@@ -5,7 +5,10 @@
 	"description": "本回合基础攻击力 +5",
 	"rarity": "basic",
 	"target_type": "self",
-	"tags": ["Attack", "Basic"],
+	"tags": [
+		"Attack",
+		"Basic"
+	],
 	"treated_as": [],
 	"effects": [
 		{
@@ -22,5 +25,6 @@
 				"value": 8
 			}
 		]
-	}
+	},
+	"art": "res://art_assets/pixel/card_zhanji.png"
 }

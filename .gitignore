@@ -29,6 +29,7 @@
 !ui/
 !data/
 !assets/
+!art_assets/
 !test_scene/
 
 # --- 全局忽略：任何位置都不记录 ---

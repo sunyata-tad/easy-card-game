@@ -5,9 +5,16 @@
 	"description": "造成50点伤害，若击杀敌人，生命值永久上限减少1",
 	"rarity": "uncommon",
 	"target_type": "single_enemy",
-	"tags": ["Attack", "Uncommon"],
+	"tags": [
+		"Attack",
+		"Uncommon"
+	],
 	"treated_as": [],
 	"effects": [
-		{"effect_type": "contract", "value": 50}
-	]
+		{
+			"effect_type": "contract",
+			"value": 50
+		}
+	],
+	"art": "res://art_assets/pixel/card_qiyue.png"
 }

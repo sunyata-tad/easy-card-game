@@ -5,7 +5,9 @@
 	"description": "获得5点护甲，进入招架姿态",
 	"rarity": "uncommon",
 	"target_type": "self",
-	"tags": ["Skill"],
+	"tags": [
+		"Skill"
+	],
 	"treated_as": [],
 	"effects": [
 		{
@@ -30,5 +32,6 @@
 				"value": 8
 			}
 		]
-	}
+	},
+	"art": "res://art_assets/pixel/card_zhaojia.png"
 }

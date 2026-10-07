@@ -7,6 +7,7 @@ var max_hp: int             ## 最大血量
 var ai_type: String         ## AI 类型："random"（随机行动）、"pattern"（固定模式）等
 var actions: Array          ## 行动列表，每个元素是 {"type": "attack", "damage": 5} 等
 var description: String     ## 描述文本
+var art: String = ""        ## 美术资源路径
 
 func _init(data: Dictionary):
 	id = data.get("id", "")
@@ -15,6 +16,7 @@ func _init(data: Dictionary):
 	ai_type = data.get("ai_type", "passive")
 	actions = data.get("actions", [])
 	description = data.get("description", "")
+	art = data.get("art", "")
 
 func duplicate() -> EnemyData:
 	return EnemyData.new({
@@ -23,5 +25,6 @@ func duplicate() -> EnemyData:
 		"max_hp": max_hp,
 		"ai_type": ai_type,
 		"actions": actions.duplicate(true),
-		"description": description
+		"description": description,
+		"art": art
 	})

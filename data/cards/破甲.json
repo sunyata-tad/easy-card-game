@@ -5,7 +5,9 @@
 	"description": "本回合攻击无视护甲，本回合基础攻击力 +3",
 	"rarity": "uncommon",
 	"target_type": "self",
-	"tags": ["Attack"],
+	"tags": [
+		"Attack"
+	],
 	"treated_as": [],
 	"effects": [
 		{
@@ -30,5 +32,6 @@
 				"value": 5
 			}
 		]
-	}
+	},
+	"art": "res://art_assets/pixel/card_pojia.png"
 }

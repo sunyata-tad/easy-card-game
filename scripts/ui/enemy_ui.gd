@@ -63,6 +63,19 @@ func setup(enemy: EnemyUnit, pm: PlayerManager = null):
 	if blk_lbl:
 		blk_lbl.visible = false
 	
+	# 加载敌人美术
+	var sprite = get_node_or_null("EnemySprite")
+	if sprite:
+		if enemy.data.art != "":
+			var tex = load(enemy.data.art)
+			if tex:
+				sprite.texture = tex
+				sprite.visible = true
+			else:
+				sprite.visible = false
+		else:
+			sprite.visible = false
+	
 	_create_buff_bar()
 	_update_intent_display()
 	_connect_enemy_signals()
@@ -245,9 +258,9 @@ func _create_buff_bar() -> void:
 	_buff_bar.name = "BuffBar"
 	_buff_bar.add_theme_constant_override("separation", 4)
 	_buff_bar.offset_left = 5.0
-	_buff_bar.offset_top = 135.0
+	_buff_bar.offset_top = 196.0
 	_buff_bar.offset_right = 145.0
-	_buff_bar.offset_bottom = 155.0
+	_buff_bar.offset_bottom = 210.0
 	_buff_bar.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_buff_bar)
 	_update_buff_bar()

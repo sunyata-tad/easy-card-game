@@ -24,5 +24,6 @@
 			"intent_icon": "sword"
 		}
 	],
-	"description": "来自暗影的刺客，攻击凶猛但身躯脆弱"
+	"description": "来自暗影的刺客，攻击凶猛但身躯脆弱",
+	"art": "res://art_assets/pixel/enemy_shadow_assassin.png"
 }

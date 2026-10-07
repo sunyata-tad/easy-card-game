@@ -23,5 +23,6 @@
 			"intent_icon": "sword"
 		}
 	],
-	"description": "身披石甲的卫兵，攻守兼备，节奏稳健"
+	"description": "身披石甲的卫兵，攻守兼备，节奏稳健",
+	"art": "res://art_assets/pixel/enemy_stone_guard.png"
 }

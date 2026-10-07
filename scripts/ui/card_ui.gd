@@ -128,6 +128,19 @@ func setup(card: CardData, pm: PlayerManager = null):
 	_set_card_color(card.rarity)
 	_set_rarity(card.rarity)
 	
+	# 加载卡牌美术
+	var art_rect = get_node_or_null("ArtRect")
+	if art_rect:
+		if card.art != "":
+			var tex = load(card.art)
+			if tex:
+				art_rect.texture = tex
+				art_rect.visible = true
+			else:
+				art_rect.visible = false
+		else:
+			art_rect.visible = false
+	
 	size = Vector2(140, 180)
 	pivot_offset = Vector2(size.x / 2.0, size.y)  # 以底边中点为轴：扇形旋转与悬浮放大都更自然
 	original_position = position

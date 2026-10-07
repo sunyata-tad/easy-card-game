@@ -25,5 +25,6 @@
 			"intent_icon": "sword"
 		}
 	],
-	"description": "被黑暗力量腐化的法师，会强化自身并削弱对手"
+	"description": "被黑暗力量腐化的法师，会强化自身并削弱对手",
+	"art": "res://art_assets/pixel/enemy_corrupted_mage.png"
 }

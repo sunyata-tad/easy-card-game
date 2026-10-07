@@ -5,9 +5,18 @@
 	"description": "施加1回合迷惑（敌人本回合无法行动），消耗",
 	"rarity": "common",
 	"target_type": "single_enemy",
-	"tags": ["Skill", "Exhaust", "Common"],
+	"tags": [
+		"Skill",
+		"Exhaust",
+		"Common"
+	],
 	"treated_as": [],
 	"effects": [
-		{"effect_type": "apply_debuff", "buff_id": "stun", "value": 1}
-	]
+		{
+			"effect_type": "apply_debuff",
+			"buff_id": "stun",
+			"value": 1
+		}
+	],
+	"art": "res://art_assets/pixel/card_piming.png"
 }

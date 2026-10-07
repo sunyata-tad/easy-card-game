@@ -5,7 +5,10 @@
 	"description": "使1名敌人获得2层易伤",
 	"rarity": "common",
 	"target_type": "single_enemy",
-	"tags": ["Skill", "Debuff"],
+	"tags": [
+		"Skill",
+		"Debuff"
+	],
 	"treated_as": [],
 	"effects": [
 		{
@@ -24,5 +27,6 @@
 				"stacks": 3
 			}
 		]
-	}
+	},
+	"art": "res://art_assets/pixel/card_zhiruo.png"
 }

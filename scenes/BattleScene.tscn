@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://67t5q3tgwomi" path="res://scripts/battle.gd" id="1_gkmpl"]
 [ext_resource type="Texture2D" uid="uid://20kk32vc3w5n" path="res://assets/Large 1024x1024/Blue Nebula/Blue_Nebula_07-1024x1024.png" id="1_ltshs"]
+[ext_resource type="Texture2D" path="res://art_assets/pixel/player_fighter.png" id="2_player"]
 
 [node name="BattleScene" type="Control" unique_id=2137703066]
 layout_mode = 3
@@ -100,6 +101,9 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+texture = ExtResource("2_player")
+expand_mode = 1
+stretch_mode = 5
 mouse_filter = 2
 
 [node name="HPBar" type="ProgressBar" parent="Background/PlayerArea" unique_id=1785970450]

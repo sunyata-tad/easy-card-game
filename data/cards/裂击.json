@@ -5,16 +5,26 @@
 	"description": "造成 5 点伤害",
 	"rarity": "common",
 	"target_type": "single_enemy",
-	"tags": ["Attack", "Basic"],
+	"tags": [
+		"Attack",
+		"Basic"
+	],
 	"treated_as": [],
 	"effects": [
-		{"effect_type": "damage", "value": 5}
+		{
+			"effect_type": "damage",
+			"value": 5
+		}
 	],
 	"upgrade": {
 		"name": "裂击+",
 		"description": "造成 8 点伤害",
 		"effects": [
-			{"effect_type": "damage", "value": 8}
+			{
+				"effect_type": "damage",
+				"value": 8
+			}
 		]
-	}
+	},
+	"art": "res://art_assets/pixel/card_lieji.png"
 }
