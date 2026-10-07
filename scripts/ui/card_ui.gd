@@ -332,7 +332,7 @@ func _input(event: InputEvent):
 		if is_dragging:
 			if _needs_target():
 				# 需要目标：小范围弹簧拖动，超阈值进入选中+箭头模式
-				var mouse_offset := global_mouse_pos - drag_start_pos
+				var mouse_offset: Vector2 = global_mouse_pos - drag_start_pos
 				if mouse_offset.length() < TARGET_TRIGGER_DIST:
 					global_position = drag_start_global_pos + mouse_offset * DRAG_SPRING_FACTOR
 					drag_exited_hand = false
@@ -345,7 +345,7 @@ func _input(event: InputEvent):
 			drag_updated.emit(card_data, global_mouse_pos)
 		elif is_awaiting_target:
 			# 目标瞄准模式：鼠标回到阈值内 → 恢复小范围拖动
-			var aim_offset := global_mouse_pos - drag_start_pos
+			var aim_offset: Vector2 = global_mouse_pos - drag_start_pos
 			if aim_offset.length() < TARGET_TRIGGER_DIST:
 				_exit_target_aim_to_drag(global_mouse_pos)
 			else:
@@ -425,7 +425,7 @@ func _enter_target_aim_mode_from_drag():
 
 	z_index = 50
 	# 选中状态：放大 + 摆正 + 上移
-	var selected_pos := original_position + Vector2(0, -SELECTED_UP_OFFSET)
+	var selected_pos: Vector2 = original_position + Vector2(0, -SELECTED_UP_OFFSET)
 	press_tween = create_tween()
 	press_tween.set_parallel(true)
 	press_tween.tween_property(self, "position", selected_pos, 0.12).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
@@ -446,8 +446,8 @@ func _exit_target_aim_to_drag(mouse_pos: Vector2):
 
 	z_index = 50
 	# 回到小范围拖动：卡牌移向弹簧位置
-	var mouse_offset := mouse_pos - drag_start_pos
-	var spring_pos := drag_start_global_pos + mouse_offset * DRAG_SPRING_FACTOR
+	var mouse_offset: Vector2 = mouse_pos - drag_start_pos
+	var spring_pos: Vector2 = drag_start_global_pos + mouse_offset * DRAG_SPRING_FACTOR
 	press_tween = create_tween()
 	press_tween.set_parallel(true)
 	press_tween.tween_property(self, "global_position", spring_pos, 0.1).set_ease(Tween.EASE_OUT)
