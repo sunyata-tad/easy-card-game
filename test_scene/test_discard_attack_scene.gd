@@ -62,7 +62,7 @@ func _setup() -> void:
 	var card_db := CardDatabase.new()
 	var deck: Array = card_db.create_deck([{"card_id": "格挡", "count": 20}])
 	var enemy_db := EnemyDatabase.new()
-	var enemy = enemy_db.get_enemy("test_dummy")
+	var enemy = enemy_db.get_enemy("腐化法师")
 
 	bc = BattleController.new()
 	bc.setup_battle(root_ui, deck, [enemy])

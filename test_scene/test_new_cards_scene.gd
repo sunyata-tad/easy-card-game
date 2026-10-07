@@ -67,7 +67,7 @@ func _setup(deck_entries: Array, with_relic: bool = false, dex: int = 5, hp: int
 	var enemy_db := EnemyDatabase.new()
 	var enemies: Array = []
 	for i in enemy_count:
-		enemies.append(enemy_db.get_enemy("test_dummy"))
+		enemies.append(enemy_db.get_enemy("腐化法师"))
 
 	bc = BattleController.new()
 	bc.setup_battle(root_ui, deck, enemies)

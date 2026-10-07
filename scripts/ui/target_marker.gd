@@ -40,8 +40,9 @@ func _process(_delta):
 		return
 	
 	marker_rect.visible = true
+	var scaled_size: Vector2 = target_node.size * target_node.scale
 	marker_rect.global_position = target_node.global_position
-	marker_rect.size = target_node.size
+	marker_rect.size = scaled_size
 	
 	# 创建/更新剑形标签
 	var label = get_node_or_null("TargetLabel")
@@ -55,7 +56,7 @@ func _process(_delta):
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		add_child(label)
 	
-	label.global_position = target_node.global_position + target_node.size / 2 - Vector2(16, 16)
+	label.global_position = target_node.global_position + scaled_size / 2 - Vector2(16, 16)
 
 func set_target(node: Control):
 	target_node = node

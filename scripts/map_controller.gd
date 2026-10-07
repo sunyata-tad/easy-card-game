@@ -251,13 +251,13 @@ func _seeded_roll(layer: int) -> int:
 func _select_normal_enemy(layer: int, enemy_db: EnemyDatabase) -> String:
 	var all = enemy_db.get_all_enemy_ids()
 	if all.is_empty():
-		return "test_dummy"
+		return "腐化法师"
 	return all[(layer * 3 + 5) % all.size()]
 
 func _select_elite_enemies(layer: int, enemy_db: EnemyDatabase) -> Array:
 	var all = enemy_db.get_all_enemy_ids()
 	if all.is_empty():
-		return ["test_dummy"]
+		return ["腐化法师"]
 	var result: Array = []
 	var count = mini(2 + ((layer * 7) % 2), all.size())
 	for i in count:
@@ -267,7 +267,7 @@ func _select_elite_enemies(layer: int, enemy_db: EnemyDatabase) -> Array:
 func _select_boss_enemies(layer: int, enemy_db: EnemyDatabase) -> Array:
 	var all = enemy_db.get_all_enemy_ids()
 	if all.is_empty():
-		return ["test_dummy"]
+		return ["腐化法师"]
 	var result: Array = []
 	var count = mini(2, all.size())
 	for i in count:

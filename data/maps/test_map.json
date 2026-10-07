@@ -57,7 +57,7 @@
 			"name": "测试人偶台",
 			"description": "一个台座，上面写着：点击可与测试人偶战斗",
 			"type": "battle_trigger",
-			"enemy_id": "test_dummy",
+			"enemy_id": "腐化法师",
 			"states": {
 				"default": {
 					"interactions": ["战斗"]
@@ -80,7 +80,7 @@
 			"name": "竞技场人偶",
 			"description": "一个更强大的测试人偶，闪烁着红色的光芒。",
 			"type": "battle_trigger",
-			"enemy_id": "test_dummy",
+			"enemy_id": "腐化法师",
 			"states": {
 				"default": {
 					"interactions": ["战斗"]

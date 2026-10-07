@@ -80,7 +80,7 @@ func setup_battle(root_node: Control, initial_deck: Array = [], enemies: Array =
 	for enemy_data in enemies:
 		enemy_system.add_enemy(enemy_data)
 	if enemies.is_empty():
-		var e = enemy_database.get_enemy("test_dummy")
+		var e = enemy_database.get_enemy("腐化法师")
 		if e:
 			enemy_system.add_enemy(e)
 
