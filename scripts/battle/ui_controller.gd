@@ -1337,7 +1337,7 @@ func enter_card_select_mode(prompt: String, min_select: int, max_select: int, ca
 
 ## 弃牌攻击专用选牌模式：不显示"跳过"按钮，普通攻击按钮转为"取消选择"
 func enter_attack_card_select(prompt: String, callback: Callable) -> void:
-	enter_card_select_mode(prompt, 1, 1, callback, false, true)
+	enter_card_select_mode(prompt, 1, 1, callback, false, false)
 	_attack_button_in_card_select = true
 	if target_button:
 		target_button.text = "取消选择"
@@ -1377,7 +1377,7 @@ func _select_card(card: CardData) -> void:
 	var total_width = max(total, 1) * spacing
 	var offset_x = -total_width / 2.0 + idx * spacing + spacing / 2.0 - card_w / 2.0
 	var center_x = vp_size.x / 2.0 + offset_x
-	var center_y = vp_size.y / 2.0 - card_node.size.y / 2.0 - 50
+	var center_y = vp_size.y * 0.65 - card_node.size.y / 2.0
 	var center_local: Vector2
 	if parent:
 		center_local = Vector2(center_x - parent.global_position.x, center_y - parent.global_position.y)
@@ -1385,9 +1385,9 @@ func _select_card(card: CardData) -> void:
 		center_local = Vector2(center_x, center_y)
 	var tween = card_node.create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(card_node, "position", center_local, 0.2).set_ease(Tween.EASE_OUT)
-	tween.tween_property(card_node, "modulate", Color(1, 0.7, 0.7, 1), 0.15)
-	tween.tween_property(card_node, "scale", Vector2(1.1, 1.1), 0.15)
+	tween.tween_property(card_node, "position", center_local, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.tween_property(card_node, "modulate", Color(1, 0.88, 0.5, 1), 0.15)
+	tween.tween_property(card_node, "scale", Vector2(1.1, 1.1), 0.15).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	tween.tween_property(card_node, "rotation_degrees", 0.0, 0.15)
 	tween.tween_property(card_node, "z_index", 50, 0.0)
 	_reposition_selected_cards()
@@ -1404,7 +1404,7 @@ func _reposition_selected_cards() -> void:
 	var card_w = first_node.size.x
 	var spacing = card_w + 20
 	var total_width = total * spacing
-	var center_y = vp_size.y / 2.0 - first_node.size.y / 2.0 - 50
+	var center_y = vp_size.y * 0.65 - first_node.size.y / 2.0
 	
 	for i in range(total):
 		var card = _card_selected_cards[i]
@@ -1430,10 +1430,10 @@ func _deselect_card(card: CardData) -> void:
 	var target_rotation = card_node.original_rotation if "original_rotation" in card_node else 0.0
 	var tween = card_node.create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(card_node, "position", card_node.original_position, 0.2).set_ease(Tween.EASE_OUT)
-	tween.tween_property(card_node, "modulate", Color.WHITE, 0.15)
-	tween.tween_property(card_node, "scale", card_node.original_scale, 0.15)
-	tween.tween_property(card_node, "rotation_degrees", target_rotation, 0.15)
+	tween.tween_property(card_node, "position", card_node.original_position, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.tween_property(card_node, "modulate", Color.WHITE, 0.2)
+	tween.tween_property(card_node, "scale", card_node.original_scale, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.tween_property(card_node, "rotation_degrees", target_rotation, 0.2)
 	tween.tween_property(card_node, "z_index", 0, 0.0)
 	_reposition_selected_cards()
 

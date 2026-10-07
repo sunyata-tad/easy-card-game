@@ -245,7 +245,7 @@ func _on_discard_attack_requested() -> void:
 		ui_controller.show_state_message("没有手牌可以弃掉", 1.0)
 		return
 	ui_controller.enter_attack_card_select(
-		"弃牌攻击：选择 1 张牌弃掉（本回合限 1 次）",
+		"弃牌攻击：选择 1 张牌弃掉，选好后点确认（本回合限 1 次）",
 		_on_discard_attack_card_selected
 	)
 
