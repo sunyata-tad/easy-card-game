@@ -340,7 +340,7 @@ func _input(event: InputEvent):
 					_enter_target_aim_mode_from_drag()
 			else:
 				# 不需要目标：始终跟随鼠标（区域内外一致）
-				global_position = global_position.lerp(global_mouse_pos - size / 2, 0.5)
+				global_position = global_position.lerp(global_mouse_pos - size / 2, 0.75)
 				drag_exited_hand = not _is_in_hand_area(global_mouse_pos)
 			drag_updated.emit(card_data, global_mouse_pos)
 		elif is_awaiting_target:
@@ -398,11 +398,21 @@ func _handle_mouse_release():
 func _is_mouse_on_card() -> bool:
 	return get_global_rect().has_point(get_global_mouse_position())
 
-## 进入选中状态：保持放大悬停于原位，等待再次点击打出或拖动
+## 进入选中状态：上移+放大，等待再次点击打出或拖动
 func _enter_selected_state():
 	is_selected = true
 	z_index = 50
 	_set_interacting()
+	
+	if press_tween and press_tween.is_valid():
+		press_tween.kill()
+	
+	var selected_pos: Vector2 = original_position + Vector2(0, -30.0)
+	press_tween = create_tween()
+	press_tween.set_parallel(true)
+	press_tween.tween_property(self, "position", selected_pos, 0.15).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	press_tween.tween_property(self, "scale", Vector2(1.1, 1.1), 0.15).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.15).set_ease(Tween.EASE_OUT)
 
 ## 选中状态下再次点击进入目标瞄准模式（需要目标的卡牌）
 func _enter_target_aim_mode():
@@ -510,10 +520,10 @@ func _cancel_press():
 	z_index = 0
 	press_tween = create_tween()
 	press_tween.set_parallel(true)
-	press_tween.tween_property(self, "scale", original_scale, 0.08).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-	press_tween.tween_property(self, "modulate", Color.WHITE, 0.08).set_ease(Tween.EASE_OUT)
-	press_tween.tween_property(self, "position", original_position, 0.08).set_ease(Tween.EASE_OUT)
-	press_tween.tween_property(self, "rotation_degrees", original_rotation, 0.08).set_ease(Tween.EASE_OUT)
+	press_tween.tween_property(self, "scale", original_scale, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	press_tween.tween_property(self, "modulate", Color.WHITE, 0.2).set_ease(Tween.EASE_OUT)
+	press_tween.tween_property(self, "position", original_position, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	press_tween.tween_property(self, "rotation_degrees", original_rotation, 0.2).set_ease(Tween.EASE_OUT)
 
 ## 开始拖拽：发射信号，播放拖拽动画（放大至 1.55，不再飞向中央）
 func start_drag():
@@ -644,10 +654,10 @@ func cancel_target_mode():
 	z_index = 0
 	var tween = create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(self, "scale", original_scale, 0.12)
-	tween.tween_property(self, "modulate", Color.WHITE, 0.12)
-	tween.tween_property(self, "position", original_position, 0.12)
-	tween.tween_property(self, "rotation_degrees", original_rotation, 0.12)
+	tween.tween_property(self, "scale", original_scale, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.tween_property(self, "modulate", Color.WHITE, 0.2).set_ease(Tween.EASE_OUT)
+	tween.tween_property(self, "position", original_position, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.tween_property(self, "rotation_degrees", original_rotation, 0.2).set_ease(Tween.EASE_OUT)
 
 func set_original_position(pos: Vector2):
 	original_position = pos
