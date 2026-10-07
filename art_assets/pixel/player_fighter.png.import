@@ -3,15 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ctumyntlkr2w6"
-path="res://.godot/imported/player_fighter.png-131a5f2bc216775c7b0594bdaa921fc0.ctex"
-metadata={
-"vram_texture": false
-}
+valid=false
 
 [deps]
 
 source_file="res://art_assets/pixel/player_fighter.png"
-dest_files=["res://.godot/imported/player_fighter.png-131a5f2bc216775c7b0594bdaa921fc0.ctex"]
 
 [params]
 

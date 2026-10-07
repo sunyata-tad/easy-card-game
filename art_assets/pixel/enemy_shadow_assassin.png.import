@@ -3,15 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://comcxbnl8tyvg"
-path="res://.godot/imported/enemy_shadow_assassin.png-3b705446b2019494400f8098263ef7ec.ctex"
-metadata={
-"vram_texture": false
-}
+valid=false
 
 [deps]
 
 source_file="res://art_assets/pixel/enemy_shadow_assassin.png"
-dest_files=["res://.godot/imported/enemy_shadow_assassin.png-3b705446b2019494400f8098263ef7ec.ctex"]
 
 [params]
 

@@ -3,15 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b4xrfc5w4kxxq"
-path="res://.godot/imported/enemy_stone_guard.png-7d9bc019691bb0f23f7b3d63c47b3474.ctex"
-metadata={
-"vram_texture": false
-}
+valid=false
 
 [deps]
 
 source_file="res://art_assets/pixel/enemy_stone_guard.png"
-dest_files=["res://.godot/imported/enemy_stone_guard.png-7d9bc019691bb0f23f7b3d63c47b3474.ctex"]
 
 [params]
 

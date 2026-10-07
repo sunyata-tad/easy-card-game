@@ -34,6 +34,13 @@ var is_select_mode: bool = false      ## 是否处于选择模式
 var is_playing_animation: bool = false ## 打出动画播放中（飞向中央/弃牌堆时阻止悬停干扰）
 var is_selected: bool = false         ## 短按选中状态：放大悬停于原位，等待再次点击打出或拖动
 
+## 目标选择交互参数
+const DRAG_SPRING_FACTOR := 0.3      ## 小范围拖动弹簧系数（卡牌移动量/鼠标移动量）
+const TARGET_TRIGGER_DIST := 60.0    ## 触发目标瞄准模式的拖动距离阈值
+const SELECTED_SCALE := 1.1          ## 选中状态缩放
+const SELECTED_UP_OFFSET := 40.0     ## 选中状态上移距离（像素）
+var drag_start_global_pos: Vector2   ## 拖拽起始时卡牌的全局位置
+
 ## 交互信号
 signal card_clicked(card: CardData)                              ## 卡牌被点击
 ## [未连接] 鼠标进入卡牌通知。若已连接接收方，请删除此标记注释。
@@ -324,9 +331,10 @@ func _input(event: InputEvent):
 		
 		if is_dragging:
 			if _needs_target():
-				# 需要目标的卡牌：区域内跟随鼠标，拖出区域回原位+箭头瞄准
-				if _is_in_hand_area(global_mouse_pos):
-					global_position = global_position.lerp(global_mouse_pos - size / 2, 0.5)
+				# 需要目标：小范围弹簧拖动，超阈值进入选中+箭头模式
+				var mouse_offset := global_mouse_pos - drag_start_pos
+				if mouse_offset.length() < TARGET_TRIGGER_DIST:
+					global_position = drag_start_global_pos + mouse_offset * DRAG_SPRING_FACTOR
 					drag_exited_hand = false
 				else:
 					_enter_target_aim_mode_from_drag()
@@ -336,8 +344,9 @@ func _input(event: InputEvent):
 				drag_exited_hand = not _is_in_hand_area(global_mouse_pos)
 			drag_updated.emit(card_data, global_mouse_pos)
 		elif is_awaiting_target:
-			# 目标瞄准模式：鼠标回到手牌区域 → 恢复为拖拽模式（卡牌跟随鼠标）
-			if _is_in_hand_area(global_mouse_pos):
+			# 目标瞄准模式：鼠标回到阈值内 → 恢复小范围拖动
+			var aim_offset := global_mouse_pos - drag_start_pos
+			if aim_offset.length() < TARGET_TRIGGER_DIST:
 				_exit_target_aim_to_drag(global_mouse_pos)
 			else:
 				drag_updated.emit(card_data, global_mouse_pos)
@@ -410,35 +419,38 @@ func _enter_target_aim_mode_from_drag():
 	is_awaiting_target = true
 	drag_exited_hand = true
 	_set_interacting()
-	
+
 	if press_tween and press_tween.is_valid():
 		press_tween.kill()
-	
+
 	z_index = 50
+	# 选中状态：放大 + 摆正 + 上移
+	var selected_pos := original_position + Vector2(0, -SELECTED_UP_OFFSET)
 	press_tween = create_tween()
 	press_tween.set_parallel(true)
-	press_tween.tween_property(self, "position", original_position, 0.08).set_ease(Tween.EASE_OUT)
-	press_tween.tween_property(self, "scale", Vector2(1.05, 1.05), 0.08).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.08).set_ease(Tween.EASE_OUT)
+	press_tween.tween_property(self, "position", selected_pos, 0.12).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	press_tween.tween_property(self, "scale", Vector2(SELECTED_SCALE, SELECTED_SCALE), 0.12).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.12).set_ease(Tween.EASE_OUT)
 
 	# 通知 ui_controller 显示箭头、高亮目标
 	target_mode_started.emit(card_data)
 
-## 目标瞄准模式下鼠标回到手牌区域：恢复为拖拽模式
-## 卡牌从原位移动向鼠标位置（回到正常拖拽状态），箭头消失
+## 目标瞄准模式下鼠标回到阈值内：恢复小范围拖动
 func _exit_target_aim_to_drag(mouse_pos: Vector2):
 	is_awaiting_target = false
 	is_dragging = true
 	drag_exited_hand = false
-	
+
 	if press_tween and press_tween.is_valid():
 		press_tween.kill()
-	
+
 	z_index = 50
-	# 卡牌从原位平滑移动到鼠标位置，保持放大 1.55
+	# 回到小范围拖动：卡牌移向弹簧位置
+	var mouse_offset := mouse_pos - drag_start_pos
+	var spring_pos := drag_start_global_pos + mouse_offset * DRAG_SPRING_FACTOR
 	press_tween = create_tween()
 	press_tween.set_parallel(true)
-	press_tween.tween_property(self, "global_position", mouse_pos - size / 2, 0.1).set_ease(Tween.EASE_OUT)
+	press_tween.tween_property(self, "global_position", spring_pos, 0.1).set_ease(Tween.EASE_OUT)
 	press_tween.tween_property(self, "scale", Vector2(0.9, 0.9), 0.1).set_ease(Tween.EASE_OUT)
 	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.1).set_ease(Tween.EASE_OUT)
 	
@@ -508,6 +520,7 @@ func start_drag():
 	is_dragging = true
 	drag_exited_hand = false
 	drag_start_pos = get_global_mouse_position()
+	drag_start_global_pos = global_position
 	_set_interacting()
 	drag_started.emit(card_data, drag_start_pos)
 	
