@@ -56,14 +56,14 @@ const STARFIELDS: Array[String] = [
 
 ## 每个屏幕固定使用的背景（保证不同界面有不同的星云观感）
 const SCREEN_BG: Dictionary = {
-	"menu": "res://assets/Large 1024x1024/Blue Nebula/Blue_Nebula_01-1024x1024.png",
-	"battle": "res://assets/Large 1024x1024/Blue Nebula/Blue_Nebula_07-1024x1024.png",
-	"map": "res://assets/Large 1024x1024/Purple Nebula/Purple_Nebula_06-1024x1024.png",
-	"character_select": "res://assets/Large 1024x1024/Green Nebula/Green_Nebula_03-1024x1024.png",
-	"character_creation": "res://assets/Large 1024x1024/Purple Nebula/Purple_Nebula_05-1024x1024.png",
-	"reward": "res://assets/Large 1024x1024/Green Nebula/Green_Nebula_02-1024x1024.png",
-	"relic_reward": "res://assets/Large 1024x1024/Purple Nebula/Purple_Nebula_03-1024x1024.png",
-	"game_over": "res://assets/Large 1024x1024/Starfields/Starfield_08-1024x1024.png",
+	"menu": "res://art_assets/backgrounds/menu_bg.png",
+	"battle": "res://art_assets/backgrounds/battle_bg.png",
+	"map": "res://art_assets/backgrounds/battle_bg.png",
+	"character_select": "res://art_assets/backgrounds/menu_bg.png",
+	"character_creation": "res://art_assets/backgrounds/menu_bg.png",
+	"reward": "res://art_assets/backgrounds/battle_bg.png",
+	"relic_reward": "res://art_assets/backgrounds/battle_bg.png",
+	"game_over": "res://art_assets/backgrounds/gameover_bg.png",
 }
 
 var _texture_cache: Dictionary = {}

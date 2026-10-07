@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://reward001"]
 
 [ext_resource type="Script" path="res://scripts/reward_screen.gd" id="1_reward"]
-[ext_resource type="Texture2D" path="res://assets/Large 1024x1024/Green Nebula/Green_Nebula_02-1024x1024.png" id="2_bg"]
+[ext_resource type="Texture2D" path="res://art_assets/backgrounds/battle_bg.png" id="2_bg"]
 
 [node name="RewardScreen" type="Control"]
 layout_mode = 3

@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cy4fqsfrwvns0"]
 
 [ext_resource type="Script" uid="uid://67t5q3tgwomi" path="res://scripts/battle.gd" id="1_gkmpl"]
-[ext_resource type="Texture2D" uid="uid://20kk32vc3w5n" path="res://assets/Large 1024x1024/Blue Nebula/Blue_Nebula_07-1024x1024.png" id="1_ltshs"]
+[ext_resource type="Texture2D" path="res://art_assets/backgrounds/battle_bg.png" id="1_ltshs"]
 [ext_resource type="Texture2D" path="res://art_assets/pixel/player_fighter.png" id="2_player"]
 
 [node name="BattleScene" type="Control" unique_id=2137703066]

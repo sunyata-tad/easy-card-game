@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bqn0b431n2ass"]
 
-[ext_resource type="Texture2D" uid="uid://b1ximfnfii2rj" path="res://assets/Large 1024x1024/Blue Nebula/Blue_Nebula_01-1024x1024.png" id="1_jaeev"]
+[ext_resource type="Texture2D" path="res://art_assets/backgrounds/menu_bg.png" id="1_jaeev"]
 [ext_resource type="Script" uid="uid://ppbhkubbqpyo" path="res://scripts/start.gd" id="1_u80x2"]
 
 [node name="Control" type="Control" unique_id=2126149755]

@@ -148,7 +148,7 @@ func setup(card: CardData, pm: PlayerManager = null):
 		else:
 			art_rect.visible = false
 	
-	size = Vector2(140, 180)
+	size = Vector2(160, 210)
 	pivot_offset = Vector2(size.x / 2.0, size.y)  # 以底边中点为轴：扇形旋转与悬浮放大都更自然
 	original_position = position
 	original_scale = Vector2(0.72, 0.72)

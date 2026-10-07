@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/relic_reward_screen.gd" id="1_rr"]
 [ext_resource type="PackedScene" path="res://scenes/RelicChoiceCard.tscn" id="2_rcc"]
-[ext_resource type="Texture2D" path="res://assets/Large 1024x1024/Purple Nebula/Purple_Nebula_03-1024x1024.png" id="3_bg"]
+[ext_resource type="Texture2D" path="res://art_assets/backgrounds/battle_bg.png" id="3_bg"]
 
 [node name="RelicRewardScreen" type="Control"]
 layout_mode = 3
