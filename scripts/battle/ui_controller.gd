@@ -537,6 +537,11 @@ func _on_card_ui_clicked(card: CardData) -> void:
 func _on_card_play_requested(card: CardData) -> void:
 	if _card_select_active:
 		return
+	drag_arrow.hide_arrow()
+	clear_target_highlights()
+	is_dragging = false
+	dragging_card = null
+	drag_card_node = null
 	card_played.emit(card, null)
 
 func update_enemy_display(enemies: Array) -> void:
