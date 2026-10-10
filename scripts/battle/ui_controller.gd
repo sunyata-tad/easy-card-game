@@ -22,7 +22,7 @@ var player_area: Node          ## 玩家区域节点
 var end_turn_button: Button    ## 结束回合按钮
 var deck_info_node: Node       ## 牌堆信息节点
 var state_display_label: Label = null  ## 状态提示文字（淡出效果）
-var target_button: Button = null       ## 选择攻击目标按钮
+
 var target_marker: Control = null      ## 目标标记 UI
 
 ## 玩家信息面板
@@ -43,7 +43,7 @@ var _card_select_confirm_btn: Button = null ## 确认按钮
 var _card_select_auto_confirm: bool = false ## 选中即确认（不显示确认按钮，用于弃牌攻击）
 var _card_select_info_label: Label = null   ## 提示文字
 var _card_select_callback: Callable = Callable()  ## 选择完成后的回调
-var _attack_button_in_card_select: bool = false  ## 普通攻击按钮是否充当"取消选择"（弃牌攻击选牌阶段）
+
 
 ## [未连接] 卡牌选择确认通知。若已连接接收方，请删除此标记注释。
 signal card_select_confirmed(selected_cards: Array)  ## 卡牌选择已确认
@@ -80,7 +80,7 @@ signal card_played(card: CardData, target)               ## 卡牌被打出
 signal enemy_selected(enemy: EnemyUnit)                  ## 敌人被选中
 signal end_turn_clicked()                                ## 结束回合按钮被点击
 signal attack_target_selected(enemy: EnemyUnit)          ## 攻击目标被选中
-signal discard_attack_requested()                        ## 请求发起弃牌攻击（点击"攻击"按钮）
+
 
 ## 构造函数：接收战斗场景的根节点，初始化所有 UI
 func _init(root: Control):
@@ -90,7 +90,7 @@ func _init(root: Control):
 	_load_card_scene()
 	_setup_state_display()
 	_setup_drag_arrow()
-	_setup_target_button()
+
 	_setup_target_marker()
 	_setup_hand_scroll()
 
@@ -114,22 +114,6 @@ func _setup_drag_arrow() -> void:
 	drag_arrow.name = "DragArrow"
 	root_node.add_child(drag_arrow)
 
-## 创建攻击目标选择按钮（放在结束回合按钮上方）
-func _setup_target_button() -> void:
-	if end_turn_button == null:
-		return
-	
-	target_button = Button.new()
-	target_button.name = "TargetButton"
-	target_button.text = "普通攻击"
-	target_button.custom_minimum_size = Vector2(120, 40)
-	
-	var button_pos = end_turn_button.position
-	target_button.position = Vector2(button_pos.x, button_pos.y - 50)
-	
-	target_button.pressed.connect(_on_target_button_pressed)
-	root_node.add_child(target_button)
-	UIStyle.attach_button_anim(target_button)
 
 ## 创建目标标记 UI（使用 target_marker.gd 脚本）
 ## set_script 动态给 Control 节点附加脚本（类似 Python 的运行时添加方法）
@@ -139,29 +123,11 @@ func _setup_target_marker() -> void:
 	target_marker.set_script(load("res://scripts/ui/target_marker.gd"))
 	root_node.add_child(target_marker)
 
-## 点击攻击按钮：弃牌攻击选牌阶段时取消；选目标阶段时取消；否则发起弃牌攻击
-func _on_target_button_pressed() -> void:
-	if _attack_button_in_card_select:
-		# 弃牌攻击选牌阶段：点击"取消选择"→ 取消选牌（不消耗攻击次数）
-		_on_card_select_cancel()
-		return
-	if _card_select_active:
-		return
-	if is_selecting_target:
-		cancel_target_selection()
-	else:
-		discard_attack_requested.emit()
-
 ## 进入目标选择模式
 func start_target_selection() -> void:
 	is_selecting_target = true
 	highlight_all_enemies()
 	drag_arrow.show_arrow()
-	
-	# 选目标阶段按钮保持"普通攻击"并置灰，避免误点（弃牌已结算，需点击敌人确认目标）
-	if target_button:
-		target_button.disabled = true
-	
 	show_state_message("请选择攻击目标", 1.0)
 
 ## 取消目标选择模式
@@ -169,11 +135,6 @@ func cancel_target_selection() -> void:
 	is_selecting_target = false
 	clear_target_highlights()
 	drag_arrow.hide_arrow()
-	
-	if target_button:
-		target_button.text = "普通攻击"
-		target_button.disabled = false
-	
 	show_state_message("已取消", 0.5)
 
 ## 高亮所有敌人
@@ -203,10 +164,7 @@ func select_attack_target(enemy: EnemyUnit) -> void:
 	clear_target_highlights()
 	drag_arrow.hide_arrow()
 	
-	if target_button:
-		target_button.text = "普通攻击"
-		target_button.disabled = false
-	
+
 	update_target_marker(enemy)
 	attack_target_selected.emit(enemy)
 	show_state_message("已选择目标", 0.5)
@@ -1340,12 +1298,9 @@ func enter_card_select_mode(prompt: String, min_select: int, max_select: int, ca
 				card_node.is_select_mode = true
 			card_node.mouse_filter = Control.MOUSE_FILTER_STOP
 
-## 弃牌攻击专用选牌模式：不显示"跳过"按钮，普通攻击按钮转为"取消选择"
+## 弃牌攻击专用选牌模式（保留用于以后其他弃牌效果）
 func enter_attack_card_select(prompt: String, callback: Callable) -> void:
-	enter_card_select_mode(prompt, 1, 1, callback, false, false)
-	_attack_button_in_card_select = true
-	if target_button:
-		target_button.text = "取消选择"
+	enter_card_select_mode(prompt, 1, 1, callback, true, false)
 
 
 func _on_card_select_card_clicked(card: CardData) -> void:
@@ -1475,11 +1430,7 @@ func _on_card_select_cancel() -> void:
 func _exit_card_select_mode() -> void:
 	_card_select_active = false
 	
-	if _attack_button_in_card_select:
-		_attack_button_in_card_select = false
-		if target_button:
-			target_button.text = "普通攻击"
-	
+
 	if end_turn_button:
 		end_turn_button.disabled = false
 	

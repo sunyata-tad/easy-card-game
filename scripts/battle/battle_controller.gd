@@ -15,8 +15,7 @@ var rules: BattleRules
 var pending_card: CardData = null
 var is_first_turn: bool = true
 var is_discard_phase: bool = false
-var discard_attack_available: bool = true   ## 本回合是否还能使用弃牌攻击（基础：一回合一次）
-var _is_discard_attack_aiming: bool = false ## 弃牌攻击：是否处于"已弃牌、等待选择攻击目标"阶段
+
 
 ## [未连接] 战斗开始通知。若已连接接收方，请删除此标记注释。
 signal battle_started()
@@ -106,8 +105,7 @@ func _connect_ui_signals() -> void:
 	ui_controller.card_played.connect(_on_ui_card_played)
 	ui_controller.enemy_selected.connect(_on_ui_enemy_selected)
 	ui_controller.end_turn_clicked.connect(_on_ui_end_turn_clicked)
-	ui_controller.discard_attack_requested.connect(_on_discard_attack_requested)
-	ui_controller.attack_target_selected.connect(_on_discard_attack_target_selected)
+
 
 ## 检查战斗是否结束（可被 HookChain 拦截修改）
 ## 通过 player_manager.hook_chain 的 HOOK_CHECK_BATTLE_END 钩子实现自定义结束条件
@@ -229,59 +227,6 @@ func confirm_discard_cards(cards_to_discard: Array) -> void:
 	await _resolve_end_turn()
 
 ## ========== 弃牌攻击（主动攻击） ==========
-## 玩家在回合中主动弃 1 张手牌 → 立刻用 get_strength() 走完整攻击链结算一次攻击。
-## 基础限制：一回合一次（discard_attack_available）；未来可由"突破规则"卡修改。
-
-## UI 触发：点击"普通攻击"按钮 → 进入"选择一张牌弃掉"步骤
-func _on_discard_attack_requested() -> void:
-	_is_discard_attack_aiming = false
-	if not state_machine.is_player_turn():
-		return
-	# 无法攻击（已攻击过 / 效果导致不能攻击 / 额外攻击次数耗尽）→ 统一提示
-	if not discard_attack_available:
-		ui_controller.show_state_message("你已经攻击过了。", 1.0)
-		return
-	if card_system.hand.is_empty():
-		ui_controller.show_state_message("没有手牌可以弃掉", 1.0)
-		return
-	ui_controller.enter_attack_card_select(
-		"弃牌攻击：选择 1 张牌弃掉，选好后点确认（本回合限 1 次）",
-		_on_discard_attack_card_selected
-	)
-
-## 弃牌步骤完成：弃掉所选牌 → 立即结算（实时结算原则）→ 实时检测存活敌人 → 进入选目标
-func _on_discard_attack_card_selected(cards: Array) -> void:
-	if cards.is_empty():
-		return
-	# 弃牌 cost 完成后立即结算；弃牌可能触发效果杀死敌人
-	_discard_card_with_animation(cards[0])
-	# 弃牌代价已支付，本次"弃牌攻击"名额消耗（防止取消后免费倾泻手牌）
-	discard_attack_available = false
-	_update_player_ui()
-	# 实时检测存活目标（实时结算：弃牌效果可能已杀死部分/全部敌人）
-	var alive = enemy_system.get_alive_enemies()
-	if alive.is_empty():
-		# 无存活目标，本次攻击作废；战斗是否结束交由结束判定
-		_check_battle_end_state()
-		return
-	_is_discard_attack_aiming = true
-	ui_controller.start_target_selection()
-
-## 选目标完成：执行弃牌攻击（完整攻击链，伤害 = get_strength() = base_strength + 力量 buff）
-func _on_discard_attack_target_selected(enemy: EnemyUnit) -> void:
-	if not _is_discard_attack_aiming:
-		return
-	_is_discard_attack_aiming = false
-	# 实时结算：目标可能在弃牌效果中已死亡，重新校验存活
-	if not enemy.is_alive():
-		var alive = enemy_system.get_alive_enemies()
-		if alive.is_empty():
-			_check_battle_end_state()
-			return
-		enemy = alive[0]
-	_perform_attack(player_manager, enemy, 0)
-	_update_player_ui()
-	_check_battle_end_state()
 
 func _on_victory() -> void:
 	# 遗物"终末轮回"效果③：触发过②的战斗，战斗结束时生命设为上限 50%
@@ -412,7 +357,7 @@ func _execute_enemy_action(enemy: EnemyUnit, action: Dictionary) -> void:
 			_update_player_ui()
 
 func _on_player_turn_start() -> void:
-	discard_attack_available = true
+
 	_tick_buffs_on_turn_start(player_manager)
 	for enemy in enemy_system.get_alive_enemies():
 		_tick_buffs_on_turn_start(enemy)

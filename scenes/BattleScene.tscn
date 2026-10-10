@@ -40,13 +40,13 @@ mouse_filter = 2
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_bottom = 200.0
+offset_bottom = 440.0
 grow_horizontal = 2
-theme_override_constants/separation = 100
+theme_override_constants/separation = 80
 alignment = 1
 
 [node name="EnemySlot" type="Control" parent="Background/EnemyArea" unique_id=1534305963]
-custom_minimum_size = Vector2(150, 200)
+custom_minimum_size = Vector2(160, 220)
 layout_mode = 2
 
 [node name="EnemySprite" type="TextureRect" parent="Background/EnemyArea/EnemySlot" unique_id=107666477]
@@ -89,9 +89,8 @@ layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_top = -328.0
-offset_right = 192.0
-offset_bottom = -136.0
+offset_top = -280.0
+offset_right = 130.0
 grow_vertical = 0
 
 [node name="PlayerSprite" type="TextureRect" parent="Background/PlayerArea" unique_id=1768716118]
@@ -147,15 +146,14 @@ theme_override_colors/font_color = Color(0.62352943, 1, 1, 1)
 theme_override_font_sizes/font_size = 18
 
 [node name="HandArea" type="Control" parent="Background" unique_id=403637730]
-custom_minimum_size = Vector2(0, 180)
+custom_minimum_size = Vector2(0, 200)
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 192.0
-offset_top = -328.0
-offset_bottom = -132.0
+offset_left = 130.0
+offset_top = -280.0
 grow_horizontal = 2
 grow_vertical = 0
 
@@ -191,7 +189,9 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -136.0
+offset_left = 140.0
+offset_top = -35.0
+offset_right = -160.0
 grow_horizontal = 2
 grow_vertical = 0
 
@@ -205,15 +205,15 @@ text = "弃牌堆"
 
 [node name="EndTurnButton" type="Button" parent="." unique_id=1977659952]
 layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
+anchors_preset = 3
+anchor_left = 1.0
 anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -64.0
-offset_top = -72.0
-offset_right = 64.0
-grow_horizontal = 2
+anchor_right = 1.0
+offset_left = -140.0
+offset_top = -56.0
+offset_right = -20.0
+offset_bottom = -12.0
+grow_horizontal = 0
 grow_vertical = 0
 theme_override_font_sizes/font_size = 20
 text = "结束回合"
