@@ -582,14 +582,13 @@ func fly_to_center() -> void:
 	tween.tween_property(self, "scale", Vector2(1.05, 1.05), 0.18)
 	await tween.finished
 
-## 卡牌打出流程最后一步：生成统一小卡牌图片，沿抛物线飞向弃牌堆并淡出消散。
+## 卡牌打出流程最后一步：生成统一小卡牌占位图片，沿抛物线飞向弃牌堆并淡出消散。
 func fly_to_discard(target_center: Vector2) -> void:
 	var start_center: Vector2 = global_position + size / 2.0
 
-	# 创建统一小卡牌图片（固定尺寸，使用卡图纹理）
+	# 创建统一小卡牌占位图片（后续替换为正式图标）
 	var mini_size := Vector2(50, 65)
 	var mini_card := Panel.new()
-	mini_card.size = mini_size
 	mini_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mini_card.z_index = 100
 	var style := StyleBoxFlat.new()
@@ -604,17 +603,9 @@ func fly_to_discard(target_center: Vector2) -> void:
 	style.corner_radius_bottom_right = 4
 	style.corner_radius_bottom_left = 4
 	mini_card.add_theme_stylebox_override("panel", style)
-	var art_rect = get_node_or_null("ArtRect")
-	if art_rect and art_rect.texture:
-		var mini_art := TextureRect.new()
-		mini_art.texture = art_rect.texture
-		mini_art.size = mini_size
-		mini_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		mini_art.stretch_mode = TextureRect.STRETCH_SCALE
-		mini_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		mini_card.add_child(mini_art)
-	mini_card.global_position = start_center - mini_size / 2.0
 	get_parent().add_child(mini_card)
+	mini_card.size = mini_size
+	mini_card.global_position = start_center - mini_size / 2.0
 
 	# 原卡牌立即隐藏
 	modulate.a = 0.0
