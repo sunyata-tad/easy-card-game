@@ -357,6 +357,8 @@ func _handle_mouse_release():
 		# 目标瞄准模式释放：检查鼠标是否指向目标
 		var end_pos = get_global_mouse_position()
 		is_awaiting_target = false
+		is_pressed = false
+		is_dragging = false
 		# 先发射 drag_ended 让 ui_controller 检查目标并决定打出/取消
 		drag_ended.emit(card_data, end_pos)
 		drag_updated.emit(card_data, end_pos)
