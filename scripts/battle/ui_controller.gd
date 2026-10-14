@@ -537,7 +537,7 @@ func _create_enemy_node(enemy: EnemyUnit) -> Control:
 		if enemy_node.has_method("setup"):
 			enemy_node.setup(enemy, player_manager)
 			enemy_node.enemy_selected.connect(_on_enemy_ui_selected)
-		enemy_node.v_size_flags = Control.SIZE_SHRINK_CENTER
+		enemy_node.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	else:
 		enemy_node = Control.new()
 		enemy_node.custom_minimum_size = Vector2(150, 200)
@@ -574,6 +574,8 @@ func _on_enemy_ui_selected(enemy: EnemyUnit) -> void:
 		return
 	
 	if is_dragging and dragging_card:
+		if drag_card_node and drag_card_node.has_method("clear_interaction_state"):
+			drag_card_node.clear_interaction_state()
 		card_dropped.emit(dragging_card, enemy)
 		is_dragging = false
 		drag_arrow.hide_arrow()

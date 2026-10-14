@@ -606,6 +606,20 @@ func reset_position():
 	modulate = Color.WHITE
 	z_index = 0
 
+## 仅清理交互状态标志，不重置位置/缩放（打出动画接管位置时使用）
+func clear_interaction_state():
+	is_dragging = false
+	is_pressed = false
+	is_awaiting_target = false
+	is_selected = false
+	_clear_interacting()
+	z_index = 0
+	
+	if press_tween and press_tween.is_valid():
+		press_tween.kill()
+	modulate = Color.WHITE
+	z_index = 0
+
 func restore_to_layout_state():
 	is_dragging = false
 	is_pressed = false
