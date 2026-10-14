@@ -537,6 +537,7 @@ func _create_enemy_node(enemy: EnemyUnit) -> Control:
 		if enemy_node.has_method("setup"):
 			enemy_node.setup(enemy, player_manager)
 			enemy_node.enemy_selected.connect(_on_enemy_ui_selected)
+		enemy_node.v_size_flags = Control.SIZE_SHRINK_CENTER
 	else:
 		enemy_node = Control.new()
 		enemy_node.custom_minimum_size = Vector2(150, 200)
@@ -972,6 +973,9 @@ func clear_target_highlights() -> void:
 	
 	if player_area and player_area.has_method("set_highlight_for_target"):
 		player_area.set_highlight_for_target(false)
+	
+	if target_marker and target_marker.has_method("clear"):
+		target_marker.clear()
 
 ## 将卡牌节点从手牌映射中摘出（不释放），交给打出动画接管；避免 hand_changed 重排时释放它
 func detach_card_node(card: CardData) -> Control:

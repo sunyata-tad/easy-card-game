@@ -2,12 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://efbh5ucgoo5y"
-valid=false
+uid="uid://ov11lg4vgtgn"
+path="res://.godot/imported/enemy_corrupted_mage.png-129630f6bfad3c799d0d6223e993e256.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
 
 source_file="res://art_assets/pixel/enemy_corrupted_mage.png"
+dest_files=["res://.godot/imported/enemy_corrupted_mage.png-129630f6bfad3c799d0d6223e993e256.ctex"]
 
 [params]
 
