@@ -582,24 +582,60 @@ func fly_to_center() -> void:
 	tween.tween_property(self, "scale", Vector2(1.05, 1.05), 0.18)
 	await tween.finished
 
-## 卡牌打出流程最后一步：沿弧线飞向弃牌堆位置并淡出消散（由调用方编排时序）。
+## 卡牌打出流程最后一步：生成统一小卡牌图片，沿抛物线飞向弃牌堆并淡出消散。
 func fly_to_discard(target_center: Vector2) -> void:
-	var start_pos: Vector2 = global_position
-	var end_pos: Vector2 = target_center - size / 2.0
-	var control: Vector2 = (start_pos + end_pos) / 2.0
-	control.y -= 60.0
-	var tween = create_tween()
+	var start_center: Vector2 = global_position + size / 2.0
+
+	# 创建统一小卡牌图片（固定尺寸，使用卡图纹理）
+	var mini_size := Vector2(50, 65)
+	var mini_card := Panel.new()
+	mini_card.size = mini_size
+	mini_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mini_card.z_index = 100
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.13, 0.14, 0.18, 1)
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(0.72, 0.72, 0.75, 1)
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_right = 4
+	style.corner_radius_bottom_left = 4
+	mini_card.add_theme_stylebox_override("panel", style)
+	var art_rect = get_node_or_null("ArtRect")
+	if art_rect and art_rect.texture:
+		var mini_art := TextureRect.new()
+		mini_art.texture = art_rect.texture
+		mini_art.size = mini_size
+		mini_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		mini_art.stretch_mode = TextureRect.STRETCH_SCALE
+		mini_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mini_card.add_child(mini_art)
+	mini_card.global_position = start_center - mini_size / 2.0
+	get_parent().add_child(mini_card)
+
+	# 原卡牌立即隐藏
+	modulate.a = 0.0
+
+	# 小卡牌沿抛物线飞向弃牌堆
+	var fly_time: float = 0.4
+	var arc_height: float = 120.0
+	var tween = mini_card.create_tween()
 	tween.set_parallel(true)
-	tween.tween_method(_bezier_pos.bind(start_pos, control, end_pos), 0.0, 1.0, 0.25)
-	tween.tween_property(self, "scale", Vector2(0.6, 0.6), 0.25)
-	tween.tween_property(self, "modulate:a", 0.0, 0.25)
+	tween.tween_method(_parabola_pos.bind(mini_card, start_center, target_center, arc_height), 0.0, 1.0, fly_time)
+	tween.tween_property(mini_card, "modulate:a", 0.0, 0.15).set_delay(fly_time - 0.15)
 	await tween.finished
+
+	mini_card.queue_free()
 	queue_free()
 
-## 二次贝塞尔曲线位置插值（供 fly_to_discard 的 tween_method 调用）
-func _bezier_pos(t: float, start: Vector2, ctrl: Vector2, end: Vector2) -> void:
-	var u: float = 1.0 - t
-	global_position = start * (u * u) + ctrl * (2.0 * u * t) + end * (t * t)
+## 抛物线位置插值（供 fly_to_discard 的 tween_method 调用）：水平匀速，垂直叠加抛物线弧度
+func _parabola_pos(t: float, node: Control, start: Vector2, end: Vector2, arc_h: float) -> void:
+	var x: float = lerpf(start.x, end.x, t)
+	var y: float = lerpf(start.y, end.y, t) - arc_h * 4.0 * t * (1.0 - t)
+	node.global_position = Vector2(x, y) - node.size / 2.0
 
 func reset_position():
 	_hide_buff_tooltip()
