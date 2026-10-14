@@ -268,7 +268,7 @@ func _execute_enemy_attacks() -> void:
 		_execute_single_enemy_turn(enemy)
 		if not player_manager.is_alive():
 			break
-		await get_tree().create_timer(0.3).timeout
+	await get_tree().create_timer(0.2).timeout
 
 ## 回合结束阶段：玩家自动获取敏捷护甲（base_dexterity 自动护甲保留；攻击改为主动弃牌攻击）
 func _execute_player_auto_block() -> void:

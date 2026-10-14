@@ -37,8 +37,8 @@ var is_selected: bool = false         ## 短按选中状态：放大悬停于原
 ## 目标选择交互参数
 const DRAG_SPRING_FACTOR := 0.3      ## 小范围拖动弹簧系数（卡牌移动量/鼠标移动量）
 const TARGET_TRIGGER_DIST := 60.0    ## 触发目标瞄准模式的拖动距离阈值
-const SELECTED_SCALE := 1.1          ## 选中状态缩放
-const SELECTED_UP_OFFSET := 40.0     ## 选中状态上移距离（像素）
+const SELECTED_SCALE := 1.18         ## 选中状态缩放
+const SELECTED_UP_OFFSET := 50.0     ## 选中状态上移距离（像素）
 var drag_start_global_pos: Vector2   ## 拖拽起始时卡牌的全局位置
 
 ## 交互信号
@@ -237,15 +237,15 @@ func _animate_hover(hover: bool):
 	else:
 		z_index = 0
 
-	var target_scale = Vector2(1.0, 1.0) if hover else original_scale
+	var target_scale = Vector2(0.88, 0.88) if hover else original_scale
 	var target_rotation = 0.0 if hover else original_rotation
 	var target_modulate = Color(1.05, 1.05, 1.0, 1.0) if hover else Color.WHITE
 
 	var tween = create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(self, "scale", target_scale, 0.08).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-	tween.tween_property(self, "rotation_degrees", target_rotation, 0.08).set_ease(Tween.EASE_OUT)
-	tween.tween_property(self, "modulate", target_modulate, 0.08).set_ease(Tween.EASE_OUT)
+	tween.tween_property(self, "scale", target_scale, 0.12).set_ease(Tween.EASE_OUT)
+	tween.tween_property(self, "rotation_degrees", target_rotation, 0.12).set_ease(Tween.EASE_OUT)
+	tween.tween_property(self, "modulate", target_modulate, 0.12).set_ease(Tween.EASE_OUT)
 
 ## 处理此节点范围内的鼠标输入事件（类似 Unity UI 的 OnPointerDown/Up）
 ## 新交互逻辑（更丝滑的拖拽体验）：
@@ -409,12 +409,13 @@ func _enter_selected_state():
 	if press_tween and press_tween.is_valid():
 		press_tween.kill()
 	
-	var selected_pos: Vector2 = original_position + Vector2(0, -30.0)
+	var selected_pos: Vector2 = original_position + Vector2(0, -SELECTED_UP_OFFSET)
 	press_tween = create_tween()
 	press_tween.set_parallel(true)
-	press_tween.tween_property(self, "position", selected_pos, 0.15).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-	press_tween.tween_property(self, "scale", Vector2(1.1, 1.1), 0.15).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.15).set_ease(Tween.EASE_OUT)
+	press_tween.tween_property(self, "position", selected_pos, 0.18).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	press_tween.tween_property(self, "scale", Vector2(SELECTED_SCALE, SELECTED_SCALE), 0.18).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.18).set_ease(Tween.EASE_OUT)
+	press_tween.tween_property(self, "modulate", Color(1.15, 1.08, 0.7, 1.0), 0.18).set_ease(Tween.EASE_OUT)
 
 ## 选中状态下再次点击进入目标瞄准模式（需要目标的卡牌）
 func _enter_target_aim_mode():
@@ -504,9 +505,9 @@ func _animate_press_down():
 	z_index = 50
 	press_tween = create_tween()
 	press_tween.set_parallel(true)
-	press_tween.tween_property(self, "scale", Vector2(1.05, 1.05), 0.08).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-	press_tween.tween_property(self, "modulate", Color(1.1, 1.1, 1.0, 1.0), 0.08).set_ease(Tween.EASE_OUT)
-	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.08).set_ease(Tween.EASE_OUT)
+	press_tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.1).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	press_tween.tween_property(self, "modulate", Color(1.1, 1.1, 1.0, 1.0), 0.1).set_ease(Tween.EASE_OUT)
+	press_tween.tween_property(self, "rotation_degrees", 0.0, 0.1).set_ease(Tween.EASE_OUT)
 
 ## 取消按下状态，恢复原始位置与缩放
 func _cancel_press():
@@ -576,20 +577,29 @@ func fly_to_center() -> void:
 	var center = Vector2(vp_size.x / 2.0 - size.x / 2.0, vp_size.y / 2.0 - size.y / 2.0 - 50.0)
 	var tween = create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(self, "global_position", center, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
-	tween.tween_property(self, "rotation_degrees", 0.0, 0.2)
-	tween.tween_property(self, "scale", Vector2(1.05, 1.05), 0.2)
+	tween.tween_property(self, "global_position", center, 0.18).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(self, "rotation_degrees", 0.0, 0.18)
+	tween.tween_property(self, "scale", Vector2(1.05, 1.05), 0.18)
 	await tween.finished
 
-## 卡牌打出流程最后一步：飞向弃牌堆位置并淡出消散（由调用方编排时序）。
+## 卡牌打出流程最后一步：沿弧线飞向弃牌堆位置并淡出消散（由调用方编排时序）。
 func fly_to_discard(target_center: Vector2) -> void:
+	var start_pos: Vector2 = global_position
+	var end_pos: Vector2 = target_center - size / 2.0
+	var control: Vector2 = (start_pos + end_pos) / 2.0
+	control.y -= 60.0
 	var tween = create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(self, "global_position", target_center - size / 2.0, 0.2).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
-	tween.tween_property(self, "scale", Vector2(0.6, 0.6), 0.2)
-	tween.tween_property(self, "modulate:a", 0.0, 0.2)
+	tween.tween_method(_bezier_pos.bind(start_pos, control, end_pos), 0.0, 1.0, 0.25)
+	tween.tween_property(self, "scale", Vector2(0.6, 0.6), 0.25)
+	tween.tween_property(self, "modulate:a", 0.0, 0.25)
 	await tween.finished
 	queue_free()
+
+## 二次贝塞尔曲线位置插值（供 fly_to_discard 的 tween_method 调用）
+func _bezier_pos(t: float, start: Vector2, ctrl: Vector2, end: Vector2) -> void:
+	var u: float = 1.0 - t
+	global_position = start * (u * u) + ctrl * (2.0 * u * t) + end * (t * t)
 
 func reset_position():
 	_hide_buff_tooltip()

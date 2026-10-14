@@ -78,12 +78,22 @@ func set_points(from_pos: Vector2, to_pos: Vector2):
 	is_visible = true
 	queue_redraw()
 
+var _fade_tween: Tween = null
+
 func show_arrow():
 	is_visible = true
+	if _fade_tween and _fade_tween.is_valid():
+		_fade_tween.kill()
+	modulate.a = 0.0
+	_fade_tween = create_tween()
+	_fade_tween.tween_property(self, "modulate:a", 1.0, 0.15)
 	queue_redraw()
 
 func hide_arrow():
 	is_visible = false
+	if _fade_tween and _fade_tween.is_valid():
+		_fade_tween.kill()
+	modulate.a = 1.0
 	queue_redraw()
 
 ## [未调用] 设置箭头颜色。若已实现调用方，请删除此标记注释。
