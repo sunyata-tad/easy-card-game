@@ -203,7 +203,7 @@ func _build_left_panel():
 	vbox.add_child(deck_scroll)
 
 	deck_grid = GridContainer.new()
-	deck_grid.columns = 2
+	deck_grid.columns = 3
 	deck_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	deck_grid.add_theme_constant_override("h_separation", 5)
 	deck_grid.add_theme_constant_override("v_separation", 5)
@@ -268,7 +268,7 @@ func _build_right_panel():
 	vbox.add_child(lib_scroll)
 
 	library_grid = GridContainer.new()
-	library_grid.columns = 3
+	library_grid.columns = 6
 	library_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	library_grid.add_theme_constant_override("h_separation", 5)
 	library_grid.add_theme_constant_override("v_separation", 5)
@@ -425,7 +425,7 @@ func _refresh_deck_display():
 
 func _create_small_card_widget(card: CardData, count: int, is_library: bool = false, is_locked: bool = false) -> Control:
 	var panel = Panel.new()
-	panel.custom_minimum_size = Vector2(100, 42)
+	panel.custom_minimum_size = Vector2(80, 105)
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.08, 0.08, 0.10, 1) if is_locked else Color(0.13, 0.14, 0.18, 1)
 	var rarity_color = RARITY_COLORS.get(card.rarity, Color(0.6, 0.6, 0.6))
@@ -442,37 +442,65 @@ func _create_small_card_widget(card: CardData, count: int, is_library: bool = fa
 	style.corner_radius_bottom_left = 4
 	panel.add_theme_stylebox_override("panel", style)
 
-	var vbox = VBoxContainer.new()
-	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
-	vbox.offset_left = 3
-	vbox.offset_top = 2
-	vbox.offset_right = -3
-	vbox.offset_bottom = -2
-	vbox.add_theme_constant_override("separation", 1)
-	panel.add_child(vbox)
+	if card.art != "" and not is_locked:
+		var tex_rect = TextureRect.new()
+		tex_rect.offset_left = 1
+		tex_rect.offset_top = 1
+		tex_rect.offset_right = 79
+		tex_rect.offset_bottom = 52
+		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		var tex = load(card.art)
+		if tex:
+			tex_rect.texture = tex
+		panel.add_child(tex_rect)
 
 	var name_lbl = Label.new()
+	name_lbl.offset_left = 2
+	name_lbl.offset_top = 54
+	name_lbl.offset_right = 78
+	name_lbl.offset_bottom = 66
 	name_lbl.text = card.name
 	name_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5) if is_locked else Color.WHITE)
-	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_font_size_override("font_size", 10)
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.add_child(name_lbl)
+	panel.add_child(name_lbl)
+
+	var desc_lbl = Label.new()
+	desc_lbl.offset_left = 2
+	desc_lbl.offset_top = 68
+	desc_lbl.offset_right = 78
+	desc_lbl.offset_bottom = 103
+	desc_lbl.text = card.description
+	desc_lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.45) if is_locked else Color(0.7, 0.7, 0.75))
+	desc_lbl.add_theme_font_size_override("font_size", 8)
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(desc_lbl)
 
 	if is_locked:
 		var lock_lbl = Label.new()
+		lock_lbl.offset_left = 2
+		lock_lbl.offset_top = 2
+		lock_lbl.offset_right = 78
+		lock_lbl.offset_bottom = 52
 		lock_lbl.text = "🔒"
-		lock_lbl.add_theme_font_size_override("font_size", 11)
+		lock_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+		lock_lbl.add_theme_font_size_override("font_size", 20)
 		lock_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		vbox.add_child(lock_lbl)
+		lock_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		panel.add_child(lock_lbl)
 	elif count > 1:
 		var count_lbl = Label.new()
+		count_lbl.offset_left = 60
+		count_lbl.offset_top = 1
+		count_lbl.offset_right = 79
+		count_lbl.offset_bottom = 14
 		count_lbl.text = "x%d" % count
 		count_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
-		count_lbl.add_theme_font_size_override("font_size", 11)
-		count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		vbox.add_child(count_lbl)
+		count_lbl.add_theme_font_size_override("font_size", 10)
+		count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		panel.add_child(count_lbl)
 
 	panel.gui_input.connect(_on_card_widget_input.bind(card.id, is_library, is_locked))
 	return panel
