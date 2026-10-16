@@ -23,12 +23,8 @@ var _deck_scroll: ScrollContainer = null
 var _lib_scroll: ScrollContainer = null
 var _refresh_pending: bool = false
 var _detail_panel: Panel = null
-var _detail_name: Label = null
-var _detail_type: Label = null
-var _detail_rarity: Label = null
-var _detail_desc: Label = null
+var _detail_big_card: Panel = null
 var _detail_tags: Label = null
-var _detail_art: TextureRect = null
 
 const TYPE_CN := {
 	"attack": "攻击",
@@ -484,9 +480,9 @@ func _refresh_deck_display():
 		color = Color(0.4, 1.0, 0.4)
 	deck_count_label.add_theme_color_override("font_color", color)
 
-func _create_small_card_widget(card: CardData, count: int, is_library: bool = false, is_locked: bool = false) -> Control:
+func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_locked: bool = false, show_detail: bool = false) -> Panel:
 	var panel = Panel.new()
-	panel.custom_minimum_size = Vector2(80, 105)
+	panel.custom_minimum_size = Vector2(w, h)
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.08, 0.08, 0.10, 1) if is_locked else Color(0.13, 0.14, 0.18, 1)
 	var rarity_color = RARITY_COLORS.get(card.rarity, Color(0.6, 0.6, 0.6))
@@ -497,18 +493,21 @@ func _create_small_card_widget(card: CardData, count: int, is_library: bool = fa
 	style.border_width_right = 2
 	style.border_width_bottom = 2
 	style.border_color = rarity_color
-	style.corner_radius_top_left = 4
-	style.corner_radius_top_right = 4
-	style.corner_radius_bottom_right = 4
-	style.corner_radius_bottom_left = 4
+	style.set_corner_radius_all(4)
 	panel.add_theme_stylebox_override("panel", style)
+
+	var pad := 2.0
+	var art_h := h * 0.5
+	var band_h := h * 0.05
+	var text_top := art_h
+	var text_bottom := h - band_h - pad
 
 	if card.art != "" and not is_locked:
 		var tex_rect = TextureRect.new()
-		tex_rect.offset_left = 1
-		tex_rect.offset_top = 1
-		tex_rect.offset_right = 79
-		tex_rect.offset_bottom = 52
+		tex_rect.offset_left = pad
+		tex_rect.offset_top = pad
+		tex_rect.offset_right = w - pad
+		tex_rect.offset_bottom = art_h
 		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		var tex = load(card.art)
@@ -516,53 +515,111 @@ func _create_small_card_widget(card: CardData, count: int, is_library: bool = fa
 			tex_rect.texture = tex
 		panel.add_child(tex_rect)
 
+	var text_bg = ColorRect.new()
+	text_bg.offset_left = pad
+	text_bg.offset_top = text_top
+	text_bg.offset_right = w - pad
+	text_bg.offset_bottom = text_bottom
+	text_bg.color = Color(0.06, 0.07, 0.1, 0.9)
+	panel.add_child(text_bg)
+
+	var name_size := 10
+	var type_size := 10
+	var desc_size := 8
+	var rarity_size := 10
+	if show_detail:
+		name_size = 16
+		type_size = 13
+		desc_size = 13
+		rarity_size = 12
+
+	var name_h := h * 0.12 if not show_detail else h * 0.1
 	var name_lbl = Label.new()
-	name_lbl.offset_left = 2
-	name_lbl.offset_top = 54
-	name_lbl.offset_right = 78
-	name_lbl.offset_bottom = 66
+	name_lbl.offset_left = pad + 3
+	name_lbl.offset_top = text_top + 2
+	name_lbl.offset_right = w - pad - 3
+	name_lbl.offset_bottom = text_top + 2 + name_h
 	name_lbl.text = card.name
 	name_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5) if is_locked else Color.WHITE)
-	name_lbl.add_theme_font_size_override("font_size", 10)
+	name_lbl.add_theme_font_size_override("font_size", name_size)
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(name_lbl)
 
+	var desc_top := text_top + 2 + name_h + 2
+	if show_detail:
+		var type_lbl = Label.new()
+		type_lbl.offset_left = pad + 3
+		type_lbl.offset_top = desc_top
+		type_lbl.offset_right = w - pad - 3
+		type_lbl.offset_bottom = desc_top + h * 0.08
+		type_lbl.text = TYPE_CN.get(card.type, card.type)
+		type_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8))
+		type_lbl.add_theme_font_size_override("font_size", type_size)
+		type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		panel.add_child(type_lbl)
+		desc_top += h * 0.08
+
 	var desc_lbl = Label.new()
-	desc_lbl.offset_left = 2
-	desc_lbl.offset_top = 68
-	desc_lbl.offset_right = 78
-	desc_lbl.offset_bottom = 103
+	desc_lbl.offset_left = pad + 3
+	desc_lbl.offset_top = desc_top
+	desc_lbl.offset_right = w - pad - 3
+	desc_lbl.offset_bottom = text_bottom
 	desc_lbl.text = card.description
 	desc_lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.45) if is_locked else Color(0.7, 0.7, 0.75))
-	desc_lbl.add_theme_font_size_override("font_size", 8)
+	desc_lbl.add_theme_font_size_override("font_size", desc_size)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(desc_lbl)
 
+	var band = ColorRect.new()
+	band.offset_left = pad
+	band.offset_top = text_bottom
+	band.offset_right = w - pad
+	band.offset_bottom = h - pad
+	band.color = rarity_color
+	panel.add_child(band)
+
+	if show_detail:
+		var rarity_lbl = Label.new()
+		rarity_lbl.offset_left = pad + 3
+		rarity_lbl.offset_top = text_bottom
+		rarity_lbl.offset_right = w - pad - 3
+		rarity_lbl.offset_bottom = h - pad
+		rarity_lbl.text = RARITY_CN.get(card.rarity, card.rarity)
+		rarity_lbl.add_theme_color_override("font_color", Color.BLACK)
+		rarity_lbl.add_theme_font_size_override("font_size", rarity_size)
+		rarity_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		rarity_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		panel.add_child(rarity_lbl)
+
 	if is_locked:
 		var lock_lbl = Label.new()
-		lock_lbl.offset_left = 2
-		lock_lbl.offset_top = 2
-		lock_lbl.offset_right = 78
-		lock_lbl.offset_bottom = 52
+		lock_lbl.offset_left = pad
+		lock_lbl.offset_top = pad
+		lock_lbl.offset_right = w - pad
+		lock_lbl.offset_bottom = art_h
 		lock_lbl.text = "🔒"
 		lock_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
-		lock_lbl.add_theme_font_size_override("font_size", 20)
+		lock_lbl.add_theme_font_size_override("font_size", int(h * 0.19))
 		lock_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lock_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		panel.add_child(lock_lbl)
 	elif count > 1:
 		var count_lbl = Label.new()
-		count_lbl.offset_left = 60
-		count_lbl.offset_top = 1
-		count_lbl.offset_right = 79
-		count_lbl.offset_bottom = 14
+		count_lbl.offset_left = w * 0.75
+		count_lbl.offset_top = pad
+		count_lbl.offset_right = w - pad
+		count_lbl.offset_bottom = pad + h * 0.13
 		count_lbl.text = "x%d" % count
 		count_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
 		count_lbl.add_theme_font_size_override("font_size", 10)
 		count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		panel.add_child(count_lbl)
 
+	return panel
+
+func _create_small_card_widget(card: CardData, count: int, is_library: bool = false, is_locked: bool = false) -> Control:
+	var panel = _create_card_visual(card, 80, 105, count, is_locked, false)
 	panel.gui_input.connect(_on_card_widget_input.bind(card.id, is_library, is_locked))
 	if not is_locked:
 		panel.mouse_entered.connect(_on_card_hover_entered.bind(panel))
@@ -682,61 +739,17 @@ func _build_detail_panel():
 	style.border_width_right = 2
 	style.border_width_bottom = 2
 	style.border_color = Color(0.4, 0.5, 0.6, 0.9)
-	style.corner_radius_top_left = 6
-	style.corner_radius_top_right = 6
-	style.corner_radius_bottom_right = 6
-	style.corner_radius_bottom_left = 6
+	style.set_corner_radius_all(6)
 	_detail_panel.add_theme_stylebox_override("panel", style)
 
-	var vbox = VBoxContainer.new()
-	vbox.offset_left = 10
-	vbox.offset_top = 10
-	vbox.offset_right = -10
-	vbox.offset_bottom = -10
-	vbox.anchor_right = 1.0
-	vbox.anchor_bottom = 1.0
-	vbox.add_theme_constant_override("separation", 6)
-	_detail_panel.add_child(vbox)
-
-	_detail_art = TextureRect.new()
-	_detail_art.custom_minimum_size = Vector2(0, 140)
-	_detail_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_detail_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_detail_art.visible = false
-	vbox.add_child(_detail_art)
-
-	_detail_name = Label.new()
-	_detail_name.add_theme_color_override("font_color", Color.WHITE)
-	_detail_name.add_theme_font_size_override("font_size", 16)
-	_detail_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_detail_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(_detail_name)
-
-	_detail_type = Label.new()
-	_detail_type.add_theme_font_size_override("font_size", 13)
-	_detail_type.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(_detail_type)
-
-	_detail_rarity = Label.new()
-	_detail_rarity.add_theme_font_size_override("font_size", 13)
-	_detail_rarity.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(_detail_rarity)
-
-	var sep = HSeparator.new()
-	vbox.add_child(sep)
-
-	_detail_desc = Label.new()
-	_detail_desc.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
-	_detail_desc.add_theme_font_size_override("font_size", 12)
-	_detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_detail_desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.add_child(_detail_desc)
-
 	_detail_tags = Label.new()
+	_detail_tags.offset_left = 10
+	_detail_tags.offset_right = -10
+	_detail_tags.anchor_right = 1.0
 	_detail_tags.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8))
 	_detail_tags.add_theme_font_size_override("font_size", 11)
 	_detail_tags.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(_detail_tags)
+	_detail_panel.add_child(_detail_tags)
 
 	add_child(_detail_panel)
 
@@ -744,21 +757,15 @@ func _show_card_detail(card_id: String):
 	var card = card_database.get_card(card_id)
 	if card == null:
 		return
-	if card.art != "":
-		var tex = load(card.art)
-		if tex:
-			_detail_art.texture = tex
-			_detail_art.visible = true
-		else:
-			_detail_art.visible = false
-	else:
-		_detail_art.visible = false
-	_detail_name.text = card.name
-	_detail_type.text = "类型: %s" % TYPE_CN.get(card.type, card.type)
-	var rarity_color = RARITY_COLORS.get(card.rarity, Color(0.6, 0.6, 0.6))
-	_detail_rarity.text = "稀有度: %s" % RARITY_CN.get(card.rarity, card.rarity)
-	_detail_rarity.add_theme_color_override("font_color", rarity_color)
-	_detail_desc.text = card.description
+	if _detail_big_card and is_instance_valid(_detail_big_card):
+		_detail_big_card.queue_free()
+	var card_w = _detail_panel.size.x - 20
+	var card_h = card_w * 1.3125
+	_detail_big_card = _create_card_visual(card, card_w, card_h, 0, false, true)
+	_detail_big_card.position = Vector2(10, 10)
+	_detail_panel.add_child(_detail_big_card)
+	_detail_tags.offset_top = 10 + card_h + 8
+	_detail_tags.offset_bottom = _detail_panel.size.y - 10
 	var tag_texts: Array = []
 	for t in card.tags:
 		tag_texts.append(TAG_CN.get(t, t))
