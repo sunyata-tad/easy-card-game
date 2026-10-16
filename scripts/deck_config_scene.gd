@@ -259,9 +259,9 @@ func _build_right_panel():
 	vbox.add_child(lib_scroll)
 
 	library_grid = GridContainer.new()
-	library_grid.columns = 4
-	library_grid.add_theme_constant_override("h_separation", 8)
-	library_grid.add_theme_constant_override("v_separation", 8)
+	library_grid.columns = 2
+	library_grid.add_theme_constant_override("h_separation", 4)
+	library_grid.add_theme_constant_override("v_separation", 4)
 	lib_scroll.add_child(library_grid)
 
 	return panel
@@ -347,7 +347,7 @@ func _refresh_library():
 		if card == null:
 			continue
 		var is_locked = not CardPoolManager.has_card(card_id)
-		var widget = _create_card_widget(card, current_deck_cards.get(card_id, 0), true, is_locked)
+		var widget = _create_small_card_widget(card, current_deck_cards.get(card_id, 0), true, is_locked)
 		library_grid.add_child(widget)
 
 func _populate_filter_options():
@@ -403,7 +403,7 @@ func _refresh_deck_display():
 		if card == null:
 			continue
 		total += count
-		var widget = _create_small_card_widget(card, count)
+		var widget = _create_small_card_widget(card, count, false, false)
 		deck_grid.add_child(widget)
 	deck_count_label.text = "卡组: %d/40-60" % total
 	var color = Color(0.7, 0.7, 0.7)
@@ -413,12 +413,14 @@ func _refresh_deck_display():
 		color = Color(0.4, 1.0, 0.4)
 	deck_count_label.add_theme_color_override("font_color", color)
 
-func _create_small_card_widget(card: CardData, count: int) -> Control:
+func _create_small_card_widget(card: CardData, count: int, is_library: bool = false, is_locked: bool = false) -> Control:
 	var panel = Panel.new()
-	panel.custom_minimum_size = Vector2(0, 32)
+	panel.custom_minimum_size = Vector2(0, 30)
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.13, 0.14, 0.18, 1)
+	style.bg_color = Color(0.08, 0.08, 0.10, 1) if is_locked else Color(0.13, 0.14, 0.18, 1)
 	var rarity_color = RARITY_COLORS.get(card.rarity, Color(0.6, 0.6, 0.6))
+	if is_locked:
+		rarity_color = Color(0.3, 0.3, 0.3)
 	style.border_width_left = 3
 	style.border_color = rarity_color
 	style.corner_radius_top_left = 3
@@ -437,18 +439,24 @@ func _create_small_card_widget(card: CardData, count: int) -> Control:
 
 	var name_lbl = Label.new()
 	name_lbl.text = card.name
-	name_lbl.add_theme_color_override("font_color", Color.WHITE)
+	name_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5) if is_locked else Color.WHITE)
 	name_lbl.add_theme_font_size_override("font_size", 13)
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(name_lbl)
 
-	var count_lbl = Label.new()
-	count_lbl.text = "x%d" % count
-	count_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
-	count_lbl.add_theme_font_size_override("font_size", 13)
-	hbox.add_child(count_lbl)
+	if is_locked:
+		var lock_lbl = Label.new()
+		lock_lbl.text = "🔒"
+		lock_lbl.add_theme_font_size_override("font_size", 12)
+		hbox.add_child(lock_lbl)
+	elif count > 0:
+		var count_lbl = Label.new()
+		count_lbl.text = "x%d" % count
+		count_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
+		count_lbl.add_theme_font_size_override("font_size", 13)
+		hbox.add_child(count_lbl)
 
-	panel.gui_input.connect(_on_card_widget_input.bind(card.id, false, false))
+	panel.gui_input.connect(_on_card_widget_input.bind(card.id, is_library, is_locked))
 	return panel
 
 func _on_card_widget_input(event: InputEvent, card_id: String, is_library: bool, is_locked: bool = false):
