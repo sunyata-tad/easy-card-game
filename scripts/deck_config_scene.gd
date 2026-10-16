@@ -141,7 +141,8 @@ func _build_left_panel():
 	vbox.offset_top = 8
 	vbox.offset_right = -8
 	vbox.offset_bottom = -8
-	vbox.anchors_preset = Control.PRESET_FULL_RECT
+	vbox.anchor_right = 1.0
+	vbox.anchor_bottom = 1.0
 	vbox.add_theme_constant_override("separation", 8)
 	panel.add_child(vbox)
 
@@ -196,7 +197,8 @@ func _build_right_panel():
 	vbox.offset_top = 8
 	vbox.offset_right = -8
 	vbox.offset_bottom = -8
-	vbox.anchors_preset = Control.PRESET_FULL_RECT
+	vbox.anchor_right = 1.0
+	vbox.anchor_bottom = 1.0
 	vbox.add_theme_constant_override("separation", 8)
 	panel.add_child(vbox)
 
@@ -403,7 +405,8 @@ func _create_card_widget(card: CardData, count: int, is_library: bool) -> Contro
 	vbox.offset_top = 4
 	vbox.offset_right = -4
 	vbox.offset_bottom = -4
-	vbox.anchors_preset = Control.PRESET_FULL_RECT
+	vbox.anchor_right = 1.0
+	vbox.anchor_bottom = 1.0
 	vbox.add_theme_constant_override("separation", 2)
 	panel.add_child(vbox)
 
