@@ -6,7 +6,7 @@
 		},
 		"keyword": {
 			"description": "关键词效果",
-			"tags": ["Exhaust", "Retain", "Innate", "Ethereal", "Unplayable", "PermanentExhaust", "Constant", "UniqueNoDup"]
+			"tags": ["Exhaust", "Retain", "Innate", "Ethereal", "Unplayable", "PermanentExhaust", "Constant", "UniqueNoDup", "Derived"]
 		},
 		"archetype": {
 			"description": "系列/字段",
