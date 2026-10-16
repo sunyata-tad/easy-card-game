@@ -404,7 +404,7 @@ func _refresh_library():
 	for child in library_grid.get_children():
 		child.queue_free()
 	if _lib_scroll:
-		library_grid.columns = _calc_columns(_lib_scroll, 110, 5)
+		library_grid.columns = _calc_columns(_lib_scroll, 120, 5)
 	var ids = _get_filtered_card_ids()
 	_sort_card_ids(ids)
 	for card_id in ids:
@@ -414,6 +414,8 @@ func _refresh_library():
 		var is_locked = not CardPoolManager.has_card(card_id)
 		var widget = _create_small_card_widget(card, current_deck_cards.get(card_id, 0), true, is_locked)
 		library_grid.add_child(widget)
+
+
 
 func _populate_filter_options():
 	var types: Array = []
@@ -458,7 +460,7 @@ func _refresh_deck_display():
 	for child in deck_grid.get_children():
 		child.queue_free()
 	if _deck_scroll:
-		deck_grid.columns = _calc_columns(_deck_scroll, 110, 5)
+		deck_grid.columns = _calc_columns(_deck_scroll, 120, 5)
 	var total = 0
 	var card_ids = current_deck_cards.keys()
 	_sort_card_ids(card_ids)
@@ -483,6 +485,9 @@ func _refresh_deck_display():
 func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_locked: bool = false, show_detail: bool = false) -> Panel:
 	var panel = Panel.new()
 	panel.custom_minimum_size = Vector2(w, h)
+	panel.size = Vector2(w, h)
+
+
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.08, 0.08, 0.10, 1) if is_locked else Color(0.13, 0.14, 0.18, 1)
 	var rarity_color = RARITY_COLORS.get(card.rarity, Color(0.6, 0.6, 0.6))
@@ -525,17 +530,17 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	text_bg.color = Color(0.06, 0.07, 0.1, 0.9)
 	panel.add_child(text_bg)
 
-	var name_size := 11
-	var type_size := 10
-	var desc_size := 9
-	var rarity_size := 10
+	var name_size := 13
+	var type_size := 11
+	var desc_size := 11
+	var rarity_size := 11
 	if show_detail:
-		name_size = 18
-		type_size = 14
-		desc_size = 14
-		rarity_size = 13
+		name_size = 20
+		type_size = 16
+		desc_size = 16
+		rarity_size = 14
 
-	var name_h := h * 0.10 if not show_detail else h * 0.1
+	var name_h := h * 0.09 if not show_detail else h * 0.1
 	var name_lbl = Label.new()
 	name_lbl.offset_left = pad + 3
 	name_lbl.offset_top = text_top + 2
@@ -571,8 +576,7 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	desc_lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.45) if is_locked else Color(0.7, 0.7, 0.75))
 	desc_lbl.add_theme_font_size_override("font_size", desc_size)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	if not show_detail:
-		desc_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+
 	panel.add_child(desc_lbl)
 
 	if show_rarity:
@@ -664,7 +668,7 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	return panel
 
 func _create_small_card_widget(card: CardData, count: int, is_library: bool = false, is_locked: bool = false) -> Control:
-	var panel = _create_card_visual(card, 110, 145, count, is_locked, false)
+	var panel = _create_card_visual(card, 120, 158, count, is_locked, false)
 	panel.gui_input.connect(_on_card_widget_input.bind(card.id, is_library, is_locked))
 	if not is_locked:
 		panel.mouse_entered.connect(_on_card_hover_entered.bind(panel))

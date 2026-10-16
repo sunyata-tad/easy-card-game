@@ -21,7 +21,10 @@ STYLE = (
     "only the wide ornate border frame is visible, "
     "vertical portrait card layout, "
     "silver and dark grey metal tones with subtle wear, "
-    "high quality game UI design, symmetrical, "
+    "high quality game UI design, "
+    "perfectly symmetrical left right mirror symmetry, "
+    "perfectly straight horizontal vertical no tilt no rotation no perspective, "
+    "flat 2D front view no 3D no angle, "
     "no text no watermark no letters no words"
 )
 
