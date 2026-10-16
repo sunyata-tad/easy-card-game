@@ -404,7 +404,7 @@ func _refresh_library():
 	for child in library_grid.get_children():
 		child.queue_free()
 	if _lib_scroll:
-		library_grid.columns = _calc_columns(_lib_scroll, 120, 5)
+		library_grid.columns = _calc_columns(_lib_scroll, 200, 5)
 	var ids = _get_filtered_card_ids()
 	_sort_card_ids(ids)
 	for card_id in ids:
@@ -460,7 +460,7 @@ func _refresh_deck_display():
 	for child in deck_grid.get_children():
 		child.queue_free()
 	if _deck_scroll:
-		deck_grid.columns = _calc_columns(_deck_scroll, 120, 5)
+		deck_grid.columns = _calc_columns(_deck_scroll, 200, 5)
 	var total = 0
 	var card_ids = current_deck_cards.keys()
 	_sort_card_ids(card_ids)
@@ -535,9 +535,9 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	var desc_size := 11
 	var rarity_size := 11
 	if show_detail:
-		name_size = 18
-		type_size = 13
-		desc_size = 13
+		name_size = 16
+		type_size = 12
+		desc_size = 12
 		rarity_size = 14
 
 	var name_h := float(name_size) * 1.4
@@ -551,7 +551,8 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	name_lbl.add_theme_font_size_override("font_size", name_size)
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.clip_contents = true
+
+	name_lbl.add_theme_constant_override("line_spacing", 0)
 	panel.add_child(name_lbl)
 
 	var desc_top := text_top + 2 + name_h + 2
@@ -579,7 +580,8 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	desc_lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.45) if is_locked else Color(0.7, 0.7, 0.75))
 	desc_lbl.add_theme_font_size_override("font_size", desc_size)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_lbl.clip_contents = true
+
+	desc_lbl.add_theme_constant_override("line_spacing", 0)
 
 	panel.add_child(desc_lbl)
 
@@ -671,8 +673,9 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 
 	return panel
 
+
 func _create_small_card_widget(card: CardData, count: int, is_library: bool = false, is_locked: bool = false) -> Control:
-	var panel = _create_card_visual(card, 120, 158, count, is_locked, false)
+	var panel = _create_card_visual(card, 200, 263, count, is_locked, false)
 	panel.gui_input.connect(_on_card_widget_input.bind(card.id, is_library, is_locked))
 	if not is_locked:
 		panel.mouse_entered.connect(_on_card_hover_entered.bind(panel))
@@ -783,7 +786,7 @@ func _on_back():
 func _build_detail_panel():
 	_detail_panel = Panel.new()
 	_detail_panel.position = Vector2(20, 60)
-	_detail_panel.size = Vector2(size.x * 0.2, size.y - 100)
+	_detail_panel.size = Vector2(size.x * 0.25, size.y - 100)
 	_detail_panel.visible = false
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.1, 0.11, 0.15, 0.72)
