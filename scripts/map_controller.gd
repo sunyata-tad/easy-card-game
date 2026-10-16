@@ -203,18 +203,9 @@ func _init_endless() -> bool:
 		"name": "营地",
 		"description": "旅程的起点。从这里向北出发，迎接无尽的挑战。",
 		"connections": {"north": "layer_1"},
-		"interactables": ["endless_camp_table"]
+		"interactables": []
 	}
-	_endless_interactables["endless_camp_table"] = {
-		"id": "endless_camp_table",
-		"name": "卡组桌",
-		"description": "在这里可以编辑你的卡组，自由添加已解锁的卡牌。",
-		"type": "deck_view",
-		"states": {
-			"default": {"interactions": ["查看卡组"], "description": "在这里可以编辑你的卡组。"}
-		}
-	}
-	
+
 	map_state.initialize("endless", "layer_0")
 	map_state.current_map_id = "endless"
 	_notify_location_changed()
@@ -693,10 +684,7 @@ func _endless_execute_interaction(interactable_id: String, action: String) -> Di
 				_endless_interactables[interactable_id]["states"]["used"] = {"interactions": [], "description": "你刚刚休息过了。"}
 				_endless_interactables[interactable_id]["states"]["default"] = {"interactions": [], "description": "你刚刚休息过了。"}
 				map_state.add_log("heal", "你在营地休息，恢复了%d点生命值。" % amt)
-		"deck_view":
-			if action == "查看卡组":
-				result.show_deck = true
-				map_state.add_log("interact", "你查看了当前卡组。")
+
 		"container":
 			if action == "打开":
 				var layer = idata.get("layer", 0)
@@ -738,10 +726,7 @@ func _normal_execute_interaction(interactable_id: String, action: String) -> Dic
 		"info", "portal":
 			result.message = idata.get("description", "")
 			map_state.add_log("interact", "你%s：%s" % [action, result.message])
-		"deck_view":
-			if action == "查看卡组":
-				result.show_deck = true
-				map_state.add_log("interact", "你查看了当前卡组。")
+
 		_:
 			map_state.add_log("interact", "你与%s进行了交互。" % iname)
 	return result

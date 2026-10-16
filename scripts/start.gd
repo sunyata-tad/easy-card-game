@@ -69,17 +69,6 @@ func _setup_buttons():
 		if not deck_btn.pressed.is_connected(_on_deck_config_pressed):
 			deck_btn.pressed.connect(_on_deck_config_pressed)
 
-	# 动态创建测试按钮（场景中可能不存在）
-	var test_button = get_node_or_null("Button_test")
-	if test_button == null:
-		test_button = Button.new()
-		test_button.name = "Button_test"
-		test_button.text = "测试"
-		test_button.position = Vector2(10, 10)
-		test_button.custom_minimum_size = Vector2(80, 30)
-		add_child(test_button)
-	if not test_button.pressed.is_connected(_on_test_pressed):
-		test_button.pressed.connect(_on_test_pressed)
 
 ## 根据是否有存档更新"继续"按钮的可见性
 func _update_continue_button():
@@ -136,8 +125,25 @@ func _start_new_game():
 	GameData.player_strength = 5
 	GameData.player_dexterity = 5
 	CardPoolManager.initialize_with_starter_cards()
+	_load_player_deck()
 	var start_button = get_node_or_null("MenuCenter/MenuBox/Button_start")
 	TransitionManager.transition(GameManager.go_to_endless_map, start_button)
+
+## 从已保存的卡组加载牌组，无卡组时使用默认 starter deck
+func _load_player_deck():
+	var dm_script = load("res://scripts/deck_manager.gd")
+	var dm = dm_script.new()
+	var names = dm.get_all_deck_names()
+	if names.is_empty():
+		return
+	var deck_data = dm.load_deck(names[0])
+	if deck_data.is_empty():
+		return
+	var card_db = CardDatabase.new()
+	var cards = deck_data.get("cards", [])
+	if cards.is_empty():
+		return
+	GameData.player_deck = card_db.create_deck(cards)
 
 
 ## 继续游戏：读取存档，根据进度跳转到对应场景
@@ -190,7 +196,3 @@ func _on_settings_pressed() -> void:
 func _on_deck_config_pressed() -> void:
 	var deck_btn = get_node_or_null("MenuCenter/MenuBox/Button_deck_config")
 	TransitionManager.transition(GameManager.go_to_deck_config, deck_btn)
-
-func _on_test_pressed() -> void:
-	var test_button = get_node_or_null("Button_test")
-	TransitionManager.transition(GameManager.go_to_test_map, test_button)

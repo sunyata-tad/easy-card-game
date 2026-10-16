@@ -19,6 +19,32 @@ var name_input: LineEdit
 
 var all_card_ids: Array = []
 
+const TYPE_CN := {
+	"attack": "攻击",
+	"skill": "技能",
+	"power": "能力",
+}
+const RARITY_CN := {
+	"basic": "基础",
+	"common": "普通",
+	"uncommon": "罕见",
+	"rare": "稀有",
+	"epic": "史诗",
+}
+const TAG_CN := {
+	"Attack": "攻击",
+	"Basic": "基础",
+	"Skill": "技能",
+	"Common": "普通",
+	"Uncommon": "罕见",
+	"Rare": "稀有",
+	"Epic": "史诗",
+	"Debuff": "减益",
+	"Innate": "固有",
+	"Retain": "保留",
+	"Exhaust": "消耗",
+	"PermanentExhaust": "永久消耗",
+}
 
 const RARITY_COLORS = {
 	"basic": Color(0.6, 0.6, 0.6),
@@ -35,6 +61,7 @@ func _ready():
 	add_child(deck_manager)
 	all_card_ids = card_database.get_all_card_ids()
 	all_card_ids.erase("_模板_卡牌名")
+	all_card_ids.erase("模板示例")
 	_build_ui()
 	_refresh_deck_dropdown()
 	_refresh_library()
@@ -82,10 +109,14 @@ func _build_ui():
 
 	var left_panel = _build_left_panel()
 	left_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left_panel.custom_minimum_size = Vector2(size.x * 0.35, size.y - 100)
 	main_area.add_child(left_panel)
 
 	var right_panel = _build_right_panel()
 	right_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_panel.custom_minimum_size = Vector2(size.x * 0.45, size.y - 100)
 	main_area.add_child(right_panel)
 
 	status_label = Label.new()
@@ -251,16 +282,21 @@ func _get_filtered_card_ids() -> Array:
 		if card == null:
 			continue
 		if type_filter > 0:
-			var type_text = filter_type.get_item_text(type_filter)
-			if card.type != type_text:
+			var type_cn = filter_type.get_item_text(type_filter)
+			if TYPE_CN.get(card.type, card.type) != type_cn:
 				continue
 		if rarity_filter > 0:
-			var rarity_text = filter_rarity.get_item_text(rarity_filter)
-			if card.rarity != rarity_text:
+			var rarity_cn = filter_rarity.get_item_text(rarity_filter)
+			if RARITY_CN.get(card.rarity, card.rarity) != rarity_cn:
 				continue
 		if tag_filter > 0:
-			var tag_text = filter_tag.get_item_text(tag_filter)
-			if not card.has_tag(tag_text):
+			var tag_cn = filter_tag.get_item_text(tag_filter)
+			var matched = false
+			for t in card.tags:
+				if TAG_CN.get(t, t) == tag_cn:
+					matched = true
+					break
+			if not matched:
 				continue
 		if search_text != "":
 			var name_match = card.name.to_lower().find(search_text) >= 0
@@ -290,13 +326,16 @@ func _populate_filter_options():
 		var card = card_database.get_card(card_id)
 		if card == null:
 			continue
-		if not types.has(card.type):
-			types.append(card.type)
-		if not rarities.has(card.rarity):
-			rarities.append(card.rarity)
+		var type_cn = TYPE_CN.get(card.type, card.type)
+		if not types.has(type_cn):
+			types.append(type_cn)
+		var rarity_cn = RARITY_CN.get(card.rarity, card.rarity)
+		if not rarities.has(rarity_cn):
+			rarities.append(rarity_cn)
 		for t in card.tags:
-			if not tags.has(t):
-				tags.append(t)
+			var tag_cn = TAG_CN.get(t, t)
+			if not tags.has(tag_cn):
+				tags.append(tag_cn)
 	types.sort()
 	rarities.sort()
 	tags.sort()
@@ -377,7 +416,7 @@ func _create_card_widget(card: CardData, count: int, is_library: bool) -> Contro
 	vbox.add_child(name_lbl)
 
 	var type_lbl = Label.new()
-	type_lbl.text = card.type
+	type_lbl.text = TYPE_CN.get(card.type, card.type)
 	type_lbl.add_theme_color_override("font_color", rarity_color)
 	type_lbl.add_theme_font_size_override("font_size", 11)
 	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
