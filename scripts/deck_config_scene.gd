@@ -28,6 +28,7 @@ var _detail_type: Label = null
 var _detail_rarity: Label = null
 var _detail_desc: Label = null
 var _detail_tags: Label = null
+var _detail_art: TextureRect = null
 
 const TYPE_CN := {
 	"attack": "攻击",
@@ -142,9 +143,10 @@ func _build_ui():
 		UIStyle.attach_button_anim(delete_btn)
 	top_bar.add_child(delete_btn)
 
+	var _left_margin = size.x * 0.1
 	var main_area = HBoxContainer.new()
-	main_area.position = Vector2(20, 60)
-	main_area.size = Vector2(size.x - 40, size.y - 100)
+	main_area.position = Vector2(20 + _left_margin, 60)
+	main_area.size = Vector2(size.x - 40 - _left_margin, size.y - 100)
 	main_area.add_theme_constant_override("separation", 12)
 	add_child(main_area)
 
@@ -595,6 +597,8 @@ func _on_card_widget_input(event: InputEvent, card_id: String, is_library: bool,
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_show_card_detail(card_id)
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			if _detail_panel and _detail_panel.visible:
+				_detail_panel.visible = false
 			if is_locked:
 				return
 			if is_library:
@@ -669,15 +673,15 @@ func _on_back():
 func _build_detail_panel():
 	_detail_panel = Panel.new()
 	_detail_panel.position = Vector2(20, 60)
-	_detail_panel.size = Vector2(size.x * 0.24, size.y - 100)
+	_detail_panel.size = Vector2(size.x * 0.2, size.y - 100)
 	_detail_panel.visible = false
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.11, 0.15, 0.97)
+	style.bg_color = Color(0.1, 0.11, 0.15, 0.72)
 	style.border_width_left = 2
 	style.border_width_top = 2
 	style.border_width_right = 2
 	style.border_width_bottom = 2
-	style.border_color = Color(0.4, 0.5, 0.6, 1)
+	style.border_color = Color(0.4, 0.5, 0.6, 0.9)
 	style.corner_radius_top_left = 6
 	style.corner_radius_top_right = 6
 	style.corner_radius_bottom_right = 6
@@ -694,11 +698,12 @@ func _build_detail_panel():
 	vbox.add_theme_constant_override("separation", 6)
 	_detail_panel.add_child(vbox)
 
-	var close_btn = Button.new()
-	close_btn.text = "✕ 关闭"
-	close_btn.custom_minimum_size = Vector2(0, 28)
-	close_btn.pressed.connect(func(): _detail_panel.visible = false)
-	vbox.add_child(close_btn)
+	_detail_art = TextureRect.new()
+	_detail_art.custom_minimum_size = Vector2(0, 140)
+	_detail_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_detail_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_detail_art.visible = false
+	vbox.add_child(_detail_art)
 
 	_detail_name = Label.new()
 	_detail_name.add_theme_color_override("font_color", Color.WHITE)
@@ -739,6 +744,15 @@ func _show_card_detail(card_id: String):
 	var card = card_database.get_card(card_id)
 	if card == null:
 		return
+	if card.art != "":
+		var tex = load(card.art)
+		if tex:
+			_detail_art.texture = tex
+			_detail_art.visible = true
+		else:
+			_detail_art.visible = false
+	else:
+		_detail_art.visible = false
 	_detail_name.text = card.name
 	_detail_type.text = "类型: %s" % TYPE_CN.get(card.type, card.type)
 	var rarity_color = RARITY_COLORS.get(card.rarity, Color(0.6, 0.6, 0.6))
@@ -750,6 +764,13 @@ func _show_card_detail(card_id: String):
 		tag_texts.append(TAG_CN.get(t, t))
 	_detail_tags.text = "词条: " + ", ".join(tag_texts)
 	_detail_panel.visible = true
+
+func _input(event):
+	if event is InputEventMouseButton and event.pressed:
+		if _detail_panel and _detail_panel.visible:
+			var panel_rect = Rect2(_detail_panel.global_position, _detail_panel.size)
+			if not panel_rect.has_point(event.global_position):
+				_detail_panel.visible = false
 
 func _show_status(text: String):
 	status_label.text = text
