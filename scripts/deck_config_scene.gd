@@ -497,17 +497,17 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	panel.add_theme_stylebox_override("panel", style)
 
 
-	var pad := 2.0
-	var art_h := h * 0.5
+	var pad := w * 0.13
+	var art_h := h * 0.48
 	var show_rarity := card.rarity != "basic"
 	var band_h := h * 0.05 if show_rarity else 0.0
-	var text_top := art_h
-	var text_bottom := h - band_h - pad
+	var text_top := h * 0.54
+	var text_bottom := h * 0.92
 
 	if card.art != "" and not is_locked:
 		var tex_rect = TextureRect.new()
 		tex_rect.offset_left = pad
-		tex_rect.offset_top = pad
+		tex_rect.offset_top = h * 0.09
 		tex_rect.offset_right = w - pad
 		tex_rect.offset_bottom = art_h
 		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

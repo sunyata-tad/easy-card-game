@@ -12,15 +12,17 @@ FRAMES_DIR = os.path.join(BASE_DIR, "frames")
 os.makedirs(FRAMES_DIR, exist_ok=True)
 
 STYLE = (
-    "dark fantasy card game frame border ONLY, "
-    "hollow empty center with nothing inside, "
-    "the entire middle area is pure solid black flat color with no details, "
-    "only the outer ornate metallic border frame is visible, "
-    "decorative corners and runes on the border, "
+    "dark fantasy card game frame, "
+    "very wide thick broad ornate metallic border frame, "
+    "the border takes up 15 percent of the card width on each side, "
+    "heavy decorative corners with runes and filigree, "
+    "the center is flat solid black with absolutely nothing inside, "
+    "no artwork no illustration no portrait no image in the center, "
+    "only the wide ornate border frame is visible, "
     "vertical portrait card layout, "
     "silver and dark grey metal tones with subtle wear, "
     "high quality game UI design, symmetrical, "
-    "no text no watermark no letters no words no illustration no image inside"
+    "no text no watermark no letters no words"
 )
 
 FRAMES = {
@@ -87,7 +89,7 @@ def main():
             time.sleep(30)
         if success:
             ok += 1
-            time.sleep(15)
+            time.sleep(30)
         else:
             print(f"  SKIPPED after 5 retries: {name}")
     print(f"\nDone: {ok}/{total} succeeded")
