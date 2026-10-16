@@ -19,6 +19,7 @@ var name_input: LineEdit
 
 var all_card_ids: Array = []
 
+
 const RARITY_COLORS = {
 	"basic": Color(0.6, 0.6, 0.6),
 	"common": Color(0.8, 0.8, 0.8),
@@ -93,7 +94,7 @@ func _build_ui():
 	status_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
 	add_child(status_label)
 
-func _build_left_panel() -> Container:
+func _build_left_panel():
 	var panel = Panel.new()
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.1, 0.11, 0.15, 1)
@@ -148,7 +149,7 @@ func _build_left_panel() -> Container:
 
 	return panel
 
-func _build_right_panel() -> Container:
+func _build_right_panel():
 	var panel = Panel.new()
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.1, 0.11, 0.15, 1)
