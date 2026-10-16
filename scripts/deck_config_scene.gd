@@ -19,6 +19,9 @@ var name_input: LineEdit
 var filter_unlocked_only: CheckBox
 
 var all_card_ids: Array = []
+var _deck_scroll: ScrollContainer = null
+var _lib_scroll: ScrollContainer = null
+var _refresh_pending: bool = false
 var _detail_panel: Panel = null
 var _detail_name: Label = null
 var _detail_type: Label = null
@@ -97,10 +100,13 @@ func _ready():
 
 func _build_ui():
 	size = get_viewport_rect().size
-	var bg = ColorRect.new()
-	bg.color = Color(0.08, 0.09, 0.12, 1)
-	bg.size = size
-	add_child(bg)
+	if UIStyle:
+		UIStyle.add_background(self, "menu", 0.35)
+	else:
+		var bg = ColorRect.new()
+		bg.color = Color(0.08, 0.09, 0.12, 1)
+		bg.size = size
+		add_child(bg)
 
 	var top_bar = HBoxContainer.new()
 	top_bar.position = Vector2(20, 10)
@@ -112,6 +118,8 @@ func _build_ui():
 	back_btn.text = "← 返回"
 	back_btn.custom_minimum_size = Vector2(100, 36)
 	back_btn.pressed.connect(_on_back)
+	if UIStyle:
+		UIStyle.attach_button_anim(back_btn)
 	top_bar.add_child(back_btn)
 
 	var spacer = Control.new()
@@ -122,12 +130,16 @@ func _build_ui():
 	save_btn.text = "保存卡组"
 	save_btn.custom_minimum_size = Vector2(100, 36)
 	save_btn.pressed.connect(_on_save)
+	if UIStyle:
+		UIStyle.attach_button_anim(save_btn)
 	top_bar.add_child(save_btn)
 
 	var delete_btn = Button.new()
 	delete_btn.text = "删除卡组"
 	delete_btn.custom_minimum_size = Vector2(100, 36)
 	delete_btn.pressed.connect(_on_delete)
+	if UIStyle:
+		UIStyle.attach_button_anim(delete_btn)
 	top_bar.add_child(delete_btn)
 
 	var main_area = HBoxContainer.new()
@@ -200,8 +212,10 @@ func _build_left_panel():
 	var deck_scroll = ScrollContainer.new()
 	deck_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	deck_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	deck_scroll.resized.connect(_on_scroll_resized)
 	vbox.add_child(deck_scroll)
 
+	_deck_scroll = deck_scroll
 	deck_grid = GridContainer.new()
 	deck_grid.columns = 3
 	deck_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -265,8 +279,10 @@ func _build_right_panel():
 	var lib_scroll = ScrollContainer.new()
 	lib_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	lib_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lib_scroll.resized.connect(_on_scroll_resized)
 	vbox.add_child(lib_scroll)
 
+	_lib_scroll = lib_scroll
 	library_grid = GridContainer.new()
 	library_grid.columns = 6
 	library_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -307,6 +323,44 @@ func _on_filter_changed(_arg: Variant = null):
 
 func _on_search_changed(_text: String):
 	_refresh_library()
+
+func _on_scroll_resized():
+	if _refresh_pending:
+		return
+	_refresh_pending = true
+	call_deferred("_do_deferred_refresh")
+
+func _do_deferred_refresh():
+	_refresh_pending = false
+	_refresh_library()
+	_refresh_deck_display()
+
+func _sort_card_ids(ids: Array) -> Array:
+	ids.sort_custom(func(a, b):
+		var ca = card_database.get_card(a)
+		var cb = card_database.get_card(b)
+		if ca == null or cb == null:
+			return false
+		var ra = RARITY_ORDER.get(ca.rarity, 99)
+		var rb = RARITY_ORDER.get(cb.rarity, 99)
+		if ra != rb:
+			return ra < rb
+		var ta = TYPE_CN.get(ca.type, ca.type)
+		var tb = TYPE_CN.get(cb.type, cb.type)
+		if ta != tb:
+			return ta < tb
+		return ca.name < cb.name
+	)
+	return ids
+
+func _calc_columns(scroll: ScrollContainer, card_w: float, sep: float) -> int:
+	var avail: float = scroll.size.x
+	if avail <= 0:
+		avail = scroll.custom_minimum_size.x
+	if avail <= 0:
+		return 1
+	var col = int(floor((avail + sep) / (card_w + sep)))
+	return max(1, col)
 
 func _get_filtered_card_ids() -> Array:
 	var result: Array = []
@@ -351,7 +405,10 @@ func _refresh_library():
 	_populate_filter_options()
 	for child in library_grid.get_children():
 		child.queue_free()
+	if _lib_scroll:
+		library_grid.columns = _calc_columns(_lib_scroll, 80, 5)
 	var ids = _get_filtered_card_ids()
+	_sort_card_ids(ids)
 	for card_id in ids:
 		var card = card_database.get_card(card_id)
 		if card == null:
@@ -402,9 +459,11 @@ func _rebuild_option_button(btn: OptionButton, all_text: String, options: Array)
 func _refresh_deck_display():
 	for child in deck_grid.get_children():
 		child.queue_free()
+	if _deck_scroll:
+		deck_grid.columns = _calc_columns(_deck_scroll, 80, 5)
 	var total = 0
 	var card_ids = current_deck_cards.keys()
-	card_ids.sort()
+	_sort_card_ids(card_ids)
 	for card_id in card_ids:
 		var count = current_deck_cards[card_id]
 		if count <= 0:
@@ -503,7 +562,33 @@ func _create_small_card_widget(card: CardData, count: int, is_library: bool = fa
 		panel.add_child(count_lbl)
 
 	panel.gui_input.connect(_on_card_widget_input.bind(card.id, is_library, is_locked))
+	if not is_locked:
+		panel.mouse_entered.connect(_on_card_hover_entered.bind(panel))
+		panel.mouse_exited.connect(_on_card_hover_exited.bind(panel))
 	return panel
+
+func _on_card_hover_entered(panel: Panel):
+	panel.offset_transform_enabled = true
+	panel.z_index = 10
+	if panel.has_meta("hover_tween"):
+		var old: Variant = panel.get_meta("hover_tween")
+		if old is Tween and old.is_valid():
+			old.kill()
+	var tw: Tween = panel.create_tween()
+	tw.tween_property(panel, "offset_transform_scale", Vector2(1.08, 1.08), 0.1) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	panel.set_meta("hover_tween", tw)
+
+func _on_card_hover_exited(panel: Panel):
+	panel.z_index = 0
+	if panel.has_meta("hover_tween"):
+		var old: Variant = panel.get_meta("hover_tween")
+		if old is Tween and old.is_valid():
+			old.kill()
+	var tw: Tween = panel.create_tween()
+	tw.tween_property(panel, "offset_transform_scale", Vector2.ONE, 0.1) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	panel.set_meta("hover_tween", tw)
 
 func _on_card_widget_input(event: InputEvent, card_id: String, is_library: bool, is_locked: bool = false):
 	if event is InputEventMouseButton and event.pressed:
