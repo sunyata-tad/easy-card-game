@@ -404,7 +404,7 @@ func _refresh_library():
 	for child in library_grid.get_children():
 		child.queue_free()
 	if _lib_scroll:
-		library_grid.columns = _calc_columns(_lib_scroll, 100, 5)
+		library_grid.columns = _calc_columns(_lib_scroll, 110, 5)
 	var ids = _get_filtered_card_ids()
 	_sort_card_ids(ids)
 	for card_id in ids:
@@ -458,7 +458,7 @@ func _refresh_deck_display():
 	for child in deck_grid.get_children():
 		child.queue_free()
 	if _deck_scroll:
-		deck_grid.columns = _calc_columns(_deck_scroll, 100, 5)
+		deck_grid.columns = _calc_columns(_deck_scroll, 110, 5)
 	var total = 0
 	var card_ids = current_deck_cards.keys()
 	_sort_card_ids(card_ids)
@@ -497,17 +497,17 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	panel.add_theme_stylebox_override("panel", style)
 
 
-	var pad := w * 0.13
+	var pad := w * 0.15
 	var art_h := h * 0.48
 	var show_rarity := card.rarity != "basic"
 	var band_h := h * 0.05 if show_rarity else 0.0
 	var text_top := h * 0.52
-	var text_bottom := h * 0.93
+	var text_bottom := h * 0.92
 
 	if card.art != "" and not is_locked:
 		var tex_rect = TextureRect.new()
 		tex_rect.offset_left = pad
-		tex_rect.offset_top = h * 0.09
+		tex_rect.offset_top = h * 0.10
 		tex_rect.offset_right = w - pad
 		tex_rect.offset_bottom = art_h
 		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -578,18 +578,18 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	if show_rarity:
 		var band = ColorRect.new()
 		band.offset_left = pad
-		band.offset_top = text_bottom
+		band.offset_top = h * 0.93
 		band.offset_right = w - pad
-		band.offset_bottom = h - pad
+		band.offset_bottom = h * 0.97
 		band.color = rarity_color
 		panel.add_child(band)
 
 		if show_detail:
 			var rarity_lbl = Label.new()
 			rarity_lbl.offset_left = pad + 3
-			rarity_lbl.offset_top = text_bottom
+			rarity_lbl.offset_top = h * 0.93
 			rarity_lbl.offset_right = w - pad - 3
-			rarity_lbl.offset_bottom = h - pad
+			rarity_lbl.offset_bottom = h * 0.97
 			rarity_lbl.text = RARITY_CN.get(card.rarity, card.rarity)
 			rarity_lbl.add_theme_color_override("font_color", Color.BLACK)
 			rarity_lbl.add_theme_font_size_override("font_size", rarity_size)
@@ -664,7 +664,7 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	return panel
 
 func _create_small_card_widget(card: CardData, count: int, is_library: bool = false, is_locked: bool = false) -> Control:
-	var panel = _create_card_visual(card, 100, 131, count, is_locked, false)
+	var panel = _create_card_visual(card, 110, 145, count, is_locked, false)
 	panel.gui_input.connect(_on_card_widget_input.bind(card.id, is_library, is_locked))
 	if not is_locked:
 		panel.mouse_entered.connect(_on_card_hover_entered.bind(panel))
