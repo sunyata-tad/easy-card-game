@@ -496,9 +496,32 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	style.set_corner_radius_all(4)
 	panel.add_theme_stylebox_override("panel", style)
 
+	var frame_path := "res://art_assets/frames/frame_basic.png"
+	match card.rarity:
+		"uncommon":
+			frame_path = "res://art_assets/frames/frame_uncommon.png"
+		"rare":
+			frame_path = "res://art_assets/frames/frame_rare.png"
+		"epic":
+			frame_path = "res://art_assets/frames/frame_epic.png"
+		"unique":
+			frame_path = "res://art_assets/frames/frame_unique.png"
+	var frame_tex = load(frame_path)
+	if frame_tex:
+		var frame_rect = TextureRect.new()
+		frame_rect.offset_left = 0
+		frame_rect.offset_top = 0
+		frame_rect.offset_right = w
+		frame_rect.offset_bottom = h
+		frame_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		frame_rect.stretch_mode = TextureRect.STRETCH_SCALE
+		frame_rect.texture = frame_tex
+		panel.add_child(frame_rect)
+
 	var pad := 2.0
 	var art_h := h * 0.5
-	var band_h := h * 0.05
+	var show_rarity := card.rarity != "basic"
+	var band_h := h * 0.05 if show_rarity else 0.0
 	var text_top := art_h
 	var text_bottom := h - band_h - pad
 
@@ -571,26 +594,27 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(desc_lbl)
 
-	var band = ColorRect.new()
-	band.offset_left = pad
-	band.offset_top = text_bottom
-	band.offset_right = w - pad
-	band.offset_bottom = h - pad
-	band.color = rarity_color
-	panel.add_child(band)
+	if show_rarity:
+		var band = ColorRect.new()
+		band.offset_left = pad
+		band.offset_top = text_bottom
+		band.offset_right = w - pad
+		band.offset_bottom = h - pad
+		band.color = rarity_color
+		panel.add_child(band)
 
-	if show_detail:
-		var rarity_lbl = Label.new()
-		rarity_lbl.offset_left = pad + 3
-		rarity_lbl.offset_top = text_bottom
-		rarity_lbl.offset_right = w - pad - 3
-		rarity_lbl.offset_bottom = h - pad
-		rarity_lbl.text = RARITY_CN.get(card.rarity, card.rarity)
-		rarity_lbl.add_theme_color_override("font_color", Color.BLACK)
-		rarity_lbl.add_theme_font_size_override("font_size", rarity_size)
-		rarity_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		rarity_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		panel.add_child(rarity_lbl)
+		if show_detail:
+			var rarity_lbl = Label.new()
+			rarity_lbl.offset_left = pad + 3
+			rarity_lbl.offset_top = text_bottom
+			rarity_lbl.offset_right = w - pad - 3
+			rarity_lbl.offset_bottom = h - pad
+			rarity_lbl.text = RARITY_CN.get(card.rarity, card.rarity)
+			rarity_lbl.add_theme_color_override("font_color", Color.BLACK)
+			rarity_lbl.add_theme_font_size_override("font_size", rarity_size)
+			rarity_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			rarity_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			panel.add_child(rarity_lbl)
 
 	if is_locked:
 		var lock_lbl = Label.new()
