@@ -488,35 +488,14 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	var rarity_color = RARITY_COLORS.get(card.rarity, Color(0.6, 0.6, 0.6))
 	if is_locked:
 		rarity_color = Color(0.3, 0.3, 0.3)
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
+	style.border_width_left = 3
+	style.border_width_top = 3
+	style.border_width_right = 3
+	style.border_width_bottom = 3
 	style.border_color = rarity_color
 	style.set_corner_radius_all(4)
 	panel.add_theme_stylebox_override("panel", style)
 
-	var frame_path := "res://art_assets/frames/frame_basic.png"
-	match card.rarity:
-		"uncommon":
-			frame_path = "res://art_assets/frames/frame_uncommon.png"
-		"rare":
-			frame_path = "res://art_assets/frames/frame_rare.png"
-		"epic":
-			frame_path = "res://art_assets/frames/frame_epic.png"
-		"unique":
-			frame_path = "res://art_assets/frames/frame_unique.png"
-	var frame_tex = load(frame_path)
-	if frame_tex:
-		var frame_rect = TextureRect.new()
-		frame_rect.offset_left = 0
-		frame_rect.offset_top = 0
-		frame_rect.offset_right = w
-		frame_rect.offset_bottom = h
-		frame_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		frame_rect.stretch_mode = TextureRect.STRETCH_SCALE
-		frame_rect.texture = frame_tex
-		panel.add_child(frame_rect)
 
 	var pad := 2.0
 	var art_h := h * 0.5
@@ -639,6 +618,46 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 		count_lbl.add_theme_font_size_override("font_size", 10)
 		count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		panel.add_child(count_lbl)
+
+	var frame_path := "res://art_assets/frames/frame_basic.png"
+	match card.rarity:
+		"uncommon":
+			frame_path = "res://art_assets/frames/frame_uncommon.png"
+		"rare":
+			frame_path = "res://art_assets/frames/frame_rare.png"
+		"epic":
+			frame_path = "res://art_assets/frames/frame_epic.png"
+		"unique":
+			frame_path = "res://art_assets/frames/frame_unique.png"
+	var frame_tex = load(frame_path)
+	if frame_tex:
+		var frame_rect = TextureRect.new()
+		frame_rect.offset_left = 0
+		frame_rect.offset_top = 0
+		frame_rect.offset_right = w
+		frame_rect.offset_bottom = h
+		frame_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		frame_rect.stretch_mode = TextureRect.STRETCH_SCALE
+		frame_rect.texture = frame_tex
+		panel.add_child(frame_rect)
+
+	if card.rarity != "basic":
+		var gem_size = 10.0 if not show_detail else 20.0
+		var gem = Panel.new()
+		gem.offset_left = 3
+		gem.offset_top = 3
+		gem.offset_right = 3 + gem_size
+		gem.offset_bottom = 3 + gem_size
+		var gem_style = StyleBoxFlat.new()
+		gem_style.bg_color = rarity_color
+		gem_style.set_corner_radius_all(int(gem_size / 2))
+		gem_style.border_width_left = 1
+		gem_style.border_width_top = 1
+		gem_style.border_width_right = 1
+		gem_style.border_width_bottom = 1
+		gem_style.border_color = Color(1, 1, 1, 0.8)
+		gem.add_theme_stylebox_override("panel", gem_style)
+		panel.add_child(gem)
 
 	return panel
 
