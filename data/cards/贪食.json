@@ -1,0 +1,20 @@
+{
+	"id": "贪食",
+	"name": "贪食",
+	"type": "attack",
+	"description": "造成10点伤害，若杀死敌人，获得5点最大生命值",
+	"rarity": "unique",
+	"target_type": "single_enemy",
+	"tags": [
+		"Attack",
+		"Unique"
+	],
+	"treated_as": [],
+	"effects": [
+		{
+			"effect_type": "damage_if_kill_max_hp",
+			"value": 10,
+			"max_hp_gain": 5
+		}
+	]
+}

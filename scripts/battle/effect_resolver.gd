@@ -404,6 +404,56 @@ func _resolve_remove_buff(effect: Dictionary, target) -> Dictionary:
 		return {"success": true, "value": 1}
 	return {"success": false, "value": 0}
 
+## 寒芒出鞘：从抽牌堆搜索一张能造成直接伤害的攻击卡加入手牌
+func _resolve_search_draw_damage_attack(_effect: Dictionary, source) -> Dictionary:
+	if card_system == null:
+		return {"success": false, "value": 0}
+	for i in range(card_system.draw_pile.size()):
+		var card = card_system.draw_pile[i]
+		if card.type == "attack" and _has_damage_effect(card):
+			card_system.draw_pile.remove_at(i)
+			card_system.add_to_hand(card.duplicate())
+			card_system._emit_deck_count()
+			return {"success": true, "value": 1}
+	return {"success": false, "value": 0}
+
+func _has_damage_effect(card: CardData) -> bool:
+	for effect in card.effects:
+		if effect.get("effect_type", "") == "damage":
+			return true
+	return false
+
+## 贪食：造成伤害，若杀死敌人，增加最大生命值
+func _resolve_damage_if_kill_max_hp(effect: Dictionary, source, target) -> Dictionary:
+	var damage = effect.get("value", 0)
+	var max_hp_gain = effect.get("max_hp_gain", 0)
+	if target is EnemyUnit:
+		var result = _resolve_damage(damage, source, target)
+		if target.is_dead and source is PlayerManager:
+			source.max_hp += max_hp_gain
+			source.current_hp += max_hp_gain
+			source.hp_changed.emit(source.current_hp, source.max_hp)
+			if GameData:
+				GameData.player_max_hp = source.max_hp
+				GameData.player_current_hp = source.current_hp
+			return {"success": true, "value": result.get("value", 0), "killed": true, "max_hp_gain": max_hp_gain}
+		return result
+	return {"success": false, "value": 0}
+
+## 截除：造成伤害，若敌人意图不含攻击，将意图变为晕眩
+func _resolve_damage_and_stun_intent(effect: Dictionary, source, target) -> Dictionary:
+	var damage = effect.get("value", 0)
+	if not (source is PlayerManager and target is EnemyUnit):
+		return {"success": false, "value": 0}
+	var result = _resolve_damage(damage, source, target)
+	var intent_type = target.current_intent.get("type", "")
+	if intent_type != "attack":
+		target.set_intent({"type": "stun", "intent_text": "晕眩", "intent_icon": "迷"})
+		var stun_buff = _create_buff_from_id("stun", 1)
+		if stun_buff:
+			target.apply_buff(stun_buff)
+	return result
+
 ## 根据 buff_id 创建 BuffData 实例
 ## 这是 buff 配置的硬编码版本（也可从 JSON 加载）
 func _create_buff_from_id(buff_id: String, stacks: int = 1) -> BuffData:
@@ -474,6 +524,11 @@ func _register_default_handlers() -> void:
 	register_effect_handler("flow_reversal",     func(e, s, _t): return _resolve_flow_reversal(e, s))
 	register_effect_handler("intent_damage",     func(e, s, t): return _resolve_intent_damage(e, s, t))
 	register_effect_handler("remove_buff",       func(e, _s, t): return _resolve_remove_buff(e, t))
+
+	# === 新卡牌效果（2026-10-16） ===
+	register_effect_handler("search_draw_damage_attack", func(e, s, _t): return _resolve_search_draw_damage_attack(e, s))
+	register_effect_handler("damage_if_kill_max_hp",     func(e, s, t): return _resolve_damage_if_kill_max_hp(e, s, t))
+	register_effect_handler("damage_and_stun_intent",    func(e, s, t): return _resolve_damage_and_stun_intent(e, s, t))
 
 	## ========== 扩展指南 ==========
 	## 在此处添加你的自定义效果处理器，示例：

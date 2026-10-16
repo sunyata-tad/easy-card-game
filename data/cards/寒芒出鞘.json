@@ -1,0 +1,18 @@
+{
+	"id": "寒芒出鞘",
+	"name": "寒芒出鞘",
+	"type": "skill",
+	"description": "从牌组挑选一张能够造成直接伤害的攻击卡加入手牌",
+	"rarity": "common",
+	"target_type": "self",
+	"tags": [
+		"Skill",
+		"Common"
+	],
+	"treated_as": [],
+	"effects": [
+		{
+			"effect_type": "search_draw_damage_attack"
+		}
+	]
+}

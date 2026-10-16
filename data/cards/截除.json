@@ -1,0 +1,19 @@
+{
+	"id": "截除",
+	"name": "截除",
+	"type": "attack",
+	"description": "造成10点伤害，敌人的意图不包含攻击时，将敌人的意图变成晕眩",
+	"rarity": "epic",
+	"target_type": "single_enemy",
+	"tags": [
+		"Attack",
+		"Epic"
+	],
+	"treated_as": [],
+	"effects": [
+		{
+			"effect_type": "damage_and_stun_intent",
+			"value": 10
+		}
+	]
+}

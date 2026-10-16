@@ -6,7 +6,7 @@
 		},
 		"keyword": {
 			"description": "关键词效果",
-			"tags": ["Exhaust", "Retain", "Innate", "Ethereal", "Unplayable", "PermanentExhaust"]
+			"tags": ["Exhaust", "Retain", "Innate", "Ethereal", "Unplayable", "PermanentExhaust", "Constant", "UniqueNoDup"]
 		},
 		"archetype": {
 			"description": "系列/字段",
@@ -46,6 +46,16 @@
 		"PermanentExhaust": {
 			"description": "永久消耗（不被视为普通消耗）",
 			"priority": 10,
+			"conflicts": []
+		},
+		"Constant": {
+			"description": "恒常：战斗开始时，只要此卡在构筑中即生效",
+			"priority": 15,
+			"conflicts": []
+		},
+		"UniqueNoDup": {
+			"description": "独一：若牌组构筑没有重复卡牌则生效",
+			"priority": 15,
 			"conflicts": []
 		},
 		"Strike": {

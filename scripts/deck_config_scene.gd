@@ -31,6 +31,7 @@ const RARITY_CN := {
 	"uncommon": "罕见",
 	"rare": "稀有",
 	"epic": "史诗",
+	"unique": "唯一",
 }
 const TAG_CN := {
 	"Attack": "攻击",
@@ -40,11 +41,14 @@ const TAG_CN := {
 	"Uncommon": "罕见",
 	"Rare": "稀有",
 	"Epic": "史诗",
+	"Unique": "唯一",
 	"Debuff": "减益",
 	"Innate": "固有",
 	"Retain": "保留",
 	"Exhaust": "消耗",
 	"PermanentExhaust": "永久消耗",
+	"Constant": "恒常",
+	"UniqueNoDup": "独一",
 }
 
 const RARITY_COLORS = {
@@ -53,6 +57,7 @@ const RARITY_COLORS = {
 	"uncommon": Color(0.3, 0.7, 1.0),
 	"rare": Color(1.0, 0.7, 0.2),
 	"epic": Color(0.8, 0.3, 1.0),
+	"unique": Color(1.0, 0.4, 0.4),
 }
 
 func _ready():
@@ -112,13 +117,13 @@ func _build_ui():
 	var left_panel = _build_left_panel()
 	left_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left_panel.custom_minimum_size = Vector2(size.x * 0.35, size.y - 100)
+	left_panel.custom_minimum_size = Vector2(size.x * 0.28, size.y - 100)
 	main_area.add_child(left_panel)
 
 	var right_panel = _build_right_panel()
 	right_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	right_panel.custom_minimum_size = Vector2(size.x * 0.45, size.y - 100)
+	right_panel.custom_minimum_size = Vector2(size.x * 0.52, size.y - 100)
 	main_area.add_child(right_panel)
 
 	status_label = Label.new()
@@ -396,7 +401,7 @@ func _refresh_deck_display():
 
 func _create_card_widget(card: CardData, count: int, is_library: bool, is_locked: bool = false) -> Control:
 	var panel = Panel.new()
-	panel.custom_minimum_size = Vector2(140, 190)
+	panel.custom_minimum_size = Vector2(130, 190)
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.13, 0.14, 0.18, 1) if not is_locked else Color(0.08, 0.08, 0.10, 1)
 	var rarity_color = RARITY_COLORS.get(card.rarity, Color(0.6, 0.6, 0.6))
@@ -474,6 +479,10 @@ func _on_card_widget_input(event: InputEvent, card_id: String, is_library: bool)
 
 func _add_card_to_deck(card_id: String):
 	var current_count = current_deck_cards.get(card_id, 0)
+	var card = card_database.get_card(card_id)
+	if card and card.rarity == "unique" and current_count >= 1:
+		_show_status("唯一卡牌「%s」只能放入1张" % card.name)
+		return
 	if current_count >= deck_manager.MAX_CARD_COPIES:
 		_show_status("每张卡至多放入%d张" % deck_manager.MAX_CARD_COPIES)
 		return
