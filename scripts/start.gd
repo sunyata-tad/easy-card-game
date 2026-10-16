@@ -124,7 +124,7 @@ func _start_new_game():
 	GameData.initialize_new_run()
 	GameData.player_strength = 5
 	GameData.player_dexterity = 5
-	CardPoolManager.initialize_with_starter_cards()
+	CardPoolManager.unlock_all_cards()
 	_load_player_deck()
 	var start_button = get_node_or_null("MenuCenter/MenuBox/Button_start")
 	TransitionManager.transition(GameManager.go_to_endless_map, start_button)

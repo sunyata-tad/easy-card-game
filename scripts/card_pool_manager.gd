@@ -66,6 +66,20 @@ func initialize_with_starter_cards() -> void:
 	save_pool()
 	card_pool_changed.emit()
 
+func unlock_all_cards() -> void:
+	var card_db = CardDatabase.new()
+	var all_ids = card_db.get_all_card_ids()
+	all_ids.erase("_模板_卡牌名")
+	all_ids.erase("模板示例")
+	var changed := false
+	for card_id in all_ids:
+		if not unlocked_card_ids.has(card_id):
+			unlocked_card_ids.append(card_id)
+			changed = true
+	if changed:
+		save_pool()
+		card_pool_changed.emit()
+
 func save_pool() -> void:
 	var data := {
 		"version": 1,

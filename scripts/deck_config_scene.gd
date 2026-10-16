@@ -16,6 +16,7 @@ var filter_tag: OptionButton
 var deck_count_label: Label
 var status_label: Label
 var name_input: LineEdit
+var filter_unlocked_only: CheckBox
 
 var all_card_ids: Array = []
 
@@ -59,6 +60,7 @@ func _ready():
 	var dm_script = load("res://scripts/deck_manager.gd")
 	deck_manager = dm_script.new()
 	add_child(deck_manager)
+	CardPoolManager.unlock_all_cards()
 	all_card_ids = card_database.get_all_card_ids()
 	all_card_ids.erase("_模板_卡牌名")
 	all_card_ids.erase("模板示例")
@@ -175,8 +177,8 @@ func _build_left_panel():
 
 	deck_grid = GridContainer.new()
 	deck_grid.columns = 4
-	deck_grid.add_theme_constant_override("h_separation", 6)
-	deck_grid.add_theme_constant_override("v_separation", 6)
+	deck_grid.add_theme_constant_override("h_separation", 8)
+	deck_grid.add_theme_constant_override("v_separation", 8)
 	deck_scroll.add_child(deck_grid)
 
 	return panel
@@ -227,15 +229,20 @@ func _build_right_panel():
 	search_input.text_changed.connect(_on_search_changed)
 	vbox.add_child(search_input)
 
+	filter_unlocked_only = CheckBox.new()
+	filter_unlocked_only.text = "只显示已解锁"
+	filter_unlocked_only.toggled.connect(_on_filter_changed)
+	vbox.add_child(filter_unlocked_only)
+
 	var lib_scroll = ScrollContainer.new()
 	lib_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	lib_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_child(lib_scroll)
 
 	library_grid = GridContainer.new()
-	library_grid.columns = 5
-	library_grid.add_theme_constant_override("h_separation", 6)
-	library_grid.add_theme_constant_override("v_separation", 6)
+	library_grid.columns = 4
+	library_grid.add_theme_constant_override("h_separation", 8)
+	library_grid.add_theme_constant_override("v_separation", 8)
 	lib_scroll.add_child(library_grid)
 
 	return panel
@@ -266,7 +273,7 @@ func _on_deck_selected(index: int):
 func _on_name_changed(new_text: String):
 	current_deck_name = new_text
 
-func _on_filter_changed(_index: int):
+func _on_filter_changed(_arg: Variant = null):
 	_refresh_library()
 
 func _on_search_changed(_text: String):
@@ -278,10 +285,13 @@ func _get_filtered_card_ids() -> Array:
 	var rarity_filter = filter_rarity.get_selected_id()
 	var tag_filter = filter_tag.get_selected_id()
 	var search_text = search_input.text.to_lower()
+	var unlocked_only = filter_unlocked_only.button_pressed
 
 	for card_id in all_card_ids:
 		var card = card_database.get_card(card_id)
 		if card == null:
+			continue
+		if unlocked_only and not CardPoolManager.has_card(card_id):
 			continue
 		if type_filter > 0:
 			var type_cn = filter_type.get_item_text(type_filter)
@@ -317,7 +327,8 @@ func _refresh_library():
 		var card = card_database.get_card(card_id)
 		if card == null:
 			continue
-		var widget = _create_card_widget(card, current_deck_cards.get(card_id, 0), true)
+		var is_locked = not CardPoolManager.has_card(card_id)
+		var widget = _create_card_widget(card, current_deck_cards.get(card_id, 0), true, is_locked)
 		library_grid.add_child(widget)
 
 func _populate_filter_options():
@@ -373,7 +384,7 @@ func _refresh_deck_display():
 		if card == null:
 			continue
 		total += count
-		var widget = _create_card_widget(card, count, false)
+		var widget = _create_card_widget(card, count, false, false)
 		deck_grid.add_child(widget)
 	deck_count_label.text = "卡组: %d/40-60" % total
 	var color = Color(0.7, 0.7, 0.7)
@@ -383,12 +394,14 @@ func _refresh_deck_display():
 		color = Color(0.4, 1.0, 0.4)
 	deck_count_label.add_theme_color_override("font_color", color)
 
-func _create_card_widget(card: CardData, count: int, is_library: bool) -> Control:
+func _create_card_widget(card: CardData, count: int, is_library: bool, is_locked: bool = false) -> Control:
 	var panel = Panel.new()
-	panel.custom_minimum_size = Vector2(110, 150)
+	panel.custom_minimum_size = Vector2(140, 190)
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.13, 0.14, 0.18, 1)
+	style.bg_color = Color(0.13, 0.14, 0.18, 1) if not is_locked else Color(0.08, 0.08, 0.10, 1)
 	var rarity_color = RARITY_COLORS.get(card.rarity, Color(0.6, 0.6, 0.6))
+	if is_locked:
+		rarity_color = Color(0.3, 0.3, 0.3)
 	style.border_width_left = 2
 	style.border_width_top = 2
 	style.border_width_right = 2
@@ -412,8 +425,8 @@ func _create_card_widget(card: CardData, count: int, is_library: bool) -> Contro
 
 	var name_lbl = Label.new()
 	name_lbl.text = card.name
-	name_lbl.add_theme_color_override("font_color", Color.WHITE)
-	name_lbl.add_theme_font_size_override("font_size", 13)
+	name_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5) if is_locked else Color.WHITE)
+	name_lbl.add_theme_font_size_override("font_size", 14)
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(name_lbl)
@@ -427,13 +440,20 @@ func _create_card_widget(card: CardData, count: int, is_library: bool) -> Contro
 
 	var desc_lbl = Label.new()
 	desc_lbl.text = card.description
-	desc_lbl.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
-	desc_lbl.add_theme_font_size_override("font_size", 10)
+	desc_lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.45) if is_locked else Color(0.7, 0.7, 0.75))
+	desc_lbl.add_theme_font_size_override("font_size", 11)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(desc_lbl)
 
-	if count > 0:
+	if is_locked:
+		var lock_lbl = Label.new()
+		lock_lbl.text = "🔒"
+		lock_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+		lock_lbl.add_theme_font_size_override("font_size", 16)
+		lock_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vbox.add_child(lock_lbl)
+	elif count > 0:
 		var count_lbl = Label.new()
 		count_lbl.text = "x%d" % count
 		count_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
@@ -441,7 +461,8 @@ func _create_card_widget(card: CardData, count: int, is_library: bool) -> Contro
 		count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		vbox.add_child(count_lbl)
 
-	panel.gui_input.connect(_on_card_widget_input.bind(card.id, is_library))
+	if not is_locked:
+		panel.gui_input.connect(_on_card_widget_input.bind(card.id, is_library))
 	return panel
 
 func _on_card_widget_input(event: InputEvent, card_id: String, is_library: bool):
