@@ -152,6 +152,17 @@ func _on_draw_phase() -> void:
 	# 遗物"终末轮回"效果②生效后：每回合开始抽卡直到手卡≥10
 	if player_manager.relic_manager and player_manager.relic_manager.is_awakened("immortal_cycle"):
 		draw_count = maxi(card_system.max_hand_size - card_system.hand.size(), 0)
+	# Innate 标签：第一回合优先将 Innate 牌从牌库抽到手牌（不占用抽牌数）
+	if is_first_turn:
+		var innate_cards: Array = []
+		for i in range(card_system.draw_pile.size() - 1, -1, -1):
+			if card_system.draw_pile[i].has_tag("Innate"):
+				innate_cards.append(card_system.draw_pile.pop_at(i))
+		for card in innate_cards:
+			card_system.hand.append(card)
+			card_system.card_drawn.emit(card)
+		if innate_cards.size() > 0:
+			card_system.hand_changed.emit(card_system.hand)
 	is_first_turn = false
 	# 正常规则：每回合开始必定抽 1 张（游戏王模式），即使手牌已达上限也会抽到 11 张；
 	# 超出的部分由回合结束的弃牌阶段处理（弃牌降到 max_hand_size）。
@@ -179,7 +190,12 @@ func _on_enemy_turn_phase() -> void:
 	await _execute_enemy_turns()
 
 func _on_turn_end_phase() -> void:
-	var excess = card_system.hand.size() - card_system.max_hand_size
+	# Retain 标签：有 Retain 的牌不计入弃牌数量
+	var non_retain_count := 0
+	for card in card_system.hand:
+		if not card.has_tag("Retain"):
+			non_retain_count += 1
+	var excess = non_retain_count - card_system.max_hand_size
 	var block_discard := false
 	if excess > 0:
 		# 弃牌规则门：HOOK_CHECK_DISCARD 钩子可阻止弃牌（如"本场不弃牌"能力卡）

@@ -117,7 +117,8 @@ func _resolve_damage(base_damage: int, source, target) -> Dictionary:
 		var final_dmg = hc.trigger(HookRegistry.HOOK_CALC_FINAL, raw, ctx)
 		hc.trigger(HookRegistry.HOOK_ON_ATTACK_HIT, final_dmg, {"hit_index": 0})
 		if target is EnemyUnit:
-			target.take_damage(final_dmg, ctx.get("ignore_block", false))
+			var prevent_death = source.buff_manager.has_buff("thin_burial")
+			target.take_damage(final_dmg, ctx.get("ignore_block", false), prevent_death)
 		elif target is PlayerManager:
 			target.take_damage(final_dmg)
 		hc.trigger(HookRegistry.HOOK_ON_ATTACK_END, 0, ctx)
@@ -376,6 +377,33 @@ func _flow_step_hand_to_draw(selected: Array, cs: CardSystem) -> void:
 					cs.move_discard_to_hand(card)
 		)
 
+## 杀意：根据敌人意图条件造成不同伤害
+func _resolve_intent_damage(_effect: Dictionary, source, target) -> Dictionary:
+	if not (source is PlayerManager and target is EnemyUnit):
+		return {"success": false, "value": 0}
+	var intent_type = target.current_intent.get("type", "")
+	if intent_type == "attack":
+		_resolve_damage(10, source, target)
+		source.take_damage(10)
+		return {"success": true, "value": 10}
+	else:
+		var lost_hp = target.max_hp - target.current_hp
+		var damage = int(lost_hp * 0.5) + 10
+		return _resolve_damage(damage, source, target)
+
+## 移除指定 buff
+func _resolve_remove_buff(effect: Dictionary, target) -> Dictionary:
+	var buff_id = effect.get("buff_id", "")
+	if buff_id == "" or target == null:
+		return {"success": false, "value": 0}
+	if target is PlayerManager:
+		target.buff_manager.remove_buff(buff_id)
+		return {"success": true, "value": 1}
+	elif target is EnemyUnit:
+		target.buff_manager.remove_buff(buff_id)
+		return {"success": true, "value": 1}
+	return {"success": false, "value": 0}
+
 ## 根据 buff_id 创建 BuffData 实例
 ## 这是 buff 配置的硬编码版本（也可从 JSON 加载）
 func _create_buff_from_id(buff_id: String, stacks: int = 1) -> BuffData:
@@ -388,6 +416,8 @@ func _create_buff_from_id(buff_id: String, stacks: int = 1) -> BuffData:
 		"regen": {"id": "regen", "name": "再生", "buff_type": "buff", "duration": -1, "stacks": stacks, "trigger_timing": "on_turn_start", "tick_effect": {"type": "heal", "value": 1}},
 		"no_discard": {"id": "no_discard", "name": "不弃", "buff_type": "buff", "duration": -1, "stacks": 1},
 		"stun": {"id": "stun", "name": "迷惑", "buff_type": "debuff", "duration": -1, "stacks": stacks, "stack_decay": {"on_turn_end": 1}},
+		"after_image": {"id": "after_image", "name": "残像", "buff_type": "debuff", "duration": -1, "stacks": 1},
+		"thin_burial": {"id": "thin_burial", "name": "薄葬", "buff_type": "buff", "duration": -1, "stacks": 1},
 	}
 	if configs.has(buff_id): return BuffData.new(configs[buff_id].duplicate(true))
 	return null
@@ -442,6 +472,8 @@ func _register_default_handlers() -> void:
 	register_effect_handler("swap_draw_discard", func(_e, s, _t): return _resolve_swap_draw_discard(s))
 	register_effect_handler("contract",          func(e, s, t): return _resolve_contract(e, s, t))
 	register_effect_handler("flow_reversal",     func(e, s, _t): return _resolve_flow_reversal(e, s))
+	register_effect_handler("intent_damage",     func(e, s, t): return _resolve_intent_damage(e, s, t))
+	register_effect_handler("remove_buff",       func(e, _s, t): return _resolve_remove_buff(e, t))
 
 	## ========== 扩展指南 ==========
 	## 在此处添加你的自定义效果处理器，示例：

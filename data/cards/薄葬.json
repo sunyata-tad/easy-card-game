@@ -1,0 +1,15 @@
+{
+	"id": "薄葬",
+	"name": "薄葬",
+	"type": "skill",
+	"description": "固有、保留、永久消耗。使用后，你的攻击不会杀死敌人，改为保留1点血量。将一张薄葬（关）加入手牌",
+	"rarity": "rare",
+	"target_type": "self",
+	"tags": ["Skill", "Rare", "Innate", "Retain", "Exhaust", "PermanentExhaust"],
+	"treated_as": [],
+	"effects": [
+		{"effect_type": "apply_buff", "buff_id": "thin_burial", "value": 1},
+		{"effect_type": "add_card_to_hand", "card_id": "薄葬（关）"}
+	],
+	"art": ""
+}

@@ -6,7 +6,7 @@
 		},
 		"keyword": {
 			"description": "关键词效果",
-			"tags": ["Exhaust", "Retain", "Innate", "Ethereal", "Unplayable"]
+			"tags": ["Exhaust", "Retain", "Innate", "Ethereal", "Unplayable", "PermanentExhaust"]
 		},
 		"archetype": {
 			"description": "系列/字段",
@@ -41,6 +41,11 @@
 		"Unplayable": {
 			"description": "无法打出",
 			"priority": 100,
+			"conflicts": []
+		},
+		"PermanentExhaust": {
+			"description": "永久消耗（不被视为普通消耗）",
+			"priority": 10,
 			"conflicts": []
 		},
 		"Strike": {

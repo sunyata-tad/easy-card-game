@@ -31,9 +31,18 @@ func _init(enemy_data: EnemyData):
 
 ## 受到伤害，返回实际造成的伤害值
 ## @param ignore_target_block: true 时无视格挡直接扣血
-func take_damage(amount: int, ignore_target_block: bool = false) -> int:
+## @param prevent_death: true 时不会死亡（薄葬效果），保留1点血量
+func take_damage(amount: int, ignore_target_block: bool = false, prevent_death: bool = false) -> int:
 	if amount <= 0 or is_dead:
 		return 0
+	
+	# 残像 buff：受到攻击时永久降低 max_hp（减少量=原始伤害值，不受格挡/减伤影响）
+	if buff_manager.has_buff("after_image"):
+		var reduction = amount
+		max_hp = maxi(max_hp - reduction, 1)
+		if current_hp > max_hp:
+			current_hp = max_hp
+		hp_changed.emit(current_hp, max_hp)
 	
 	# 先经过钩子链处理（如易伤 buff 会增加伤害）
 	var actual_damage = int(hook_chain.trigger(HookRegistry.HOOK_ON_DAMAGE_TAKEN, amount, {}))
@@ -57,6 +66,8 @@ func take_damage(amount: int, ignore_target_block: bool = false) -> int:
 	# 死亡判定：通过钩子链允许阻止死亡（实现"生命归零不会死亡"等效果）
 	if current_hp <= 0:
 		var death_ctx: Dictionary = {"can_die": true, "source_type": "damage"}
+		if prevent_death:
+			death_ctx["can_die"] = false
 		hook_chain.trigger(HookRegistry.HOOK_ON_BEFORE_DEATH, actual_damage, death_ctx)
 		if death_ctx.get("can_die", true):
 			is_dead = true

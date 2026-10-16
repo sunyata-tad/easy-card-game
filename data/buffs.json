@@ -79,6 +79,22 @@
 			"description": "本回合无法行动，回合结束层数-1",
 			"buff_type": "debuff",
 			"modifier_formula": null
+		},
+		"after_image": {
+			"name": "残像",
+			"symbol": "残",
+			"color": "#9933CC",
+			"description": "受到攻击时永久扣除对应伤害的最大生命值",
+			"buff_type": "debuff",
+			"modifier_formula": null
+		},
+		"thin_burial": {
+			"name": "薄葬",
+			"symbol": "葬",
+			"color": "#FFCC33",
+			"description": "攻击不会杀死敌人，改为保留1点血量",
+			"buff_type": "buff",
+			"modifier_formula": null
 		}
 	}
 }
