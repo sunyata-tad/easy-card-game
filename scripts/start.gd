@@ -55,6 +55,20 @@ func _setup_buttons():
 		if not settings_btn.pressed.is_connected(_on_settings_pressed):
 			settings_btn.pressed.connect(_on_settings_pressed)
 
+		# 动态创建卡组配置按钮（插在设置按钮前）
+		var deck_btn = Button.new()
+		deck_btn.name = "Button_deck_config"
+		deck_btn.text = "卡组配置"
+		deck_btn.custom_minimum_size = Vector2(260, 54)
+		deck_btn.button_mask = 7
+		var settings_idx = settings_btn.get_index()
+		menu_box.add_child(deck_btn)
+		menu_box.move_child(deck_btn, settings_idx)
+		if UIStyle:
+			UIStyle.attach_button_anim(deck_btn)
+		if not deck_btn.pressed.is_connected(_on_deck_config_pressed):
+			deck_btn.pressed.connect(_on_deck_config_pressed)
+
 	# 动态创建测试按钮（场景中可能不存在）
 	var test_button = get_node_or_null("Button_test")
 	if test_button == null:
@@ -172,6 +186,10 @@ func _on_exit_pressed() -> void:
 func _on_settings_pressed() -> void:
 	var settings_btn = get_node_or_null("MenuCenter/MenuBox/Button_settings")
 	TransitionManager.transition(GameManager.go_to_settings, settings_btn)
+
+func _on_deck_config_pressed() -> void:
+	var deck_btn = get_node_or_null("MenuCenter/MenuBox/Button_deck_config")
+	TransitionManager.transition(GameManager.go_to_deck_config, deck_btn)
 
 func _on_test_pressed() -> void:
 	var test_button = get_node_or_null("Button_test")

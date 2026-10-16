@@ -11,6 +11,7 @@ extends Node
 enum GameScene {
 	MAIN_MENU,         ## 主菜单
 	SETTINGS,          ## 设置（主界面入口）
+	DECK_CONFIG,       ## 卡组配置
 	MAP,               ## 地图
 	BATTLE,            ## 战斗
 	REWARD,            ## 奖励
@@ -22,6 +23,7 @@ enum GameScene {
 const SCENES := {
 	GameScene.MAIN_MENU: "res://scenes/start.tscn",
 	GameScene.SETTINGS: "res://scenes/SettingsScene.tscn",
+	GameScene.DECK_CONFIG: "res://scenes/DeckConfigScene.tscn",
 	GameScene.MAP: "res://scenes/MapScreen.tscn",
 	GameScene.BATTLE: "res://scenes/BattleScene.tscn",
 	GameScene.REWARD: "res://scenes/RewardScreen.tscn",
@@ -88,6 +90,9 @@ func go_to_main_menu() -> void:
 ## 跳转到设置场景（从主菜单进入）
 func go_to_settings() -> void:
 	change_scene(GameScene.SETTINGS)
+
+func go_to_deck_config() -> void:
+	change_scene(GameScene.DECK_CONFIG)
 
 
 ## 跳转到无尽地图模式
