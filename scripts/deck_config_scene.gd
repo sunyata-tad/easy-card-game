@@ -535,12 +535,12 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	var desc_size := 11
 	var rarity_size := 11
 	if show_detail:
-		name_size = 20
-		type_size = 16
-		desc_size = 16
+		name_size = 18
+		type_size = 13
+		desc_size = 13
 		rarity_size = 14
 
-	var name_h := h * 0.09 if not show_detail else h * 0.1
+	var name_h := float(name_size) * 1.4
 	var name_lbl = Label.new()
 	name_lbl.offset_left = pad + 3
 	name_lbl.offset_top = text_top + 2
@@ -551,21 +551,24 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	name_lbl.add_theme_font_size_override("font_size", name_size)
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_lbl.clip_contents = true
 	panel.add_child(name_lbl)
 
 	var desc_top := text_top + 2 + name_h + 2
 	if show_detail:
+		var type_h := float(type_size) * 1.4
 		var type_lbl = Label.new()
 		type_lbl.offset_left = pad + 3
 		type_lbl.offset_top = desc_top
 		type_lbl.offset_right = w - pad - 3
-		type_lbl.offset_bottom = desc_top + h * 0.08
+		type_lbl.offset_bottom = desc_top + type_h
 		type_lbl.text = TYPE_CN.get(card.type, card.type)
 		type_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8))
 		type_lbl.add_theme_font_size_override("font_size", type_size)
 		type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		type_lbl.clip_contents = true
 		panel.add_child(type_lbl)
-		desc_top += h * 0.08
+		desc_top += type_h + 2
 
 	var desc_lbl = Label.new()
 	desc_lbl.offset_left = pad + 3
@@ -576,6 +579,7 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	desc_lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.45) if is_locked else Color(0.7, 0.7, 0.75))
 	desc_lbl.add_theme_font_size_override("font_size", desc_size)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.clip_contents = true
 
 	panel.add_child(desc_lbl)
 
