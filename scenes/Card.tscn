@@ -128,3 +128,20 @@ theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 11
 horizontal_alignment = 1
 mouse_filter = 2
+[node name="FrameArt" type="TextureRect" parent="."]
+layout_mode = 1
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 160.0
+offset_bottom = 210.0
+expand_mode = 1
+stretch_mode = 5
+mouse_filter = 2
+
+[node name="RarityGem" type="Panel" parent=""]
+layout_mode = 1
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 18.0
+offset_bottom = 18.0
+mouse_filter = 2

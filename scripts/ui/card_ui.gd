@@ -37,7 +37,7 @@ var is_selected: bool = false         ## 短按选中状态：放大悬停于原
 ## 目标选择交互参数
 const DRAG_SPRING_FACTOR := 0.3      ## 小范围拖动弹簧系数（卡牌移动量/鼠标移动量）
 const TARGET_TRIGGER_DIST := 60.0    ## 触发目标瞄准模式的拖动距离阈值
-const SELECTED_SCALE := 1.18         ## 选中状态缩放
+const SELECTED_SCALE := 1.35         ## 选中状态缩放
 const SELECTED_UP_OFFSET := 50.0     ## 选中状态上移距离（像素）
 var drag_start_global_pos: Vector2   ## 拖拽起始时卡牌的全局位置
 
@@ -134,6 +134,7 @@ func setup(card: CardData, pm: PlayerManager = null):
 	# 根据稀有度设置卡面（底色/边框/底角色带/角标）
 	_set_card_color(card.rarity)
 	_set_rarity(card.rarity)
+	_set_frame_art(card.rarity)
 	
 	# 加载卡牌美术
 	var art_rect = get_node_or_null("ArtRect")
@@ -218,6 +219,44 @@ func _set_rarity(rarity: String) -> void:
 		return
 	lbl.text = _get_rarity_text(rarity)
 	lbl.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+
+## 加载稀有度对应的卡框 PNG（叠加在最上层，中心透明不遮挡内容）
+func _set_frame_art(rarity: String) -> void:
+	var frame_path := "res://art_assets/frames/frame_basic.png"
+	match rarity:
+		"uncommon":
+			frame_path = "res://art_assets/frames/frame_uncommon.png"
+		"rare":
+			frame_path = "res://art_assets/frames/frame_rare.png"
+		"epic":
+			frame_path = "res://art_assets/frames/frame_epic.png"
+		"unique":
+			frame_path = "res://art_assets/frames/frame_unique.png"
+	var frame_rect := get_node_or_null("FrameArt") as TextureRect
+	if frame_rect:
+		var tex = load(frame_path)
+		if tex:
+			frame_rect.texture = tex
+			frame_rect.visible = true
+		else:
+			frame_rect.visible = false
+	if rarity != "basic":
+		var gem := get_node_or_null("RarityGem") as Panel
+		if gem:
+			var gem_style := StyleBoxFlat.new()
+			gem_style.bg_color = _get_rarity_color(rarity)
+			gem_style.set_corner_radius_all(7)
+			gem_style.border_width_left = 1
+			gem_style.border_width_top = 1
+			gem_style.border_width_right = 1
+			gem_style.border_width_bottom = 1
+			gem_style.border_color = Color(1, 1, 1, 0.8)
+			gem.add_theme_stylebox_override("panel", gem_style)
+			gem.visible = true
+	else:
+		var gem := get_node_or_null("RarityGem") as Panel
+		if gem:
+			gem.visible = false
 
 func _get_type_text(type: String) -> String:
 	match type:

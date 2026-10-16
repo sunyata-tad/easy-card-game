@@ -404,7 +404,7 @@ func _refresh_library():
 	for child in library_grid.get_children():
 		child.queue_free()
 	if _lib_scroll:
-		library_grid.columns = _calc_columns(_lib_scroll, 80, 5)
+		library_grid.columns = _calc_columns(_lib_scroll, 100, 5)
 	var ids = _get_filtered_card_ids()
 	_sort_card_ids(ids)
 	for card_id in ids:
@@ -458,7 +458,7 @@ func _refresh_deck_display():
 	for child in deck_grid.get_children():
 		child.queue_free()
 	if _deck_scroll:
-		deck_grid.columns = _calc_columns(_deck_scroll, 80, 5)
+		deck_grid.columns = _calc_columns(_deck_scroll, 100, 5)
 	var total = 0
 	var card_ids = current_deck_cards.keys()
 	_sort_card_ids(card_ids)
@@ -501,8 +501,8 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	var art_h := h * 0.48
 	var show_rarity := card.rarity != "basic"
 	var band_h := h * 0.05 if show_rarity else 0.0
-	var text_top := h * 0.54
-	var text_bottom := h * 0.92
+	var text_top := h * 0.52
+	var text_bottom := h * 0.93
 
 	if card.art != "" and not is_locked:
 		var tex_rect = TextureRect.new()
@@ -525,17 +525,17 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	text_bg.color = Color(0.06, 0.07, 0.1, 0.9)
 	panel.add_child(text_bg)
 
-	var name_size := 10
+	var name_size := 11
 	var type_size := 10
-	var desc_size := 8
+	var desc_size := 9
 	var rarity_size := 10
 	if show_detail:
-		name_size = 16
-		type_size = 13
-		desc_size = 13
-		rarity_size = 12
+		name_size = 18
+		type_size = 14
+		desc_size = 14
+		rarity_size = 13
 
-	var name_h := h * 0.12 if not show_detail else h * 0.1
+	var name_h := h * 0.10 if not show_detail else h * 0.1
 	var name_lbl = Label.new()
 	name_lbl.offset_left = pad + 3
 	name_lbl.offset_top = text_top + 2
@@ -571,6 +571,8 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	desc_lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.45) if is_locked else Color(0.7, 0.7, 0.75))
 	desc_lbl.add_theme_font_size_override("font_size", desc_size)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if not show_detail:
+		desc_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	panel.add_child(desc_lbl)
 
 	if show_rarity:
@@ -615,7 +617,7 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 		count_lbl.offset_bottom = pad + h * 0.13
 		count_lbl.text = "x%d" % count
 		count_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
-		count_lbl.add_theme_font_size_override("font_size", 10)
+		count_lbl.add_theme_font_size_override("font_size", 12)
 		count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		panel.add_child(count_lbl)
 
@@ -662,7 +664,7 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	return panel
 
 func _create_small_card_widget(card: CardData, count: int, is_library: bool = false, is_locked: bool = false) -> Control:
-	var panel = _create_card_visual(card, 80, 105, count, is_locked, false)
+	var panel = _create_card_visual(card, 100, 131, count, is_locked, false)
 	panel.gui_input.connect(_on_card_widget_input.bind(card.id, is_library, is_locked))
 	if not is_locked:
 		panel.mouse_entered.connect(_on_card_hover_entered.bind(panel))
