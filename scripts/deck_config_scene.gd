@@ -34,10 +34,18 @@ const TYPE_CN := {
 const RARITY_CN := {
 	"basic": "基础",
 	"common": "普通",
-	"uncommon": "罕见",
-	"rare": "稀有",
-	"epic": "史诗",
+	"uncommon": "稀有",
+	"rare": "史诗",
+	"epic": "唯一",
 	"unique": "唯一",
+}
+const RARITY_ORDER := {
+	"basic": 0,
+	"common": 1,
+	"uncommon": 2,
+	"rare": 3,
+	"epic": 4,
+	"unique": 5,
 }
 const TAG_CN := {
 	"Attack": "攻击",
@@ -79,7 +87,7 @@ func _ready():
 	var filtered: Array = []
 	for cid in all_card_ids:
 		var c = card_database.get_card(cid)
-		if c and not c.has_tag("Derived"):
+		if c and not c.has_tag("Derived") and c.type in ["attack", "skill", "power"]:
 			filtered.append(cid)
 	all_card_ids = filtered
 	_build_ui()
@@ -196,8 +204,9 @@ func _build_left_panel():
 
 	deck_grid = GridContainer.new()
 	deck_grid.columns = 2
-	deck_grid.add_theme_constant_override("h_separation", 4)
-	deck_grid.add_theme_constant_override("v_separation", 4)
+	deck_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	deck_grid.add_theme_constant_override("h_separation", 5)
+	deck_grid.add_theme_constant_override("v_separation", 5)
 	deck_scroll.add_child(deck_grid)
 
 	return panel
@@ -259,9 +268,10 @@ func _build_right_panel():
 	vbox.add_child(lib_scroll)
 
 	library_grid = GridContainer.new()
-	library_grid.columns = 2
-	library_grid.add_theme_constant_override("h_separation", 4)
-	library_grid.add_theme_constant_override("v_separation", 4)
+	library_grid.columns = 3
+	library_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	library_grid.add_theme_constant_override("h_separation", 5)
+	library_grid.add_theme_constant_override("v_separation", 5)
 	lib_scroll.add_child(library_grid)
 
 	return panel
@@ -369,7 +379,7 @@ func _populate_filter_options():
 			if not tags.has(tag_cn):
 				tags.append(tag_cn)
 	types.sort()
-	rarities.sort()
+	rarities.sort_custom(func(a, b): return RARITY_ORDER.get(a, 99) < RARITY_ORDER.get(b, 99))
 	tags.sort()
 	_rebuild_option_button(filter_type, "全部类型", types)
 	_rebuild_option_button(filter_rarity, "全部稀有度", rarities)
@@ -415,46 +425,54 @@ func _refresh_deck_display():
 
 func _create_small_card_widget(card: CardData, count: int, is_library: bool = false, is_locked: bool = false) -> Control:
 	var panel = Panel.new()
-	panel.custom_minimum_size = Vector2(0, 30)
+	panel.custom_minimum_size = Vector2(100, 42)
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.08, 0.08, 0.10, 1) if is_locked else Color(0.13, 0.14, 0.18, 1)
 	var rarity_color = RARITY_COLORS.get(card.rarity, Color(0.6, 0.6, 0.6))
 	if is_locked:
 		rarity_color = Color(0.3, 0.3, 0.3)
-	style.border_width_left = 3
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
 	style.border_color = rarity_color
-	style.corner_radius_top_left = 3
-	style.corner_radius_bottom_left = 3
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_right = 4
+	style.corner_radius_bottom_left = 4
 	panel.add_theme_stylebox_override("panel", style)
 
-	var hbox = HBoxContainer.new()
-	hbox.offset_left = 6
-	hbox.offset_top = 2
-	hbox.offset_right = -4
-	hbox.offset_bottom = -2
-	hbox.anchor_right = 1.0
-	hbox.anchor_bottom = 1.0
-	hbox.add_theme_constant_override("separation", 4)
-	panel.add_child(hbox)
+	var vbox = VBoxContainer.new()
+	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vbox.offset_left = 3
+	vbox.offset_top = 2
+	vbox.offset_right = -3
+	vbox.offset_bottom = -2
+	vbox.add_theme_constant_override("separation", 1)
+	panel.add_child(vbox)
 
 	var name_lbl = Label.new()
 	name_lbl.text = card.name
 	name_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5) if is_locked else Color.WHITE)
-	name_lbl.add_theme_font_size_override("font_size", 13)
-	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hbox.add_child(name_lbl)
+	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(name_lbl)
 
 	if is_locked:
 		var lock_lbl = Label.new()
 		lock_lbl.text = "🔒"
-		lock_lbl.add_theme_font_size_override("font_size", 12)
-		hbox.add_child(lock_lbl)
-	elif count > 0:
+		lock_lbl.add_theme_font_size_override("font_size", 11)
+		lock_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vbox.add_child(lock_lbl)
+	elif count > 1:
 		var count_lbl = Label.new()
 		count_lbl.text = "x%d" % count
 		count_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
-		count_lbl.add_theme_font_size_override("font_size", 13)
-		hbox.add_child(count_lbl)
+		count_lbl.add_theme_font_size_override("font_size", 11)
+		count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vbox.add_child(count_lbl)
 
 	panel.gui_input.connect(_on_card_widget_input.bind(card.id, is_library, is_locked))
 	return panel
