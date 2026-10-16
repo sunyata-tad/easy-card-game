@@ -404,7 +404,7 @@ func _refresh_library():
 	for child in library_grid.get_children():
 		child.queue_free()
 	if _lib_scroll:
-		library_grid.columns = _calc_columns(_lib_scroll, 200, 5)
+		library_grid.columns = _calc_columns(_lib_scroll, 120, 5)
 	var ids = _get_filtered_card_ids()
 	_sort_card_ids(ids)
 	for card_id in ids:
@@ -460,7 +460,7 @@ func _refresh_deck_display():
 	for child in deck_grid.get_children():
 		child.queue_free()
 	if _deck_scroll:
-		deck_grid.columns = _calc_columns(_deck_scroll, 200, 5)
+		deck_grid.columns = _calc_columns(_deck_scroll, 120, 5)
 	var total = 0
 	var card_ids = current_deck_cards.keys()
 	_sort_card_ids(card_ids)
@@ -507,7 +507,7 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	var show_rarity := card.rarity != "basic"
 	var band_h := h * 0.05 if show_rarity else 0.0
 	var text_top := h * 0.52
-	var text_bottom := h * 0.92
+	var text_bottom := h * 0.89
 
 	if card.art != "" and not is_locked:
 		var tex_rect = TextureRect.new()
@@ -580,8 +580,9 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	desc_lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.45) if is_locked else Color(0.7, 0.7, 0.75))
 	desc_lbl.add_theme_font_size_override("font_size", desc_size)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-
 	desc_lbl.add_theme_constant_override("line_spacing", 0)
+	if not show_detail:
+		desc_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 
 	panel.add_child(desc_lbl)
 
@@ -675,7 +676,7 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 
 
 func _create_small_card_widget(card: CardData, count: int, is_library: bool = false, is_locked: bool = false) -> Control:
-	var panel = _create_card_visual(card, 200, 263, count, is_locked, false)
+	var panel = _create_card_visual(card, 120, 158, count, is_locked, false)
 	panel.gui_input.connect(_on_card_widget_input.bind(card.id, is_library, is_locked))
 	if not is_locked:
 		panel.mouse_entered.connect(_on_card_hover_entered.bind(panel))
