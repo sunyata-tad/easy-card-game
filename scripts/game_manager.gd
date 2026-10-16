@@ -117,7 +117,10 @@ func go_to_test_map() -> void:
 		{"card_id": "契约", "count": 1},
 		{"card_id": "斩击", "count": 3},
 		{"card_id": "格挡", "count": 5},
-		{"card_id": "招架", "count": 3}
+		{"card_id": "招架", "count": 3},
+		{"card_id": "杀意", "count": 2},
+		{"card_id": "必然杀", "count": 1},
+		{"card_id": "薄葬", "count": 1}
 	])
 	var data: Dictionary = {"map_id": "test", "test_mode": true}
 	change_scene(GameScene.MAP, data)

@@ -251,20 +251,20 @@ func _resolve_apply_buff(effect: Dictionary, target) -> Dictionary:
 func _resolve_add_card(effect: Dictionary, source) -> Dictionary:
 	var card = card_database.get_card(effect.get("card_id", ""))
 	if card == null: return {"success": false, "value": 0}
-	if source.has_method("get") and source.get("card_system"): source.card_system.add_to_hand(card.duplicate()); return {"success": true, "value": 1}
+	if card_system: card_system.add_to_hand(card.duplicate()); return {"success": true, "value": 1}
 	return {"success": false, "value": 0}
 
 ## 按标签从抽牌堆搜索并抽取卡牌
 func _resolve_search_draw_by_tag(effect: Dictionary, source) -> Dictionary:
-	if source.has_method("get") and source.get("card_system"):
-		var card = source.card_system.search_and_draw_by_tag(effect.get("target_tag", ""))
+	if card_system:
+		var card = card_system.search_and_draw_by_tag(effect.get("target_tag", ""))
 		return {"success": card != null, "value": 1}
 	return {"success": false, "value": 0}
 
 ## 按标签从弃牌堆搜索并抽取卡牌
 func _resolve_search_discard_by_tag(effect: Dictionary, source) -> Dictionary:
-	if source.has_method("get") and source.get("card_system"):
-		var card = source.card_system.search_discard_and_draw_by_tag(effect.get("target_tag", ""))
+	if card_system:
+		var card = card_system.search_discard_and_draw_by_tag(effect.get("target_tag", ""))
 		return {"success": card != null, "value": 1}
 	return {"success": false, "value": 0}
 
