@@ -12,14 +12,15 @@ FRAMES_DIR = os.path.join(BASE_DIR, "frames")
 os.makedirs(FRAMES_DIR, exist_ok=True)
 
 STYLE = (
-    "dark fantasy card game frame border template, "
-    "ornate metallic border with decorative corners and runes, "
-    "top half dark recessed area for card artwork, "
-    "bottom half darker stone tablet panel for text description, "
+    "dark fantasy card game frame border ONLY, "
+    "hollow empty center with nothing inside, "
+    "the entire middle area is pure solid black flat color with no details, "
+    "only the outer ornate metallic border frame is visible, "
+    "decorative corners and runes on the border, "
     "vertical portrait card layout, "
-    "silver and dark grey metal tones with subtle wear and battle damage, "
+    "silver and dark grey metal tones with subtle wear, "
     "high quality game UI design, symmetrical, "
-    "no text no watermark no letters no words"
+    "no text no watermark no letters no words no illustration no image inside"
 )
 
 FRAMES = {

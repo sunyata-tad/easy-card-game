@@ -1,15 +1,31 @@
 """
-处理卡框图片：将中间区域设为透明，只保留边框和宝石装饰。
-处理后的卡框可以作为最上层渲染，边框和宝石可见，中间透明不遮挡卡图和文字。
+处理卡框图片：
+1. 用 PIL 重新保存为真正 PNG 格式（Pollinations.ai 返回 JPEG）
+2. 精确镂空卡图区（上半部分）和描述区（下半部分），只保留外圈边框和中间分隔线
+
+卡牌布局（512×672，比例 1:1.3125）：
+- 外圈边框：约 6-8% 宽
+- 卡图区：y = 6% ~ 50%, x = 7% ~ 93%  → 透明
+- 中间分隔线：y = 50% ~ 52%  → 保留
+- 描述区：y = 52% ~ 94%, x = 7% ~ 93%  → 透明
+- 底部稀有度色带：y = 94% ~ 98%  → 保留
 """
-from PIL import Image, ImageDraw
+from PIL import Image
 import os
 
 FRAME_DIR = os.path.join(os.path.dirname(__file__), "frames")
 
 # 边框保留宽度（百分比）
-BORDER_W_PCT = 0.07  # 左右边框保留 7%
-BORDER_H_PCT = 0.06  # 上下边框保留 6%
+BORDER_W_PCT = 0.07   # 左右边框保留 7%
+
+# 卡图区（上半部分中间）→ 透明
+ART_TOP_PCT = 0.06
+ART_BOT_PCT = 0.50
+
+# 描述区（下半部分中间）→ 透明
+DESC_TOP_PCT = 0.52
+DESC_BOT_PCT = 0.94
+
 
 def process_frame(name):
     path = os.path.join(FRAME_DIR, name)
@@ -17,22 +33,31 @@ def process_frame(name):
     w, h = img.size
     pixels = img.load()
 
-    # 中间透明区域的边界
     inner_left = int(w * BORDER_W_PCT)
     inner_right = int(w * (1 - BORDER_W_PCT))
-    inner_top = int(h * BORDER_H_PCT)
-    inner_bottom = int(h * (1 - BORDER_H_PCT))
 
-    # 将中间区域设为透明
-    for y in range(inner_top, inner_bottom):
+    # 卡图区透明
+    art_top = int(h * ART_TOP_PCT)
+    art_bot = int(h * ART_BOT_PCT)
+    for y in range(art_top, art_bot):
         for x in range(inner_left, inner_right):
             pixels[x, y] = (0, 0, 0, 0)
 
-    # 保存
+    # 描述区透明
+    desc_top = int(h * DESC_TOP_PCT)
+    desc_bot = int(h * DESC_BOT_PCT)
+    for y in range(desc_top, desc_bot):
+        for x in range(inner_left, inner_right):
+            pixels[x, y] = (0, 0, 0, 0)
+
     img.save(path, "PNG")
-    print(f"处理完成: {name} ({w}x{h}), 透明区域: ({inner_left},{inner_top})-({inner_right},{inner_bottom})")
+    print(f"处理完成: {name} ({w}x{h})")
+    print(f"  卡图区透明: ({inner_left},{art_top})-({inner_right},{art_bot})")
+    print(f"  描述区透明: ({inner_left},{desc_top})-({inner_right},{desc_bot})")
+
 
 if __name__ == "__main__":
-    for name in ["frame_basic.png", "frame_uncommon.png", "frame_rare.png", "frame_epic.png", "frame_unique.png"]:
+    for name in ["frame_basic.png", "frame_uncommon.png", "frame_rare.png",
+                 "frame_epic.png", "frame_unique.png"]:
         process_frame(name)
     print("全部处理完成！")
