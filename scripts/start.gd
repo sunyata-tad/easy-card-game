@@ -11,6 +11,7 @@ func _ready():
 		call_deferred("play_entry_animation")
 
 
+
 ## 连接按钮信号，动态创建测试按钮
 func _setup_buttons():
 	var start_button = get_node_or_null("MenuCenter/MenuBox/Button_start")

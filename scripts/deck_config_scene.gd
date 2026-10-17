@@ -139,7 +139,7 @@ func _build_ui():
 		UIStyle.attach_button_anim(delete_btn)
 	top_bar.add_child(delete_btn)
 
-	var _left_margin = size.x * 0.1
+	var _left_margin = size.x * 0.05
 	var main_area = HBoxContainer.new()
 	main_area.position = Vector2(20 + _left_margin, 60)
 	main_area.size = Vector2(size.x - 40 - _left_margin, size.y - 100)
@@ -149,7 +149,7 @@ func _build_ui():
 	var left_panel = _build_left_panel()
 	left_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left_panel.custom_minimum_size = Vector2(size.x * 0.28, size.y - 100)
+	left_panel.custom_minimum_size = Vector2(size.x * 0.38, size.y - 100)
 	main_area.add_child(left_panel)
 
 	var right_panel = _build_right_panel()
@@ -404,7 +404,8 @@ func _refresh_library():
 	for child in library_grid.get_children():
 		child.queue_free()
 	if _lib_scroll:
-		library_grid.columns = _calc_columns(_lib_scroll, 90, 5)
+		library_grid.columns = 6
+
 	var ids = _get_filtered_card_ids()
 	_sort_card_ids(ids)
 	for card_id in ids:
@@ -414,6 +415,7 @@ func _refresh_library():
 		var is_locked = not CardPoolManager.has_card(card_id)
 		var widget = _create_small_card_widget(card, current_deck_cards.get(card_id, 0), true, is_locked)
 		library_grid.add_child(widget)
+
 
 
 
@@ -460,7 +462,7 @@ func _refresh_deck_display():
 	for child in deck_grid.get_children():
 		child.queue_free()
 	if _deck_scroll:
-		deck_grid.columns = _calc_columns(_deck_scroll, 90, 5)
+		deck_grid.columns = 5
 	var total = 0
 	var card_ids = current_deck_cards.keys()
 	_sort_card_ids(card_ids)
@@ -655,7 +657,7 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 		panel.add_child(frame_rect)
 
 	if card.rarity != "basic":
-		var gem_size = 8.0 if not show_detail else 20.0
+		var gem_size = 5.0 if not show_detail else 20.0
 		var gem = Panel.new()
 		gem.offset_left = 3
 		gem.offset_top = 3
@@ -676,7 +678,7 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 
 
 func _create_small_card_widget(card: CardData, count: int, is_library: bool = false, is_locked: bool = false) -> Control:
-	var panel = _create_card_visual(card, 90, 118, count, is_locked, false)
+	var panel = _create_card_visual(card, 70, 92, count, is_locked, false)
 	panel.gui_input.connect(_on_card_widget_input.bind(card.id, is_library, is_locked))
 	if not is_locked:
 		panel.mouse_entered.connect(_on_card_hover_entered.bind(panel))
