@@ -404,7 +404,7 @@ func _refresh_library():
 	for child in library_grid.get_children():
 		child.queue_free()
 	if _lib_scroll:
-		library_grid.columns = _calc_columns(_lib_scroll, 120, 5)
+		library_grid.columns = _calc_columns(_lib_scroll, 90, 5)
 	var ids = _get_filtered_card_ids()
 	_sort_card_ids(ids)
 	for card_id in ids:
@@ -460,7 +460,7 @@ func _refresh_deck_display():
 	for child in deck_grid.get_children():
 		child.queue_free()
 	if _deck_scroll:
-		deck_grid.columns = _calc_columns(_deck_scroll, 120, 5)
+		deck_grid.columns = _calc_columns(_deck_scroll, 90, 5)
 	var total = 0
 	var card_ids = current_deck_cards.keys()
 	_sort_card_ids(card_ids)
@@ -530,10 +530,10 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	text_bg.color = Color(0.06, 0.07, 0.1, 0.9)
 	panel.add_child(text_bg)
 
-	var name_size := 13
-	var type_size := 11
-	var desc_size := 11
-	var rarity_size := 11
+	var name_size := 8
+	var type_size := 8
+	var desc_size := 7
+	var rarity_size := 8
 	if show_detail:
 		name_size = 16
 		type_size = 12
@@ -655,7 +655,7 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 		panel.add_child(frame_rect)
 
 	if card.rarity != "basic":
-		var gem_size = 10.0 if not show_detail else 20.0
+		var gem_size = 8.0 if not show_detail else 20.0
 		var gem = Panel.new()
 		gem.offset_left = 3
 		gem.offset_top = 3
@@ -676,7 +676,7 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 
 
 func _create_small_card_widget(card: CardData, count: int, is_library: bool = false, is_locked: bool = false) -> Control:
-	var panel = _create_card_visual(card, 120, 158, count, is_locked, false)
+	var panel = _create_card_visual(card, 90, 118, count, is_locked, false)
 	panel.gui_input.connect(_on_card_widget_input.bind(card.id, is_library, is_locked))
 	if not is_locked:
 		panel.mouse_entered.connect(_on_card_hover_entered.bind(panel))
