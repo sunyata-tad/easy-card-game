@@ -95,6 +95,7 @@ func _ready():
 	_refresh_deck_dropdown()
 	_refresh_library()
 
+
 func _build_ui():
 	size = get_viewport_rect().size
 	if UIStyle:
@@ -474,8 +475,9 @@ func _refresh_deck_display():
 		if card == null:
 			continue
 		total += count
-		var widget = _create_small_card_widget(card, count, false, false)
-		deck_grid.add_child(widget)
+		for _i in range(count):
+			var widget = _create_small_card_widget(card, 0, false, false)
+			deck_grid.add_child(widget)
 	deck_count_label.text = "卡组: %d/40-60" % total
 	var color = Color(0.7, 0.7, 0.7)
 	if total < deck_manager.MIN_DECK_SIZE or total > deck_manager.MAX_DECK_SIZE:
@@ -622,17 +624,27 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 		lock_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lock_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		panel.add_child(lock_lbl)
-	elif count > 1:
-		var count_lbl = Label.new()
-		count_lbl.offset_left = w * 0.75
-		count_lbl.offset_top = pad
-		count_lbl.offset_right = w - pad
-		count_lbl.offset_bottom = pad + h * 0.13
-		count_lbl.text = "x%d" % count
-		count_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
-		count_lbl.add_theme_font_size_override("font_size", 12)
-		count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		panel.add_child(count_lbl)
+	elif count > 0:
+		var is_unique = card.rarity == "unique"
+		var dot_total = 1 if is_unique else 3
+		var filled = min(count, dot_total)
+		var dot_size = 4.0
+		var dot_gap = 2.0
+		var dots_w = dot_total * dot_size + (dot_total - 1) * dot_gap
+		var dot_x = (w - dots_w) / 2.0
+		var dot_y = h - dot_size - 2.0
+
+		for i in range(dot_total):
+			var dot = Panel.new()
+			dot.offset_left = dot_x + i * (dot_size + dot_gap)
+			dot.offset_top = dot_y
+			dot.offset_right = dot_x + i * (dot_size + dot_gap) + dot_size
+			dot.offset_bottom = dot_y + dot_size
+			var dot_style = StyleBoxFlat.new()
+			dot_style.bg_color = Color(1, 1, 1, 0.9) if i < filled else Color(0.3, 0.3, 0.3, 0.6)
+			dot_style.set_corner_radius_all(int(dot_size / 2))
+			dot.add_theme_stylebox_override("panel", dot_style)
+			panel.add_child(dot)
 
 	var frame_path := "res://art_assets/frames/frame_basic.png"
 	match card.rarity:
