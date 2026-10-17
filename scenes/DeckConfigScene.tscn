@@ -1,6 +1,22 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/deck_config_scene.gd" id="1_deck"]
+
+[sub_resource type="StyleBoxFlat" id="style_panel"]
+bg_color = Color(0.1, 0.11, 0.15, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.2, 0.25, 1)
+
+[sub_resource type="StyleBoxFlat" id="style_panel2"]
+bg_color = Color(0.1, 0.11, 0.15, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.2, 0.25, 1)
 
 [node name="DeckConfigScene" type="Control"]
 layout_mode = 3
@@ -10,3 +26,173 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_deck")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.09, 0.12, 1)
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+layout_mode = 3
+anchor_right = 1.0
+offset_left = 20.0
+offset_top = 10.0
+offset_right = -20.0
+offset_bottom = 50.0
+grow_horizontal = 2
+
+[node name="BackButton" type="Button" parent="TopBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 36)
+text = "← 返回"
+
+[node name="Spacer" type="Control" parent="TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SaveButton" type="Button" parent="TopBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 36)
+text = "保存卡组"
+
+[node name="DeleteButton" type="Button" parent="TopBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 36)
+text = "删除卡组"
+
+[node name="MainArea" type="HBoxContainer" parent="."]
+layout_mode = 3
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 78.0
+offset_top = 60.0
+offset_right = -20.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="LeftPanel" type="Panel" parent="MainArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(438, 548)
+theme_override_styles/panel = SubResource("style_panel")
+
+[node name="LeftVBox" type="VBoxContainer" parent="MainArea/LeftPanel"]
+layout_mode = 1
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 8
+
+[node name="NameRow" type="HBoxContainer" parent="MainArea/LeftPanel/LeftVBox"]
+layout_mode = 2
+
+[node name="NameLabel" type="Label" parent="MainArea/LeftPanel/LeftVBox/NameRow"]
+layout_mode = 2
+text = "卡组名:"
+
+[node name="NameInput" type="LineEdit" parent="MainArea/LeftPanel/LeftVBox/NameRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "输入卡组名"
+
+[node name="DeckNameDropdown" type="OptionButton" parent="MainArea/LeftPanel/LeftVBox/NameRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 30)
+
+[node name="DeckCountLabel" type="Label" parent="MainArea/LeftPanel/LeftVBox"]
+layout_mode = 2
+text = "卡组: 0/40-60"
+
+[node name="DeckScroll" type="ScrollContainer" parent="MainArea/LeftPanel/LeftVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_horizontal = 3
+
+[node name="DeckGrid" type="GridContainer" parent="MainArea/LeftPanel/LeftVBox/DeckScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 5
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 5
+
+[node name="RightPanel" type="Panel" parent="MainArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(599, 548)
+theme_override_styles/panel = SubResource("style_panel2")
+
+[node name="RightVBox" type="VBoxContainer" parent="MainArea/RightPanel"]
+layout_mode = 1
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 8
+
+[node name="FilterRow" type="HBoxContainer" parent="MainArea/RightPanel/RightVBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="FilterType" type="OptionButton" parent="MainArea/RightPanel/RightVBox/FilterRow"]
+layout_mode = 2
+item_count = 1
+popup/item_0/text = "全部类型"
+popup/item_0/id = 0
+
+[node name="FilterRarity" type="OptionButton" parent="MainArea/RightPanel/RightVBox/FilterRow"]
+layout_mode = 2
+item_count = 1
+popup/item_0/text = "全部稀有度"
+popup/item_0/id = 0
+
+[node name="FilterTag" type="OptionButton" parent="MainArea/RightPanel/RightVBox/FilterRow"]
+layout_mode = 2
+item_count = 1
+popup/item_0/text = "全部词条"
+popup/item_0/id = 0
+
+[node name="SearchInput" type="LineEdit" parent="MainArea/RightPanel/RightVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "搜索卡名或效果..."
+
+[node name="FilterUnlockedOnly" type="CheckBox" parent="MainArea/RightPanel/RightVBox"]
+layout_mode = 2
+text = "只显示已解锁"
+
+[node name="LibScroll" type="ScrollContainer" parent="MainArea/RightPanel/RightVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_horizontal = 3
+
+[node name="LibraryGrid" type="GridContainer" parent="MainArea/RightPanel/RightVBox/LibScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 6
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 5
+
+[node name="StatusLabel" type="Label" parent="."]
+layout_mode = 3
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -30.0
+offset_right = -20.0
+offset_bottom = -6.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)

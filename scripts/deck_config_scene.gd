@@ -6,21 +6,21 @@ var deck_manager: Node
 var current_deck_name: String = ""
 var current_deck_cards: Dictionary = {}
 
-var deck_name_dropdown: OptionButton
-var deck_grid: GridContainer
-var library_grid: GridContainer
-var search_input: LineEdit
-var filter_type: OptionButton
-var filter_rarity: OptionButton
-var filter_tag: OptionButton
-var deck_count_label: Label
-var status_label: Label
-var name_input: LineEdit
-var filter_unlocked_only: CheckBox
+@onready var deck_name_dropdown: OptionButton = $MainArea/LeftPanel/LeftVBox/NameRow/DeckNameDropdown
+@onready var deck_grid: GridContainer = $MainArea/LeftPanel/LeftVBox/DeckScroll/DeckGrid
+@onready var library_grid: GridContainer = $MainArea/RightPanel/RightVBox/LibScroll/LibraryGrid
+@onready var search_input: LineEdit = $MainArea/RightPanel/RightVBox/SearchInput
+@onready var filter_type: OptionButton = $MainArea/RightPanel/RightVBox/FilterRow/FilterType
+@onready var filter_rarity: OptionButton = $MainArea/RightPanel/RightVBox/FilterRow/FilterRarity
+@onready var filter_tag: OptionButton = $MainArea/RightPanel/RightVBox/FilterRow/FilterTag
+@onready var deck_count_label: Label = $MainArea/LeftPanel/LeftVBox/DeckCountLabel
+@onready var status_label: Label = $StatusLabel
+@onready var name_input: LineEdit = $MainArea/LeftPanel/LeftVBox/NameRow/NameInput
+@onready var filter_unlocked_only: CheckBox = $MainArea/RightPanel/RightVBox/FilterUnlockedOnly
 
 var all_card_ids: Array = []
-var _deck_scroll: ScrollContainer = null
-var _lib_scroll: ScrollContainer = null
+@onready var _deck_scroll: ScrollContainer = $MainArea/LeftPanel/LeftVBox/DeckScroll
+@onready var _lib_scroll: ScrollContainer = $MainArea/RightPanel/RightVBox/LibScroll
 var _refresh_pending: bool = false
 var _detail_panel: Panel = null
 var _detail_big_card: Panel = null
@@ -97,199 +97,37 @@ func _ready():
 
 
 func _build_ui():
-	size = get_viewport_rect().size
+
 	if UIStyle:
 		UIStyle.add_background(self, "menu", 0.35)
-	else:
-		var bg = ColorRect.new()
-		bg.color = Color(0.08, 0.09, 0.12, 1)
-		bg.size = size
-		add_child(bg)
+		var bg = get_node_or_null("Background")
+		if bg:
+			bg.visible = false
 
-	var top_bar = HBoxContainer.new()
-	top_bar.position = Vector2(20, 10)
-	top_bar.size = Vector2(size.x - 40, 40)
-	top_bar.alignment = BoxContainer.ALIGNMENT_BEGIN
-	add_child(top_bar)
-
-	var back_btn = Button.new()
-	back_btn.text = "← 返回"
-	back_btn.custom_minimum_size = Vector2(100, 36)
+	var back_btn = $TopBar/BackButton
 	back_btn.pressed.connect(_on_back)
 	if UIStyle:
 		UIStyle.attach_button_anim(back_btn)
-	top_bar.add_child(back_btn)
 
-	var spacer = Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top_bar.add_child(spacer)
-
-	var save_btn = Button.new()
-	save_btn.text = "保存卡组"
-	save_btn.custom_minimum_size = Vector2(100, 36)
+	var save_btn = $TopBar/SaveButton
 	save_btn.pressed.connect(_on_save)
 	if UIStyle:
 		UIStyle.attach_button_anim(save_btn)
-	top_bar.add_child(save_btn)
 
-	var delete_btn = Button.new()
-	delete_btn.text = "删除卡组"
-	delete_btn.custom_minimum_size = Vector2(100, 36)
+	var delete_btn = $TopBar/DeleteButton
 	delete_btn.pressed.connect(_on_delete)
 	if UIStyle:
 		UIStyle.attach_button_anim(delete_btn)
-	top_bar.add_child(delete_btn)
 
-	var _left_margin = size.x * 0.05
-	var main_area = HBoxContainer.new()
-	main_area.position = Vector2(20 + _left_margin, 60)
-	main_area.size = Vector2(size.x - 40 - _left_margin, size.y - 100)
-	main_area.add_theme_constant_override("separation", 12)
-	add_child(main_area)
-
-	var left_panel = _build_left_panel()
-	left_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left_panel.custom_minimum_size = Vector2(size.x * 0.38, size.y - 100)
-	main_area.add_child(left_panel)
-
-	var right_panel = _build_right_panel()
-	right_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	right_panel.custom_minimum_size = Vector2(size.x * 0.52, size.y - 100)
-	main_area.add_child(right_panel)
-
-	status_label = Label.new()
-	status_label.position = Vector2(20, size.y - 30)
-	status_label.size = Vector2(size.x - 40, 24)
-	status_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
-	add_child(status_label)
-
-func _build_left_panel():
-	var panel = Panel.new()
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.11, 0.15, 1)
-	style.border_width_left = 1
-	style.border_width_top = 1
-	style.border_width_right = 1
-	style.border_width_bottom = 1
-	style.border_color = Color(0.2, 0.2, 0.25, 1)
-	panel.add_theme_stylebox_override("panel", style)
-
-	var vbox = VBoxContainer.new()
-	vbox.offset_left = 8
-	vbox.offset_top = 8
-	vbox.offset_right = -8
-	vbox.offset_bottom = -8
-	vbox.anchor_right = 1.0
-	vbox.anchor_bottom = 1.0
-	vbox.add_theme_constant_override("separation", 8)
-	panel.add_child(vbox)
-
-	var name_row = HBoxContainer.new()
-	vbox.add_child(name_row)
-
-	var name_lbl = Label.new()
-	name_lbl.text = "卡组名:"
-	name_row.add_child(name_lbl)
-
-	name_input = LineEdit.new()
-	name_input.placeholder_text = "输入卡组名"
-	name_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_input.text_changed.connect(_on_name_changed)
-	name_row.add_child(name_input)
-
-	deck_name_dropdown = OptionButton.new()
-	deck_name_dropdown.custom_minimum_size = Vector2(150, 30)
 	deck_name_dropdown.item_selected.connect(_on_deck_selected)
-	name_row.add_child(deck_name_dropdown)
-
-	deck_count_label = Label.new()
-	deck_count_label.text = "卡组: 0/40-60"
-	vbox.add_child(deck_count_label)
-
-	var deck_scroll = ScrollContainer.new()
-	deck_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	deck_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	deck_scroll.resized.connect(_on_scroll_resized)
-	vbox.add_child(deck_scroll)
-
-	_deck_scroll = deck_scroll
-	deck_grid = GridContainer.new()
-	deck_grid.columns = 3
-	deck_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	deck_grid.add_theme_constant_override("h_separation", 5)
-	deck_grid.add_theme_constant_override("v_separation", 5)
-	deck_scroll.add_child(deck_grid)
-
-	return panel
-
-func _build_right_panel():
-	var panel = Panel.new()
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.11, 0.15, 1)
-	style.border_width_left = 1
-	style.border_width_top = 1
-	style.border_width_right = 1
-	style.border_width_bottom = 1
-	style.border_color = Color(0.2, 0.2, 0.25, 1)
-	panel.add_theme_stylebox_override("panel", style)
-
-	var vbox = VBoxContainer.new()
-	vbox.offset_left = 8
-	vbox.offset_top = 8
-	vbox.offset_right = -8
-	vbox.offset_bottom = -8
-	vbox.anchor_right = 1.0
-	vbox.anchor_bottom = 1.0
-	vbox.add_theme_constant_override("separation", 8)
-	panel.add_child(vbox)
-
-	var filter_row = HBoxContainer.new()
-	filter_row.add_theme_constant_override("separation", 6)
-	vbox.add_child(filter_row)
-
-	filter_type = OptionButton.new()
-	filter_type.add_item("全部类型", 0)
 	filter_type.item_selected.connect(_on_filter_changed)
-	filter_row.add_child(filter_type)
-
-	filter_rarity = OptionButton.new()
-	filter_rarity.add_item("全部稀有度", 0)
 	filter_rarity.item_selected.connect(_on_filter_changed)
-	filter_row.add_child(filter_rarity)
-
-	filter_tag = OptionButton.new()
-	filter_tag.add_item("全部词条", 0)
 	filter_tag.item_selected.connect(_on_filter_changed)
-	filter_row.add_child(filter_tag)
-
-	search_input = LineEdit.new()
-	search_input.placeholder_text = "搜索卡名或效果..."
-	search_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	search_input.text_changed.connect(_on_search_changed)
-	vbox.add_child(search_input)
-
-	filter_unlocked_only = CheckBox.new()
-	filter_unlocked_only.text = "只显示已解锁"
 	filter_unlocked_only.toggled.connect(_on_filter_changed)
-	vbox.add_child(filter_unlocked_only)
-
-	var lib_scroll = ScrollContainer.new()
-	lib_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	lib_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lib_scroll.resized.connect(_on_scroll_resized)
-	vbox.add_child(lib_scroll)
-
-	_lib_scroll = lib_scroll
-	library_grid = GridContainer.new()
-	library_grid.columns = 6
-	library_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	library_grid.add_theme_constant_override("h_separation", 5)
-	library_grid.add_theme_constant_override("v_separation", 5)
-	lib_scroll.add_child(library_grid)
-
-	return panel
+	_deck_scroll.resized.connect(_on_scroll_resized)
+	_lib_scroll.resized.connect(_on_scroll_resized)
 
 func _refresh_deck_dropdown():
 	deck_name_dropdown.clear()
@@ -416,6 +254,7 @@ func _refresh_library():
 		var is_locked = not CardPoolManager.has_card(card_id)
 		var widget = _create_small_card_widget(card, current_deck_cards.get(card_id, 0), true, is_locked)
 		library_grid.add_child(widget)
+
 
 
 
