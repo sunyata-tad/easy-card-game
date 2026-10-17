@@ -13,22 +13,22 @@ const SettingsPanel = preload("res://scripts/ui/settings_panel.gd")
 
 var map_controller: MapController
 
-var location_label: Label
-var description_label: Label
-var status_button: Button
-var relic_button: Button
-var settings_button: Button
-var interactables_container: HBoxContainer
-var log_container: VBoxContainer
-var interaction_panel: VBoxContainer
-var location_info_panel: VBoxContainer
+@onready var location_label: Label = $MainVBox/TopSection/Header/LocationLabel
+@onready var description_label: Label = $MainVBox/TopSection/InfoContainer/LocationInfoPanel/DescriptionLabel
+@onready var status_button: Button = $MainVBox/TopSection/Header/StatusButton
+@onready var relic_button: Button = $MainVBox/TopSection/Header/RelicButton
+@onready var settings_button: Button = $MainVBox/TopSection/Header/SettingsButton
+@onready var interactables_container: HBoxContainer = $MainVBox/InteractablesSection/InteractablesContainer
+@onready var log_container: VBoxContainer = $MainVBox/LogSection/LogScroll/LogContainer
+@onready var interaction_panel: VBoxContainer = $MainVBox/TopSection/InfoContainer/InteractionPanel
+@onready var location_info_panel: VBoxContainer = $MainVBox/TopSection/InfoContainer/LocationInfoPanel
 
-var node_container: Control
+@onready var node_container: Control = $MainVBox/MapSection/NodeContainer
 var active_nodes: Dictionary = {}
 var is_animating: bool = false
 
-var status_panel: PanelContainer
-var status_panel_content: VBoxContainer
+@onready var status_panel: PanelContainer = $StatusPanel
+@onready var status_panel_content: VBoxContainer = $StatusPanel/StatusPanelContent
 var status_panel_open: bool = false
 var status_panel_tween: Tween = null
 var _scroll_pending: bool = false
@@ -56,6 +56,7 @@ func _ready():
 	
 	_setup_ui()
 
+
 func _process(_delta: float) -> void:
 	if _scroll_pending:
 		_scroll_pending = false
@@ -64,140 +65,23 @@ func _process(_delta: float) -> void:
 			scroll.scroll_vertical = scroll.get_v_scroll_bar().max_value
 
 func _setup_ui():
-	anchors_preset = 15
-	anchor_right = 1.0
-	anchor_bottom = 1.0
-	grow_horizontal = 2
-	grow_vertical = 2
-	
-	# 星云背景 + 暗色蒙版（位于所有界面之下）
 	if UIStyle:
 		UIStyle.add_background(self, "map")
 	
-	var main_vbox = VBoxContainer.new()
-	main_vbox.anchors_preset = 15
-	main_vbox.anchor_right = 1.0
-	main_vbox.anchor_bottom = 1.0
-	main_vbox.grow_horizontal = 2
-	main_vbox.grow_vertical = 2
-	main_vbox.add_theme_constant_override("separation", 2)
-	add_child(main_vbox)
-	
-	var top_section = _create_top_section()
-	main_vbox.add_child(top_section)
-	
-	var map_section = _create_map_section()
-	main_vbox.add_child(map_section)
-	
-	var interactables_section = _create_interactables_section()
-	main_vbox.add_child(interactables_section)
-	
-	var log_section = _create_log_section()
-	main_vbox.add_child(log_section)
-	
-	_create_status_panel()
-
-func _create_top_section() -> Control:
-	var top_container = VBoxContainer.new()
-	top_container.custom_minimum_size = Vector2(0, 130)
-	top_container.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	
-	var header = HBoxContainer.new()
-	header.custom_minimum_size = Vector2(0, 32)
-	header.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	header.add_theme_constant_override("separation", 10)
-	top_container.add_child(header)
-	
-	status_button = Button.new()
-	status_button.text = "状态"
-	status_button.custom_minimum_size = Vector2(88, 34)
 	status_button.pressed.connect(_on_status_pressed)
-	header.add_child(status_button)
 	UIStyle.attach_button_anim(status_button)
 	
-	relic_button = Button.new()
-	relic_button.text = "遗物"
-	relic_button.custom_minimum_size = Vector2(88, 34)
 	relic_button.pressed.connect(_on_relic_pressed)
-	header.add_child(relic_button)
 	UIStyle.attach_button_anim(relic_button)
 	
-	var spacer_left = Control.new()
-	spacer_left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(spacer_left)
-	
-	location_label = Label.new()
-	location_label.text = "地点名称"
-	location_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	location_label.add_theme_font_size_override("font_size", 20)
-	location_label.custom_minimum_size = Vector2(200, 34)
-	header.add_child(location_label)
-	
-	var spacer_right = Control.new()
-	spacer_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(spacer_right)
-	
-	settings_button = Button.new()
-	settings_button.text = "设置"
-	settings_button.custom_minimum_size = Vector2(88, 34)
 	settings_button.pressed.connect(_on_settings_pressed)
-	header.add_child(settings_button)
 	UIStyle.attach_button_anim(settings_button)
-
-	var overview_btn = Button.new()
-	overview_btn.text = "地图"
-	overview_btn.custom_minimum_size = Vector2(88, 34)
+	
+	var overview_btn = $MainVBox/TopSection/Header/OverviewButton
 	overview_btn.pressed.connect(_on_map_overview_pressed)
-	header.add_child(overview_btn)
 	UIStyle.attach_button_anim(overview_btn)
-	
-	var info_container = VBoxContainer.new()
-	info_container.custom_minimum_size = Vector2(0, 95)
-	info_container.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	info_container.add_theme_constant_override("separation", 5)
-	top_container.add_child(info_container)
-	
-	location_info_panel = VBoxContainer.new()
-	location_info_panel.add_theme_constant_override("separation", 5)
-	info_container.add_child(location_info_panel)
-	
-	description_label = Label.new()
-	description_label.text = "地点介绍..."
-	description_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	description_label.custom_minimum_size = Vector2(0, 60)
-	description_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	location_info_panel.add_child(description_label)
-	
-	interaction_panel = VBoxContainer.new()
-	interaction_panel.visible = false
-	info_container.add_child(interaction_panel)
-	
-	return top_container
 
-func _create_map_section() -> Control:
-	var container = Control.new()
-	container.custom_minimum_size = Vector2(0, 280)
-	container.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	
-	var bg = ColorRect.new()
-	bg.anchors_preset = 15
-	bg.anchor_right = 1.0
-	bg.anchor_bottom = 1.0
-	bg.grow_horizontal = 2
-	bg.grow_vertical = 2
-	bg.color = Color(0.04, 0.05, 0.1, 0.72)
-	container.add_child(bg)
-	
-	node_container = Control.new()
-	node_container.anchors_preset = 15
-	node_container.anchor_right = 1.0
-	node_container.anchor_bottom = 1.0
-	node_container.grow_horizontal = 2
-	node_container.grow_vertical = 2
-	node_container.clip_contents = true
-	container.add_child(node_container)
-	
-	return container
+
 
 func _get_direction_offset(dir_name: String) -> Vector2:
 	match dir_name:
@@ -307,53 +191,6 @@ func _refresh_nodes() -> void:
 func _update_location_grid():
 	_refresh_nodes()
 
-func _create_interactables_section() -> Control:
-	var container = VBoxContainer.new()
-	container.custom_minimum_size = Vector2(0, 70)
-	container.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	
-	var header = Label.new()
-	header.text = "这里有："
-	header.add_theme_font_size_override("font_size", 14)
-	header.custom_minimum_size = Vector2(0, 20)
-	container.add_child(header)
-	
-	interactables_container = HBoxContainer.new()
-	interactables_container.add_theme_constant_override("separation", 10)
-	interactables_container.custom_minimum_size = Vector2(0, 40)
-	container.add_child(interactables_container)
-	
-	return container
-
-func _create_log_section() -> Control:
-	var container = VBoxContainer.new()
-	container.custom_minimum_size = Vector2(0, 120)
-	container.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	
-	var bg = ColorRect.new()
-	bg.anchors_preset = 12
-	bg.anchor_bottom = 1.0
-	bg.grow_vertical = 2
-	bg.color = Color(0.05, 0.06, 0.11, 0.78)
-	container.add_child(bg)
-	
-	var header = Label.new()
-	header.text = "探索日志"
-	header.add_theme_font_size_override("font_size", 14)
-	header.custom_minimum_size = Vector2(0, 22)
-	container.add_child(header)
-	
-	var log_scroll = ScrollContainer.new()
-	log_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	log_scroll.custom_minimum_size = Vector2(0, 90)
-	
-	log_container = VBoxContainer.new()
-	log_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	log_container.add_theme_constant_override("separation", 2)
-	log_scroll.add_child(log_container)
-	container.add_child(log_scroll)
-	
-	return container
 
 func receive_data(data: Dictionary) -> void:
 	var map_id = data.get("map_id", "test_map")
@@ -743,32 +580,6 @@ func _on_game_data_changed(_a = null, _b = null) -> void:
 		child.queue_free()
 	_build_status_panel_content()
 
-func _create_status_panel() -> void:
-	status_panel = PanelContainer.new()
-	status_panel.anchor_left = 0.0
-	status_panel.anchor_right = 1.0
-	status_panel.anchor_top = 1.0
-	status_panel.anchor_bottom = 1.0
-	status_panel.offset_top = 0
-	status_panel.offset_bottom = 0
-	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.06, 0.12, 0.97)
-	style.border_color = Color(0.3, 0.3, 0.4, 0.8)
-	style.border_width_top = 2
-	style.set_corner_radius_all(0)
-	status_panel.add_theme_stylebox_override("panel", style)
-	
-	add_child(status_panel)
-	
-	status_panel_content = VBoxContainer.new()
-	status_panel_content.anchors_preset = Control.PRESET_FULL_RECT
-	status_panel_content.add_theme_constant_override("separation", 8)
-	status_panel_content.offset_left = 20
-	status_panel_content.offset_right = -20
-	status_panel_content.offset_top = 12
-	status_panel_content.offset_bottom = -12
-	status_panel.add_child(status_panel_content)
 
 func _open_status_panel() -> void:
 	for child in status_panel_content.get_children():

@@ -1,6 +1,11 @@
-[gd_scene format=3 uid="uid://map_screen_scene"]
+[gd_scene load_steps=3 format=3 uid="uid://map_screen_scene"]
 
 [ext_resource type="Script" path="res://scripts/map_screen.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="status_style"]
+bg_color = Color(0.06, 0.06, 0.12, 0.97)
+border_width_top = 2
+border_color = Color(0.3, 0.3, 0.4, 0.8)
 
 [node name="MapScreen" type="Control"]
 layout_mode = 3
@@ -10,3 +15,181 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")
+
+[node name="MainVBox" type="VBoxContainer" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 2
+
+[node name="TopSection" type="VBoxContainer" parent="MainVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 130)
+size_flags_horizontal = 1
+size_flags_vertical = 4
+
+[node name="Header" type="HBoxContainer" parent="MainVBox/TopSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 32)
+size_flags_horizontal = 1
+size_flags_vertical = 4
+theme_override_constants/separation = 10
+
+[node name="StatusButton" type="Button" parent="MainVBox/TopSection/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(88, 34)
+text = "状态"
+
+[node name="RelicButton" type="Button" parent="MainVBox/TopSection/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(88, 34)
+text = "遗物"
+
+[node name="SpacerLeft" type="Control" parent="MainVBox/TopSection/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LocationLabel" type="Label" parent="MainVBox/TopSection/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 34)
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+text = "地点名称"
+
+[node name="SpacerRight" type="Control" parent="MainVBox/TopSection/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SettingsButton" type="Button" parent="MainVBox/TopSection/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(88, 34)
+text = "设置"
+
+[node name="OverviewButton" type="Button" parent="MainVBox/TopSection/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(88, 34)
+text = "地图"
+
+[node name="InfoContainer" type="VBoxContainer" parent="MainVBox/TopSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 95)
+size_flags_horizontal = 1
+size_flags_vertical = 4
+theme_override_constants/separation = 5
+
+[node name="LocationInfoPanel" type="VBoxContainer" parent="MainVBox/TopSection/InfoContainer"]
+layout_mode = 2
+size_flags_horizontal = 1
+theme_override_constants/separation = 5
+
+[node name="DescriptionLabel" type="Label" parent="MainVBox/TopSection/InfoContainer/LocationInfoPanel"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 60)
+size_flags_vertical = 3
+autowrap_mode = 2
+text = "地点介绍..."
+
+[node name="InteractionPanel" type="VBoxContainer" parent="MainVBox/TopSection/InfoContainer"]
+layout_mode = 2
+size_flags_horizontal = 1
+visible = false
+
+[node name="MapSection" type="Control" parent="MainVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 280)
+size_flags_horizontal = 1
+size_flags_vertical = 4
+
+[node name="MapBg" type="ColorRect" parent="MainVBox/MapSection"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.05, 0.1, 0.72)
+
+[node name="NodeContainer" type="Control" parent="MainVBox/MapSection"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+clip_contents = true
+
+[node name="InteractablesSection" type="VBoxContainer" parent="MainVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 70)
+size_flags_horizontal = 1
+size_flags_vertical = 4
+
+[node name="InteractablesHeader" type="Label" parent="MainVBox/InteractablesSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 20)
+size_flags_horizontal = 1
+theme_override_font_sizes/font_size = 14
+text = "这里有："
+
+[node name="InteractablesContainer" type="HBoxContainer" parent="MainVBox/InteractablesSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 40)
+size_flags_horizontal = 1
+theme_override_constants/separation = 10
+
+[node name="LogSection" type="VBoxContainer" parent="MainVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 120)
+size_flags_horizontal = 1
+size_flags_vertical = 4
+
+[node name="LogBg" type="ColorRect" parent="MainVBox/LogSection"]
+layout_mode = 3
+anchors_preset = 12
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.06, 0.11, 0.78)
+
+[node name="LogHeader" type="Label" parent="MainVBox/LogSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 22)
+size_flags_horizontal = 1
+theme_override_font_sizes/font_size = 14
+text = "探索日志"
+
+[node name="LogScroll" type="ScrollContainer" parent="MainVBox/LogSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 90)
+size_flags_horizontal = 1
+size_flags_vertical = 3
+
+[node name="LogContainer" type="VBoxContainer" parent="MainVBox/LogSection/LogScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="StatusPanel" type="PanelContainer" parent="."]
+layout_mode = 3
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = 0.0
+offset_bottom = 0.0
+theme_override_styles/panel = SubResource("status_style")
+
+[node name="StatusPanelContent" type="VBoxContainer" parent="StatusPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 12.0
+offset_right = -20.0
+offset_bottom = -12.0
+theme_override_constants/separation = 8
