@@ -493,10 +493,10 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	var rarity_color = RARITY_COLORS.get(card.rarity, Color(0.6, 0.6, 0.6))
 	if is_locked:
 		rarity_color = Color(0.3, 0.3, 0.3)
-	style.border_width_left = 3
-	style.border_width_top = 3
-	style.border_width_right = 3
-	style.border_width_bottom = 3
+	style.border_width_left = 0
+	style.border_width_top = 0
+	style.border_width_right = 0
+	style.border_width_bottom = 0
 	style.border_color = rarity_color
 	style.set_corner_radius_all(4)
 	panel.add_theme_stylebox_override("panel", style)

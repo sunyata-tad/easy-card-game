@@ -17,16 +17,19 @@ import os
 
 FRAME_DIR = os.path.join(os.path.dirname(__file__), "frames")
 
-# 边框保留宽度（百分比）
-BORDER_W_PCT = 0.15
+# 边框保留宽度（百分比）— 镂空区比代码渲染区(15%)大1%，给缩放留余量
+BORDER_W_PCT = 0.14
 
-# 卡图区（上半部分中间）→ 透明
-ART_TOP_PCT = 0.10
+# 卡图区（上半部分中间）→ 透明 — 比代码渲染区(10%~48%)大，留余量
+ART_TOP_PCT = 0.09
 ART_BOT_PCT = 0.50
 
-# 描述区（下半部分中间）→ 透明
-DESC_TOP_PCT = 0.52
-DESC_BOT_PCT = 0.92
+# 描述区（下半部分中间）→ 透明 — 比代码渲染区(52%~89%)大，留余量
+DESC_TOP_PCT = 0.51
+DESC_BOT_PCT = 0.93
+
+# alpha 硬阈值 — 消除缩放插值产生的半透明"幽灵像素"
+ALPHA_THRESHOLD = 128
 
 # 宝石配置（按稀有度）
 # basic 无宝石
@@ -133,6 +136,21 @@ def cutout_frame(img):
     return (inner_left, art_top, inner_right, art_bot, desc_top, desc_bot)
 
 
+def apply_alpha_threshold(img):
+    """alpha 硬阈值：消除缩放插值产生的半透明幽灵像素。
+    alpha < ALPHA_THRESHOLD 的像素强制设为完全透明。"""
+    w, h = img.size
+    pixels = img.load()
+    changed = 0
+    for y in range(h):
+        for x in range(w):
+            a = pixels[x, y][3]
+            if 0 < a < ALPHA_THRESHOLD:
+                pixels[x, y] = (0, 0, 0, 0)
+                changed += 1
+    return changed
+
+
 def process_frame(name):
     path = os.path.join(FRAME_DIR, name)
     img = Image.open(path).convert("RGBA")
@@ -145,11 +163,15 @@ def process_frame(name):
     # 镂空
     info = cutout_frame(img)
 
+    # alpha 硬阈值 — 消除半透明幽灵像素
+    removed = apply_alpha_threshold(img)
+
     img.save(path, "PNG")
     gem_str = "有宝石" if name in GEM_CONFIG else "无宝石"
     print(f"处理完成: {name} ({w}x{h}) {gem_str}")
     print(f"  卡图区透明: ({info[0]},{info[1]})-({info[2]},{info[3]})")
     print(f"  描述区透明: ({info[0]},{info[4]})-({info[2]},{info[5]})")
+    print(f"  alpha阈值: 移除{removed}个半透明像素")
 
 
 if __name__ == "__main__":
