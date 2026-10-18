@@ -425,6 +425,7 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 	desc_lbl.text = card.description
 	desc_lbl.add_theme_color_override("default_color", Color(0.4, 0.4, 0.45) if is_locked else Color(0.7, 0.7, 0.75))
 	desc_lbl.add_theme_font_size_override("normal_font_size", desc_size)
+	desc_lbl.add_theme_font_size_override("bold_font_size", desc_size)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.add_theme_constant_override("line_spacing", 0)
 	if not show_detail:

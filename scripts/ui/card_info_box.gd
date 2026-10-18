@@ -73,6 +73,7 @@ static func fill_info_container(vbox: VBoxContainer, card: CardData, font_size: 
 		rtl.text = "[b]%s[/b]：%s" % [cn_name, desc]
 		rtl.add_theme_color_override("default_color", Color(0.75, 0.8, 0.85))
 		rtl.add_theme_font_size_override("normal_font_size", font_size)
+		rtl.add_theme_font_size_override("bold_font_size", font_size)
 		rtl.custom_minimum_size = Vector2(180, 0)
 		vbox.add_child(rtl)
 
@@ -99,6 +100,7 @@ static func fill_info_container(vbox: VBoxContainer, card: CardData, font_size: 
 		rtl.text = "[b]%s[/b]：%s" % [bname, bdesc]
 		rtl.add_theme_color_override("default_color", Color(0.75, 0.8, 0.85))
 		rtl.add_theme_font_size_override("normal_font_size", font_size)
+		rtl.add_theme_font_size_override("bold_font_size", font_size)
 		rtl.custom_minimum_size = Vector2(180, 0)
 		vbox.add_child(rtl)
 
@@ -141,6 +143,7 @@ static func build_info_box(card: CardData, max_width: float = 200.0) -> PanelCon
 		rtl.text = "[b]%s[/b]：%s" % [cn_name, desc]
 		rtl.add_theme_color_override("default_color", Color(0.75, 0.8, 0.85))
 		rtl.add_theme_font_size_override("normal_font_size", 11)
+		rtl.add_theme_font_size_override("bold_font_size", 11)
 		vbox.add_child(rtl)
 
 	var seen_buffs: Dictionary = {}
@@ -166,6 +169,7 @@ static func build_info_box(card: CardData, max_width: float = 200.0) -> PanelCon
 		rtl.text = "[b]%s[/b]：%s" % [bname, bdesc]
 		rtl.add_theme_color_override("default_color", Color(0.75, 0.8, 0.85))
 		rtl.add_theme_font_size_override("normal_font_size", 11)
+		rtl.add_theme_font_size_override("bold_font_size", 11)
 		vbox.add_child(rtl)
 
 	if not has_content:
