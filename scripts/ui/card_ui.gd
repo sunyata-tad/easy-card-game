@@ -754,19 +754,20 @@ func cancel_target_mode():
 func set_original_position(pos: Vector2):
 	original_position = pos
 
-## 悬浮时在卡牌旁边显示 buff/debuff 详情（仅当卡牌附带 buff 效果时）
+## 悬浮时在卡牌旁边显示词条/buff解释 + buff/debuff 详情
 func _show_buff_tooltip() -> void:
 	if card_data == null or is_dragging or is_awaiting_target or is_select_mode:
 		return
-	var buffs := _get_buff_effects()
-	if buffs.is_empty():
-		return
 	_hide_buff_tooltip()
 
-	# 先构建内容，确实有 buff 详情时才弹出
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 5)
 	var any := false
+
+	if CardInfoBox.fill_info_container(vbox, card_data, 12):
+		any = true
+
+	var buffs := _get_buff_effects()
 	for b in buffs:
 		var data := _get_buff_data(b.id)
 		if data.is_empty():

@@ -25,6 +25,7 @@ var _refresh_pending: bool = false
 var _detail_panel: Panel = null
 var _detail_big_card: Panel = null
 var _detail_tags: Label = null
+var _detail_info_box: PanelContainer = null
 
 const TYPE_CN := {
 	"attack": "攻击",
@@ -671,6 +672,8 @@ func _show_card_detail(card_id: String):
 		return
 	if _detail_big_card and is_instance_valid(_detail_big_card):
 		_detail_big_card.queue_free()
+	if _detail_info_box and is_instance_valid(_detail_info_box):
+		_detail_info_box.queue_free()
 	var card_w = _detail_panel.size.x - 20
 	var card_h = card_w * 1.3125
 	_detail_big_card = _create_card_visual(card, card_w, card_h, 0, false, true)
@@ -682,6 +685,11 @@ func _show_card_detail(card_id: String):
 	for t in card.tags:
 		tag_texts.append(TAG_CN.get(t, t))
 	_detail_tags.text = "词条: " + ", ".join(tag_texts)
+	_detail_info_box = CardInfoBox.build_info_box(card, _detail_panel.size.x - 20)
+	if _detail_info_box:
+		_detail_info_box.position = Vector2(10, _detail_tags.offset_top + 20)
+		_detail_info_box.size = Vector2(_detail_panel.size.x - 20, 0)
+		_detail_panel.add_child(_detail_info_box)
 	_detail_panel.visible = true
 
 func _input(event):
