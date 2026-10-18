@@ -96,6 +96,7 @@ func _ready():
 	_refresh_library()
 
 
+
 func _build_ui():
 
 	if UIStyle:
@@ -243,7 +244,7 @@ func _refresh_library():
 	for child in library_grid.get_children():
 		child.queue_free()
 	if _lib_scroll:
-		library_grid.columns = 6
+		library_grid.columns = 8
 
 	var ids = _get_filtered_card_ids()
 	_sort_card_ids(ids)

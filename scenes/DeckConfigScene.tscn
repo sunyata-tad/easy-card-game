@@ -78,9 +78,9 @@ theme_override_constants/separation = 12
 
 [node name="LeftPanel" type="Panel" parent="MainArea"]
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 1
 size_flags_vertical = 3
-custom_minimum_size = Vector2(438, 548)
+custom_minimum_size = Vector2(388, 548)
 theme_override_styles/panel = SubResource("style_panel")
 
 [node name="LeftVBox" type="VBoxContainer" parent="MainArea/LeftPanel"]
@@ -129,7 +129,7 @@ theme_override_constants/v_separation = 5
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-custom_minimum_size = Vector2(599, 548)
+custom_minimum_size = Vector2(613, 548)
 theme_override_styles/panel = SubResource("style_panel2")
 
 [node name="RightVBox" type="VBoxContainer" parent="MainArea/RightPanel"]
@@ -177,11 +177,12 @@ text = "只显示已解锁"
 layout_mode = 2
 size_flags_vertical = 3
 size_flags_horizontal = 3
+vertical_scroll_mode = 2
 
 [node name="LibraryGrid" type="GridContainer" parent="MainArea/RightPanel/RightVBox/LibScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
-columns = 6
+columns = 8
 theme_override_constants/h_separation = 5
 theme_override_constants/v_separation = 5
 
