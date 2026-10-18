@@ -23,11 +23,11 @@ static func _load_data() -> void:
 		return
 	var tf = load("res://data/tags.json")
 	if tf:
-		var td = tf.data if tf.has("data") else tf
+		var td: Dictionary = tf.data if tf is JSON else tf
 		_tag_descs = td.get("tag_properties", {})
 	var bf = load("res://data/buffs.json")
 	if bf:
-		var bd = bf.data if bf.has("data") else bf
+		var bd: Dictionary = bf.data if bf is JSON else bf
 		_buff_data = bd.get("buffs", {})
 	_loaded = true
 
