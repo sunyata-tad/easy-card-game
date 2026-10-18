@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://test_scene/test_infobox_wrapper.gd" id="1_w"]
+
+[node name="TestWrapper" type="Control"]
+script = ExtResource("1_w")
