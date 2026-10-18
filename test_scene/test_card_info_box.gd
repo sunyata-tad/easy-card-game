@@ -15,6 +15,8 @@ func _ready() -> void:
 	_test_card(deck[0])
 	deck = card_db.create_deck([{"card_id": "薄葬", "count": 1}])
 	_test_card(deck[0])
+	deck = card_db.create_deck([{"card_id": "破绽", "count": 1}])
+	_test_card(deck[0])
 	print("[INFOBOX-TEST] 测试完成")
 	get_tree().quit(0)
 

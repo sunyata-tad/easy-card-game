@@ -92,12 +92,13 @@ static func fill_info_container(vbox: VBoxContainer, card: CardData, font_size: 
 		has_content = true
 		var bname: String = binfo.get("name", bid)
 		var bdesc: String = binfo.get("description", "")
-		bdesc = bdesc.replace("{stacks}", str(effect.get("value", 1)))
+		var bstacks: int = int(effect.get("value", effect.get("stacks", 1)))
+		bdesc = bdesc.replace("{stacks}", str(bstacks))
 		var rtl := RichTextLabel.new()
 		rtl.bbcode_enabled = true
 		rtl.fit_content = true
 		rtl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		rtl.text = "[b]%s[/b]：%s" % [bname, bdesc]
+		rtl.text = "[b]%s ×%d[/b]：%s" % [bname, bstacks, bdesc]
 		rtl.add_theme_color_override("default_color", Color(0.75, 0.8, 0.85))
 		rtl.add_theme_font_size_override("normal_font_size", font_size)
 		rtl.add_theme_font_size_override("bold_font_size", font_size)
@@ -161,12 +162,13 @@ static func build_info_box(card: CardData, max_width: float = 200.0) -> PanelCon
 		has_content = true
 		var bname: String = binfo.get("name", bid)
 		var bdesc: String = binfo.get("description", "")
-		bdesc = bdesc.replace("{stacks}", str(effect.get("value", 1)))
+		var bstacks: int = int(effect.get("value", effect.get("stacks", 1)))
+		bdesc = bdesc.replace("{stacks}", str(bstacks))
 		var rtl := RichTextLabel.new()
 		rtl.bbcode_enabled = true
 		rtl.fit_content = true
 		rtl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		rtl.text = "[b]%s[/b]：%s" % [bname, bdesc]
+		rtl.text = "[b]%s ×%d[/b]：%s" % [bname, bstacks, bdesc]
 		rtl.add_theme_color_override("default_color", Color(0.75, 0.8, 0.85))
 		rtl.add_theme_font_size_override("normal_font_size", 11)
 		rtl.add_theme_font_size_override("bold_font_size", 11)

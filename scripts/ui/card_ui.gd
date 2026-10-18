@@ -60,9 +60,6 @@ signal card_play_requested(card: CardData)                       ## 请求直接
 ## 卡牌类型对应颜色（深色系，保证白色文字可读）
 const CARD_BG_COLOR := Color(0.13, 0.14, 0.18, 1.0)   ## 卡面统一底色（深色）
 
-## buff 数据库缓存（从 data/buffs.json 加载，用于悬浮显示卡牌附带的 buff 详情）
-static var _buff_db: Dictionary = {}
-
 ## 当前正在交互的卡牌实例（按下/拖拽/选中/瞄准目标时设置）
 ## 其他卡牌在悬停时检查此变量，避免拖动中误放大其他卡牌
 static var _interacting_card: CardUI = null
@@ -75,33 +72,6 @@ func _set_interacting():
 func _clear_interacting():
 	if _interacting_card == self:
 		_interacting_card = null
-
-func _load_buff_db() -> void:
-	if not _buff_db.is_empty():
-		return
-	var file = FileAccess.open("res://data/buffs.json", FileAccess.READ)
-	if file:
-		var json = JSON.parse_string(file.get_as_text())
-		if json and json.has("buffs"):
-			_buff_db = json["buffs"]
-		file.close()
-
-func _get_buff_data(buff_id: String) -> Dictionary:
-	_load_buff_db()
-	return _buff_db.get(buff_id, {})
-
-## 收集卡牌效果中的 buff/debuff 效果（用于悬浮提示）
-func _get_buff_effects() -> Array:
-	var buffs: Array = []
-	if card_data == null:
-		return buffs
-	for effect in card_data.effects:
-		var et: String = effect.get("effect_type", "")
-		if et == "apply_buff" or et == "apply_debuff":
-			var bid: String = effect.get("buff_id", effect.get("buff_type", ""))
-			if bid != "":
-				buffs.append({"id": bid, "stacks": effect.get("value", effect.get("stacks", 1))})
-	return buffs
 
 ## Godot 生命周期：节点进入场景树时调用
 func _ready():
@@ -767,30 +737,6 @@ func _show_buff_tooltip() -> void:
 	if CardInfoBox.fill_info_container(vbox, card_data, 12):
 		any = true
 
-	var buffs := _get_buff_effects()
-	for b in buffs:
-		var data := _get_buff_data(b.id)
-		if data.is_empty():
-			continue
-		any = true
-		var buff_name: String = data.get("name", b.id)
-		var desc_template: String = data.get("description", "")
-		var desc: String = desc_template.replace("{stacks}", str(b.stacks))
-		var buff_color: Color = Color(data.get("color", "#B3B3B3"))
-
-		var name_lbl := Label.new()
-		name_lbl.text = "%s%s  ×%d" % [data.get("symbol", ""), buff_name, int(b.stacks)]
-		name_lbl.add_theme_font_size_override("font_size", 13)
-		name_lbl.add_theme_color_override("font_color", buff_color)
-		vbox.add_child(name_lbl)
-
-		var desc_lbl := Label.new()
-		desc_lbl.text = desc
-		desc_lbl.add_theme_font_size_override("font_size", 12)
-		desc_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
-		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		desc_lbl.custom_minimum_size = Vector2(180, 0)
-		vbox.add_child(desc_lbl)
 
 	if not any:
 		return
