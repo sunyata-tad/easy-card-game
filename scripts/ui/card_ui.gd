@@ -12,7 +12,7 @@ extends Control
 @onready var frame: Panel = $Frame
 @onready var name_label: Label = $NameLabel
 @onready var type_label: Label = $TypeLabel
-@onready var desc_label: Label = $DescLabel
+@onready var desc_label: RichTextLabel = $DescLabel
 
 var card_data: CardData               ## 关联的卡牌数据
 var player_manager: PlayerManager     ## 玩家状态引用（用于动态计算伤害预览）
