@@ -2,7 +2,7 @@
 	"id": "批命",
 	"name": "批命",
 	"type": "skill",
-	"description": "施加1回合迷惑（敌人本回合无法行动），消耗",
+	"description": "施加1回合迷惑。[b]消耗[/b]",
 	"rarity": "common",
 	"target_type": "single_enemy",
 	"tags": [

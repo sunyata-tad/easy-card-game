@@ -2,7 +2,7 @@
 	"id": "必然杀",
 	"name": "必然杀",
 	"type": "skill",
-	"description": "对目标敌人施加残像（受到攻击时永久扣除对应伤害的最大生命值）",
+	"description": "对目标敌人施加残像",
 	"rarity": "epic",
 	"target_type": "single_enemy",
 	"tags": ["Skill", "Epic"],

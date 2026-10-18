@@ -415,18 +415,19 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 		panel.add_child(type_lbl)
 		desc_top += type_h + 2
 
-	var desc_lbl = Label.new()
+	var desc_lbl = RichTextLabel.new()
 	desc_lbl.offset_left = pad + 3
 	desc_lbl.offset_top = desc_top
 	desc_lbl.offset_right = w - pad - 3
 	desc_lbl.offset_bottom = text_bottom
+	desc_lbl.bbcode_enabled = true
 	desc_lbl.text = card.description
-	desc_lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.45) if is_locked else Color(0.7, 0.7, 0.75))
-	desc_lbl.add_theme_font_size_override("font_size", desc_size)
+	desc_lbl.add_theme_color_override("default_color", Color(0.4, 0.4, 0.45) if is_locked else Color(0.7, 0.7, 0.75))
+	desc_lbl.add_theme_font_size_override("normal_font_size", desc_size)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.add_theme_constant_override("line_spacing", 0)
 	if not show_detail:
-		desc_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		desc_lbl.clip_contents = true
 
 	panel.add_child(desc_lbl)
 

@@ -1178,7 +1178,8 @@ func _build_discard_select_ui(prompt: String) -> void:
 
 	for card in _discard_select_cards:
 		var btn := Button.new()
-		btn.text = "%s\n%s" % [card.name, card.get_description_text()]
+		var plain_desc = card.get_description_text().replace("[b]", "").replace("[/b]", "")
+		btn.text = "%s\n%s" % [card.name, plain_desc]
 		btn.toggle_mode = true
 		btn.custom_minimum_size = Vector2(250, 72)
 		btn.add_theme_font_size_override("font_size", 13)
