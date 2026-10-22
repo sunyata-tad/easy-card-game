@@ -5,11 +5,25 @@
 	"description": "[b]衍生、保留、永久消耗[/b]。使用后，薄葬效果关闭，将一张薄葬加入手牌",
 	"rarity": "rare",
 	"target_type": "self",
-	"tags": ["Skill", "Rare", "Retain", "Exhaust", "PermanentExhaust", "Derived"],
+	"tags": [
+		"Skill",
+		"Rare",
+		"Retain",
+		"Exhaust",
+		"PermanentExhaust",
+		"Derived"
+	],
 	"treated_as": [],
 	"effects": [
-		{"effect_type": "remove_buff", "buff_id": "thin_burial"},
-		{"effect_type": "add_card_to_hand", "card_id": "薄葬"}
+		{
+			"effect_type": "remove_buff",
+			"buff_id": "thin_burial"
+		},
+		{
+			"effect_type": "add_card_to_hand",
+			"card_id": "薄葬"
+		}
 	],
-	"art": ""
+	"art": "",
+	"cost": 0
 }

@@ -20,5 +20,6 @@
 			"value": 20
 		}
 	],
-	"art": "res://art_assets/pixel/card_reji.png"
+	"art": "res://art_assets/pixel/card_reji.png",
+	"cost": 1
 }

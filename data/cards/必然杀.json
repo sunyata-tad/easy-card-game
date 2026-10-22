@@ -5,10 +5,18 @@
 	"description": "对目标敌人施加残像",
 	"rarity": "epic",
 	"target_type": "single_enemy",
-	"tags": ["Skill", "Epic"],
+	"tags": [
+		"Skill",
+		"Epic"
+	],
 	"treated_as": [],
 	"effects": [
-		{"effect_type": "apply_debuff", "buff_id": "after_image", "value": 1}
+		{
+			"effect_type": "apply_debuff",
+			"buff_id": "after_image",
+			"value": 1
+		}
 	],
-	"art": ""
+	"art": "",
+	"cost": 2
 }

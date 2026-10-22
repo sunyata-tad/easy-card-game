@@ -14,5 +14,6 @@
 		{
 			"effect_type": "search_draw_damage_attack"
 		}
-	]
+	],
+	"cost": 1
 }

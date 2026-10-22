@@ -5,10 +5,16 @@
 	"description": "若目标意图不含攻击：造成其已损失生命值50%+10的伤害；若目标意图含攻击：对目标与自己各造成10伤害",
 	"rarity": "rare",
 	"target_type": "single_enemy",
-	"tags": ["Attack", "Rare"],
+	"tags": [
+		"Attack",
+		"Rare"
+	],
 	"treated_as": [],
 	"effects": [
-		{"effect_type": "intent_damage"}
+		{
+			"effect_type": "intent_damage"
+		}
 	],
-	"art": ""
+	"art": "",
+	"cost": 2
 }

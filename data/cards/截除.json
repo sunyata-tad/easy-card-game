@@ -15,5 +15,6 @@
 			"effect_type": "damage_and_stun_intent",
 			"value": 10
 		}
-	]
+	],
+	"cost": 2
 }

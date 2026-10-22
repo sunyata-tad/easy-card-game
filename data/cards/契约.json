@@ -16,5 +16,6 @@
 			"value": 50
 		}
 	],
-	"art": "res://art_assets/pixel/card_qiyue.png"
+	"art": "res://art_assets/pixel/card_qiyue.png",
+	"cost": 3
 }

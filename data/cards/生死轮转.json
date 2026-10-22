@@ -19,5 +19,6 @@
 			"effect_type": "swap_draw_discard"
 		}
 	],
-	"art": "res://art_assets/pixel/card_shengsilunzhuan.png"
+	"art": "res://art_assets/pixel/card_shengsilunzhuan.png",
+	"cost": 2
 }

@@ -16,5 +16,6 @@
 			"value": 10,
 			"max_hp_gain": 5
 		}
-	]
+	],
+	"cost": 2
 }

@@ -18,5 +18,6 @@
 			"value": 1
 		}
 	],
-	"art": "res://art_assets/pixel/card_piming.png"
+	"art": "res://art_assets/pixel/card_piming.png",
+	"cost": 0
 }
