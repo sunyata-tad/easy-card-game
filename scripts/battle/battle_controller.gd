@@ -15,7 +15,7 @@ var rules: BattleRules
 var pending_card: CardData = null
 var is_first_turn: bool = true
 var is_discard_phase: bool = false
-var use_new_flow: bool = false  ## B4: 使用同时出牌新流程
+var use_new_flow: bool = true   ## B4: 使用同时出牌新流程
 
 
 ## [未连接] 战斗开始通知。若已连接接收方，请删除此标记注释。
@@ -232,12 +232,12 @@ func _on_enemy_select_phase() -> void:
 	if not _check_battle_end_state():
 		state_machine.change_state(StateMachine.BattleState.PLAYER_SELECT)
 
-## B4: 玩家选牌阶段——等待玩家选牌
+## B4: 玩家选牌阶段——显示槽位+骰子，等待玩家选牌
 func _on_player_select_phase() -> void:
 	if ui_controller:
 		ui_controller.set_interactive(true)
 		ui_controller.show_turn_banner("你的回合（选牌）")
-	_player_queued_plays.clear()
+		ui_controller.create_slot_area(player_manager.slots, _player_slot_speeds)
 	_update_player_ui()
 	# 显示新流程HUD（能量/槽位/速度）
 	if ui_controller:

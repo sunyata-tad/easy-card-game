@@ -15,6 +15,15 @@ var player_manager: PlayerManager = null  ## 玩家状态引用
 var screen_shake: Node = null             ## 屏幕震动器（由 battle.gd 注入）
 var _player_flash_tween: Tween = null     ## 玩家受击闪红 tween（防止叠加）
 
+## B4: 槽位UI
+var _slot_area: HBoxContainer = null       ## 槽位区域
+var _slot_nodes: Array = []                ## 槽位节点数组
+var _slot_cards: Array = []                ## 槽位已选卡牌数组
+var _slot_speeds: Array = []               ## 槽位速度值数组
+var _active_slot_index: int = -1           ## 当前正在选卡的槽位索引
+var _slot_confirm_btn: Button = null       ## 确认出牌按钮
+var _slot_select_panel: PanelContainer = null  ## 手牌选择面板
+
 ## UI 节点引用（从场景中查找获取）
 var hand_container: Node       ## 手牌区域的容器节点
 var enemy_container: Node      ## 敌人区域的容器节点
@@ -663,6 +672,194 @@ func _reposition_info_panel(panel: VBoxContainer) -> void:
 	if player_area and is_instance_valid(panel):
 		var pa_rect = player_area.get_global_rect()
 		panel.global_position = Vector2(pa_rect.position.x + pa_rect.size.x + 10, pa_rect.position.y)
+
+## B4: 创建槽位区域
+func create_slot_area(slots: int, speeds: Array) -> void:
+	_slot_speeds = speeds.duplicate()
+	_slot_cards.clear()
+	_slot_cards.resize(slots)
+	_slot_nodes.clear()
+	if _slot_area and is_instance_valid(_slot_area):
+		_slot_area.queue_free()
+	_slot_area = HBoxContainer.new()
+	_slot_area.name = "SlotArea"
+	_slot_area.add_theme_constant_override("separation", 8)
+	for i in slots:
+		var slot_node = _create_slot_node(i, speeds[i] if i < speeds.size() else 1)
+		_slot_nodes.append(slot_node)
+		_slot_area.add_child(slot_node)
+	# 确认按钮
+	_slot_confirm_btn = Button.new()
+	_slot_confirm_btn.text = "确认出牌"
+	_slot_confirm_btn.custom_minimum_size = Vector2(100, 40)
+	_slot_confirm_btn.disabled = true
+	_slot_confirm_btn.pressed.connect(_on_slot_confirm)
+	_slot_area.add_child(_slot_confirm_btn)
+	# 添加到场景
+	if player_area and is_instance_valid(player_area):
+		player_area.get_parent().add_child(_slot_area)
+		_slot_area.global_position = Vector2(player_area.global_position.x, player_area.global_position.y + player_area.size.y + 10)
+
+## B4: 创建单个槽位节点
+func _create_slot_node(index: int, speed: int) -> PanelContainer:
+	var panel = PanelContainer.new()
+	panel.custom_minimum_size = Vector2(80, 60)
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.1, 0.15, 0.9)
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(0.5, 0.6, 0.8, 0.7)
+	style.set_corner_radius_all(6)
+	style.content_margin_left = 4
+	style.content_margin_top = 4
+	style.content_margin_right = 4
+	style.content_margin_bottom = 4
+	panel.add_theme_stylebox_override("panel", style)
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 2)
+	panel.add_child(vbox)
+	# 骰子标签
+	var dice_label = Label.new()
+	dice_label.name = "DiceLabel"
+	dice_label.text = "🎲 %d" % speed
+	dice_label.horizontal_alignment = 1
+	dice_label.add_theme_font_size_override("font_size", 16)
+	dice_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	vbox.add_child(dice_label)
+	# 卡牌预览
+	var card_label = Label.new()
+	card_label.name = "CardLabel"
+	card_label.text = "（空）"
+	card_label.horizontal_alignment = 1
+	card_label.add_theme_font_size_override("font_size", 11)
+	card_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
+	vbox.add_child(card_label)
+	# 交互
+	panel.gui_input.connect(_on_slot_input.bind(index))
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	return panel
+
+## B4: 槽位交互
+func _on_slot_input(event: InputEvent, slot_index: int) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_active_slot_index = slot_index
+		_show_hand_select_panel()
+
+## B4: 显示手牌选择面板
+func _show_hand_select_panel() -> void:
+	if _slot_select_panel and is_instance_valid(_slot_select_panel):
+		_slot_select_panel.queue_free()
+	_slot_select_panel = PanelContainer.new()
+	_slot_select_panel.custom_minimum_size = Vector2(400, 200)
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.07, 0.1, 0.98)
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(0.5, 0.6, 0.8, 1.0)
+	style.set_corner_radius_all(8)
+	style.content_margin_left = 10
+	style.content_margin_top = 10
+	style.content_margin_right = 10
+	style.content_margin_bottom = 10
+	_slot_select_panel.add_theme_stylebox_override("panel", style)
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	_slot_select_panel.add_child(vbox)
+	var title = Label.new()
+	title.text = "选择卡牌 (槽位 %d)" % (_active_slot_index + 1)
+	title.horizontal_alignment = 1
+	title.add_theme_font_size_override("font_size", 14)
+	vbox.add_child(title)
+	# 手牌按钮
+	if player_manager and player_manager.has_method("get"):
+		var bc = _get_battle_controller()
+9,0)
+		if bc:
+			for card in bc.card_system.get_hand():
+				if card.cost <= bc.player_manager.energy:
+					var btn = Button.new()
+					btn.text = "%s (cost %d) — %s" % [card.name, card.cost, card.description]
+					btn.custom_minimum_size = Vector2(380, 30)
+					btn.pressed.connect(_on_slot_card_selected.bind(card))
+					vbox.add_child(btn)
+	# 取消按钮
+	var cancel_btn = Button.new()
+	cancel_btn.text = "取消"
+	cancel_btn.pressed.connect(_close_hand_select_panel)
+	vbox.add_child(cancel_btn)
+	# 显示在屏幕中央
+	get_tree().root.add_child(_slot_select_panel)
+	_slot_select_panel.global_position = Vector2(
+		(get_tree().root.size.x - _slot_select_panel.size.x) / 2,
+		(get_tree().root.size.y - _slot_select_panel.size.y) / 2
+	)
+
+## B4: 选择卡牌绑定到槽位
+func _on_slot_card_selected(card: CardData) -> void:
+	if _active_slot_index < 0 or _active_slot_index >= _slot_cards.size():
+		return
+	_slot_cards[_active_slot_index] = card
+	# 更新槽位显示
+	var slot_node = _slot_nodes[_active_slot_index]
+	var card_label = slot_node.get_node_or_null("VBoxContainer/CardLabel")
+	if card_label:
+		card_label.text = card.name
+		card_label.add_theme_color_override("font_color", Color(0.9, 0.9, 1.0))
+	_close_hand_select_panel()
+	# 检查是否所有槽位都选了卡
+	_check_slot_confirm()
+
+## B4: 关闭手牌选择面板
+func _close_hand_select_panel() -> void:
+	if _slot_select_panel and is_instance_valid(_slot_select_panel):
+		_slot_select_panel.queue_free()
+	_slot_select_panel = null
+	_active_slot_index = -1
+
+## B4: 检查确认按钮状态
+func _check_slot_confirm() -> void:
+	if _slot_confirm_btn == null:
+		return
+	var all_filled = true
+	for card in _slot_cards:
+		if card == null:
+			all_filled = false
+			break
+	_slot_confirm_btn.disabled = not all_filled
+
+## B4: 确认出牌
+func _on_slot_confirm() -> void:
+	var bc = _get_battle_controller()
+	if bc == null:
+		return
+	var slot_plays: Array = []
+	for i in _slot_cards.size():
+		var card: CardData = _slot_cards[i]
+		if card == null:
+			continue
+		var target = bc.player_manager if card.target_type == "self" else bc.player_manager.selected_target
+		if target == null and card.target_type == "single_enemy":
+			var enemies = bc.enemy_system.get_alive_enemies()
+			target = enemies[0] if enemies+enemies.size() > 0 else null
+		slot_plays.append({"card": card, "target": target})
+	bc.confirm_player_plays(slot_plays)
+	# 清理槽位UI
+	if _slot_area and is_instance_valid(_slot_area):
+		_slot_area.queue_free()
+	_slot_cards.clear()
+	_slot_nodes.clear()
+
+## B4: 获取BattleController
+func _get_battle_controller():
+	var root = get_tree().root
+	for child in root.get_children():
+		if child.name == "BattleScene":
+			return child.get("battle_controller")
+	return null
 
 func update_player_stats_info(pm: PlayerManager) -> void:
 	if _player_stats_panel == null:
