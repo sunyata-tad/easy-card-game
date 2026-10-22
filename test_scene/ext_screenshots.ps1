@@ -7,7 +7,7 @@ Add-Type @"
 using System;
 using System.Runtime.InteropServices;
 using System.Drawing;
-public class WinCap {
+public class WinCap2 {
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
     [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint flags);
     public struct RECT { public int Left, Top, Right, Bottom; }
@@ -27,14 +27,13 @@ public class WinCap {
 "@ -ReferencedAssemblies System.Drawing
 
 $proc = Start-Process -FilePath $godot -ArgumentList "--path", "`"$proj`"", "res://test_scene/test_screenshots.tscn" -PassThru
-# 等待窗口出现
 Start-Sleep -Seconds 4
 $hwnd = $proc.MainWindowHandle
 Write-Host "HWND=$hwnd"
 
 function Shot($hwnd, $name, $waitSec) {
     Start-Sleep -Seconds $waitSec
-    $bmp = [WinCap]::Capture($hwnd)
+    $bmp = [WinCap2]::Capture($hwnd)
     if ($bmp -ne $null) {
         $bmp.Save("$outDir\$name")
         $bmp.Dispose()
@@ -46,8 +45,7 @@ function Shot($hwnd, $name, $waitSec) {
 
 Shot $hwnd "ext_01_main.png" 4
 Shot $hwnd "ext_02_prebattle.png" 8
-Shot $hwnd "ext_03_deck.png" 8
-Shot $hwnd "ext_04_battle.png" 8
+Shot $hwnd "ext_03_battle.png" 8
 
 Start-Sleep -Seconds 2
 if (-not $proc.HasExited) { $proc.Kill() }

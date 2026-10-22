@@ -892,7 +892,7 @@ func _fly_card_to_dice(card_node: Control, dice_node: Control, dice_index: int) 
 	card_node.z_index = 100
 	card_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var target_center = dice_node.global_position + dice_node.size / 2
-	var tween = create_tween()
+	var tween = root_node.create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(card_node, "global_position", target_center - card_node.size * 0.5, 0.3) \
 		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
@@ -1952,7 +1952,7 @@ func show_resolve_animation(card: CardData, is_player: bool, effect_text: String
 	container.global_position = Vector2(vp.x * 0.5 - 200, 160) if is_player else Vector2(vp.x * 0.5 - 200, 420)
 	container.modulate.a = 0.0
 	container.pivot_offset = Vector2(100, 30)
-	var tw = create_tween()
+	var tw = root_node.create_tween()
 	tw.tween_property(container, "modulate:a", 1.0, 0.15)
 	tw.tween_interval(0.7)
 	tw.tween_property(container, "modulate:a", 0.0, 0.15)
