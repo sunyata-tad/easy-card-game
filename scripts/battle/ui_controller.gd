@@ -694,7 +694,9 @@ func create_dice_bar(slots: int, speeds: Array) -> void:
 		_dice_bar.add_child(dice)
 	if player_area and is_instance_valid(player_area):
 		player_area.get_parent().add_child(_dice_bar)
-		_dice_bar.global_position = Vector2(player_area.global_position.x + 10, player_area.global_position.y - 85)
+		# 玩家骰子栏放在玩家区域右上方，避免与敌人骰子栏重叠
+		_dice_bar.global_position = Vector2(player_area.global_position.x + player_area.size.x + 10, player_area.global_position.y + 40)
+		_dice_bar.z_index = 20
 
 ## B4: 创建敌人骰子栏
 func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array) -> void:
@@ -708,15 +710,11 @@ func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array) -> void:
 		var dice = _create_dice_node(i, speeds[i] if i < speeds.size() else 1, true, enemy_idx)
 		nodes.append(dice)
 		bar.add_child(dice)
-	# 定位到对应敌人节点下方
-	var enemy_container = root_node.get_node_or_null("Background/EnemyArea")
-	if enemy_container and enemy_idx < enemy_container.get_child_count():
-		var enemy_node = enemy_container.get_child(enemy_idx)
-		root_node.add_child(bar)
-		bar.global_position = Vector2(enemy_node.global_position.x, enemy_node.global_position.y + enemy_node.size.y + 5)
-	else:
-		root_node.add_child(bar)
-		bar.global_position = Vector2(200 + enemy_idx * 200, 460)
+	# 定位到敌人区域下方（屏幕上方中央）
+	root_node.add_child(bar)
+	var vp = root_node.get_viewport_rect().size
+	bar.global_position = Vector2(vp.x * 0.5 - 40 + enemy_idx * 90, 360)
+	bar.z_index = 20
 	_enemy_dice_bars[enemy_idx] = {"bar": bar, "nodes": nodes, "cards": cards, "speeds": speeds}
 
 ## B4: 创建单个骰子节点

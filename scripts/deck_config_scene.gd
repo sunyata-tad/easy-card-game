@@ -93,6 +93,17 @@ func _ready():
 	_build_detail_panel()
 	_refresh_deck_dropdown()
 	_refresh_library()
+	# 从战斗前进入时，加载当前战斗卡组
+	if GameManager and GameManager._change_deck_config_return.get("from_prebattle", false):
+		_load_current_battle_deck()
+	_refresh_deck_display()
+
+## 加载当前战斗卡组（从战斗前界面进入时）
+func _load_current_battle_deck():
+	current_deck_cards.clear()
+	var deck_cards = GameData.get_deck()
+	for card in deck_cards:
+		current_deck_cards[card.id] = current_deck_cards.get(card.id, 0) + 1
 
 
 
@@ -241,6 +252,7 @@ func _get_filtered_card_ids() -> Array:
 func _refresh_library():
 	_populate_filter_options()
 	for child in library_grid.get_children():
+		library_grid.remove_child(child)
 		child.queue_free()
 	if _lib_scroll:
 		library_grid.columns = 8
@@ -300,6 +312,7 @@ func _rebuild_option_button(btn: OptionButton, all_text: String, options: Array)
 
 func _refresh_deck_display():
 	for child in deck_grid.get_children():
+		deck_grid.remove_child(child)
 		child.queue_free()
 	if _deck_scroll:
 		deck_grid.columns = 3
@@ -677,7 +690,24 @@ func _on_delete():
 		_show_status("删除失败")
 
 func _on_back():
+	# 从战斗前进入时，把编辑结果写回战斗卡组
+	if GameManager and GameManager._change_deck_config_return.get("from_prebattle", false):
+		_apply_deck_to_battle()
 	TransitionManager.transition(GameManager.back_from_deck_config)
+
+## 把当前编辑的卡组写回 GameData.player_deck（供战斗前→战斗使用）
+func _apply_deck_to_battle():
+	var card_db = CardDatabase.new()
+	var deck_list: Array = []
+	var card_ids = current_deck_cards.keys()
+	_sort_card_ids(card_ids)
+	for card_id in card_ids:
+		var count = current_deck_cards[card_id]
+		for _i in range(count):
+			var card = card_db.get_card(card_id)
+			if card:
+				deck_list.append(card)
+	GameData.player_deck = deck_list
 
 func _build_detail_panel():
 	_detail_panel = Panel.new()

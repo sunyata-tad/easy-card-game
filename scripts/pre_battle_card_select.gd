@@ -92,7 +92,7 @@ func _build_ui() -> void:
 	deck_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_vbox.add_child(deck_scroll)
 	_deck_grid = GridContainer.new()
-	_deck_grid.columns = 5
+	_deck_grid.columns = 3
 	_deck_grid.add_theme_constant_override("h_separation", 6)
 	_deck_grid.add_theme_constant_override("v_separation", 6)
 	deck_scroll.add_child(_deck_grid)
@@ -211,17 +211,10 @@ func _refresh_my_deck() -> void:
 	for child in _deck_grid.get_children():
 		child.queue_free()
 	_deck_cards = GameData.get_deck()
-	var counts: Dictionary = {}
-	for card in _deck_cards:
-		var key = card.id
-		counts[key] = counts.get(key, 0) + 1
 	_deck_count_label.text = "战斗卡组 (%d张)" % _deck_cards.size()
-	# 按卡种显示（带数量）
-	for card_id in counts.keys():
-		var card = _card_db.get_card(card_id)
-		if card == null:
-			continue
-		var node = _create_deck_card_preview(card, counts[card_id])
+	# 按卡牌逐个展开显示（含重复）
+	for card in _deck_cards:
+		var node = _create_deck_card_preview(card, 1)
 		_deck_grid.add_child(node)
 
 ## 创建卡组卡牌预览
