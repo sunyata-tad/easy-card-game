@@ -9,6 +9,9 @@ var data: EnemyData              ## 敌人配置数据（来自 JSON 的静态�
 var current_hp: int              ## 当前血量
 var max_hp: int                  ## 最大血量
 var block: int = 0               ## 当前格挡值
+var energy: int = 0              ## 当前能量
+var max_energy: int = 3          ## 能量上限
+var energy_regen: int = 1        ## 每回合能量恢复
 var buff_manager: BuffManager    ## buff 管理器
 var hook_chain: HookChain        ## 钩子链（处理伤害计算修正）
 var is_dead: bool = false        ## 是否已死亡
@@ -16,6 +19,7 @@ var current_intent: Dictionary = {}  ## 当前意图，如 {"type": "attack", "d
 
 signal hp_changed(current: int, maximum: int)    ## 血量变化
 signal block_changed(amount: int)                ## 格挡值变化
+signal energy_changed(current: int, maximum: int) ## 能量变化
 signal enemy_died()                              ## 敌人死亡
 signal enemy_damaged(amount: int)                ## 敌人受到伤害（发出实际伤害值）
 signal intent_changed(intent: Dictionary)        ## 意图变化
@@ -102,6 +106,27 @@ func heal(amount: int) -> int:
 func reset_block() -> void:
 	block = 0
 	block_changed.emit(block)
+
+## 消耗能量
+func spend_energy(amount: int) -> bool:
+	if energy < amount:
+		return false
+	energy -= amount
+	energy_changed.emit(energy, max_energy)
+	return true
+
+## 恢复能量
+func restore_energy(amount: int) -> void:
+	energy = mini(energy + amount, max_energy)
+	energy_changed.emit(energy, max_energy)
+
+## 回合开始恢复能量
+func regen_energy() -> void:
+	restore_energy(energy_regen)
+
+## 检查是否有足够能量
+func can_afford(cost: int) -> bool:
+	return energy >= cost
 
 ## 设置敌人意图（决定下回合的行动）
 func set_intent(intent: Dictionary) -> void:

@@ -16,6 +16,7 @@ var tags: Array = []           ## 标签列表（用于卡牌效果检索，如 
 var treated_as: Array = []     ## 视为标签（"视为某标签"但不真正拥有该标签）
 var play_condition: Dictionary = {}  ## 出牌条件（如 {"type": "hp_below_percent", "value": 10}），不满足不可打出
 var art: String = ""              ## 美术资源路径（res://art_assets/pixel/xxx.png）
+var cost: int = 0                 ## 能量消耗（0=免费）
 
 ## 构造函数：从 JSON 数据创建卡牌，upgraded=true 时读取 upgrade 字段
 func _init(data: Dictionary, upgraded: bool = false):
@@ -40,6 +41,7 @@ func _init(data: Dictionary, upgraded: bool = false):
 	treated_as = data.get("treated_as", [])
 	play_condition = data.get("play_condition", {})
 	art = data.get("art", "")
+	cost = int(data.get("cost", 0))
 
 ## 获取描述文本（替换 {scaling_key} 占位符为实际效果值）
 func get_description_text() -> String:

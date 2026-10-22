@@ -146,6 +146,8 @@ func _on_battle_init() -> void:
 func _on_draw_phase() -> void:
 	player_manager.reset_block()
 	enemy_system.reset_all_block()
+	if not is_first_turn:
+		player_manager.regen_energy()
 	player_manager.buff_manager.remove_at_turn_end()
 	effect_resolver.clear_all_temp_hooks(player_manager)
 	var draw_count = rules.initial_draw_count if is_first_turn else rules.turn_draw_count
@@ -406,6 +408,10 @@ func play_card(card: CardData, target = null) -> bool:
 	if not card.can_play(player_manager):
 		ui_controller.show_state_message("条件不满足，无法打出：%s" % card.name, 1.2)
 		return false
+	# 能量检查
+	if not player_manager.can_afford(card.cost):
+		ui_controller.show_state_message("能量不足，无法打出：%s" % card.name, 1.2)
+		return false
 	var target_to_use = target
 	if card.target_type == "self":
 		target_to_use = player_manager
@@ -415,6 +421,7 @@ func play_card(card: CardData, target = null) -> bool:
 	if card.target_type == "single_enemy" and target_to_use == null:
 		return false
 	state_machine.change_state(StateMachine.BattleState.RESOLVING)
+	player_manager.spend_energy(card.cost)
 	effect_resolver.resolve_effects(card.effects, player_manager, target_to_use)
 	card_system.play_card(card, target_to_use)
 	_update_player_ui()

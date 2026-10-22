@@ -10,6 +10,9 @@ var max_hp: int                ## 最大血量
 var block: int = 0             ## 当前格挡值
 var base_strength: int = 0     ## 基础力量（影响攻击力）
 var base_dexterity: int = 0    ## 基础敏捷（影响格挡值）
+var energy: int = 5            ## 当前能量
+var max_energy: int = 5        ## 能量上限（可成长）
+var energy_regen: int = 1      ## 每回合能量恢复
 var buff_manager: BuffManager  ## buff 管理器
 var hook_chain: HookChain      ## 钩子链
 var relic_manager: RelicManager ## 遗物管理器（规则改变来源）
@@ -19,6 +22,7 @@ var selected_target: EnemyUnit = null  ## 当前选中的敌人对象
 
 signal hp_changed(current: int, maximum: int)    ## 血量变化
 signal block_changed(amount: int)                ## 格挡值变化
+signal energy_changed(current: int, maximum: int) ## 能量变化
 signal player_died()                             ## 玩家死亡
 ## [未连接] 玩家受伤通知。若已连接接收方，请删除此标记注释。
 signal player_damaged(amount: int)               ## 玩家受到伤害
@@ -113,6 +117,27 @@ func heal(amount: int) -> int:
 	return healed
 
 func reset_block() -> void: block = 0; block_changed.emit(block)
+
+## 消耗能量，不足时返回false
+func spend_energy(amount: int) -> bool:
+	if energy < amount:
+		return false
+	energy -= amount
+	energy_changed.emit(energy, max_energy)
+	return true
+
+## 恢复能量（不超过上限）
+func restore_energy(amount: int) -> void:
+	energy = mini(energy + amount, max_energy)
+	energy_changed.emit(energy, max_energy)
+
+## 回合开始恢复能量
+func regen_energy() -> void:
+	restore_energy(energy_regen)
+
+## 检查是否有足够能量打出卡牌
+func can_afford(cost: int) -> bool:
+	return energy >= cost
 
 ## 直接判定死亡（如遗物规则：抽空牌组时抽卡）
 func die() -> void:
