@@ -514,8 +514,9 @@ func _on_card_play_requested(card: CardData) -> void:
 func update_enemy_display(enemies: Array) -> void:
 	_clear_enemies()
 	
+	# 立即释放旧节点（用 free 而非 queue_free，避免同帧内 get_child 获取到即将释放的节点）
 	for child in enemy_container.get_children():
-		child.queue_free()
+		child.free()
 	
 	for enemy in enemies:
 		var enemy_node = _create_enemy_node(enemy)
@@ -695,10 +696,11 @@ func create_slot_area(slots: int, speeds: Array) -> void:
 	_slot_confirm_btn.disabled = true
 	_slot_confirm_btn.pressed.connect(_on_slot_confirm)
 	_slot_area.add_child(_slot_confirm_btn)
-	# 添加到场景
+	# 添加到场景：放在玩家区域上方（可见区域）
 	if player_area and is_instance_valid(player_area):
 		player_area.get_parent().add_child(_slot_area)
-		_slot_area.global_position = Vector2(player_area.global_position.x, player_area.global_position.y + player_area.size.y + 10)
+		# 槽位区域放在玩家区域上方80px处，确保在屏幕内可见
+		_slot_area.global_position = Vector2(player_area.global_position.x + 10, player_area.global_position.y - 75)
 
 ## B4: 创建单个槽位节点
 func _create_slot_node(index: int, speed: int) -> PanelContainer:
@@ -1679,9 +1681,12 @@ func show_enemy_intent(enemy_idx: int, plays: Array) -> void:
 		if intent_label == null:
 			intent_label = Label.new()
 			intent_label.name = "IntentLabel"
-			intent_label.add_theme_font_size_override("font_size", 11)
-			intent_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.3))
-			intent_label.position = Vector2(0, -20)
+			intent_label.add_theme_font_size_override("font_size", 14)
+			intent_label.add_theme_color_override("font_color", Color(1.0, 0.55, 0.2))
+			intent_label.horizontal_alignment = 1
+			# 放在敌人节点内部顶部（EnemySlot 高度220，顶部5px处）
+			intent_label.position = Vector2(0, 5)
+			intent_label.size = Vector2(160, 20)
 			enemy_node.add_child(intent_label)
 		var text = ""
 		for play in plays:
@@ -1690,6 +1695,7 @@ func show_enemy_intent(enemy_idx: int, plays: Array) -> void:
 				text += " | "
 			text += card.name
 		intent_label.text = text
+		intent_label.visible = true  ## 新流程：确保意图可见（_update_intent_display 可能设为 false）
 	# 同时打印调试信息
 	for play in plays:
 		var card: CardData = play.card

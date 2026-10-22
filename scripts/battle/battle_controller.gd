@@ -663,7 +663,9 @@ func _update_player_ui() -> void:
 	ui_controller.update_player_display(player_manager.current_hp, player_manager.max_hp, player_manager.block)
 	ui_controller.update_player_stats_info(player_manager)
 	ui_controller.update_player_buff_bar(player_manager)
-	ui_controller.update_all_enemy_intents()
+	# 新流程：敌人意图由 show_enemy_intent 管理，不调用旧意图更新（避免覆盖）
+	if not use_new_flow:
+		ui_controller.update_all_enemy_intents()
 
 func _update_initial_ui() -> void:
 	ui_controller.update_enemy_display(enemy_system.get_all_enemies())
