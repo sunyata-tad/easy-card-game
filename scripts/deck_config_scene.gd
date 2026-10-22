@@ -302,8 +302,9 @@ func _refresh_deck_display():
 	for child in deck_grid.get_children():
 		child.queue_free()
 	if _deck_scroll:
-		deck_grid.columns = 5
-	var total = 0
+		deck_grid.columns = 3
+	# 收集所有卡牌（按 count 展开）
+	var all_cards: Array = []
 	var card_ids = current_deck_cards.keys()
 	_sort_card_ids(card_ids)
 	for card_id in card_ids:
@@ -313,17 +314,45 @@ func _refresh_deck_display():
 		var card = card_database.get_card(card_id)
 		if card == null:
 			continue
-		total += count
 		for _i in range(count):
-			var widget = _create_small_card_widget(card, 0, false, false)
+			all_cards.append(card)
+	# 显示 9 个固定卡槽（3×3 九宫格）
+	for i in 9:
+		if i < all_cards.size():
+			var widget = _create_small_card_widget(all_cards[i], 0, false, false)
 			deck_grid.add_child(widget)
-	deck_count_label.text = "卡组: %d/40-60" % total
+		else:
+			deck_grid.add_child(_create_empty_deck_slot())
+	deck_count_label.text = "卡组: %d/9" % all_cards.size()
 	var color = Color(0.7, 0.7, 0.7)
-	if total < deck_manager.MIN_DECK_SIZE or total > deck_manager.MAX_DECK_SIZE:
+	if all_cards.size() != 9:
 		color = Color(1.0, 0.4, 0.4)
 	else:
 		color = Color(0.4, 1.0, 0.4)
 	deck_count_label.add_theme_color_override("font_color", color)
+
+## 创建空的卡组槽位（九宫格占位）
+func _create_empty_deck_slot() -> Control:
+	var panel = Panel.new()
+	panel.custom_minimum_size = Vector2(108, 140)
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.05, 0.05, 0.07, 0.6)
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.border_color = Color(0.3, 0.3, 0.35, 0.5)
+	style.set_corner_radius_all(4)
+	panel.add_theme_stylebox_override("panel", style)
+	var label = Label.new()
+	label.text = "空"
+	label.add_theme_font_size_override("font_size", 14)
+	label.add_theme_color_override("font_color", Color(0.35, 0.35, 0.4))
+	label.horizontal_alignment = 1
+	label.vertical_alignment = 1
+	label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(label)
+	return panel
 
 func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_locked: bool = false, show_detail: bool = false) -> Panel:
 	var panel = Panel.new()
@@ -530,7 +559,12 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 
 
 func _create_small_card_widget(card: CardData, count: int, is_library: bool = false, is_locked: bool = false) -> Control:
-	var panel = _create_card_visual(card, 70, 92, count, is_locked, false)
+	var w := 70.0
+	var h := 92.0
+	if not is_library:
+		w = 108.0
+		h = 140.0
+	var panel = _create_card_visual(card, w, h, count, is_locked, false)
 	panel.gui_input.connect(_on_card_widget_input.bind(card.id, is_library, is_locked))
 	if not is_locked:
 		panel.mouse_entered.connect(_on_card_hover_entered.bind(panel))
@@ -582,6 +616,13 @@ func _add_card_to_deck(card_id: String):
 		return
 	if current_count >= deck_manager.MAX_CARD_COPIES:
 		_show_status("每张卡至多放入%d张" % deck_manager.MAX_CARD_COPIES)
+		return
+	# 战斗卡组最多9张
+	var total := 0
+	for c in current_deck_cards.values():
+		total += c
+	if total >= 9:
+		_show_status("战斗卡组最多9张")
 		return
 	current_deck_cards[card_id] = current_count + 1
 	_refresh_deck_display()

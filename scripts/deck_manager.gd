@@ -1,8 +1,8 @@
 extends Node
 
 const DECKS_DIR := "user://decks/"
-const MIN_DECK_SIZE := 40
-const MAX_DECK_SIZE := 60
+const MIN_DECK_SIZE := 9
+const MAX_DECK_SIZE := 9
 const MAX_CARD_COPIES := 3
 
 func _ready():

@@ -111,7 +111,7 @@ custom_minimum_size = Vector2(150, 30)
 
 [node name="DeckCountLabel" type="Label" parent="MainArea/LeftPanel/LeftVBox"]
 layout_mode = 2
-text = "卡组: 0/40-60"
+text = "卡组: 0/9"
 
 [node name="DeckScroll" type="ScrollContainer" parent="MainArea/LeftPanel/LeftVBox"]
 layout_mode = 2
