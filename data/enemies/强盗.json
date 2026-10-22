@@ -1,0 +1,13 @@
+{
+	"id": "强盗",
+	"name": "强盗",
+	"max_hp": 20,
+	"deck": "basic",
+	"energy": 3,
+	"energy_regen": 1,
+	"slots": 1,
+	"speed": 1,
+	"ai_type": "aggressive",
+	"description": "凶猛的强盗，倾向攻击",
+	"art": ""
+}

@@ -1,0 +1,13 @@
+{
+	"id": "守卫",
+	"name": "守卫",
+	"max_hp": 30,
+	"deck": "basic",
+	"energy": 2,
+	"energy_regen": 1,
+	"slots": 1,
+	"speed": 1,
+	"ai_type": "defensive",
+	"description": "坚毅的守卫，倾向防御",
+	"art": ""
+}
