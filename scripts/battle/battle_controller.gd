@@ -226,7 +226,7 @@ func on_turn_prepare_clicked() -> void:
 		return
 	_roll_all_speeds()
 	if ui_controller:
-		ui_controller.reveal_player_dice()
+		ui_controller.reveal_player_dice(_player_slot_speeds)
 	state_machine.change_state(StateMachine.BattleState.ENEMY_SELECT)
 
 ## B4: 敌人选牌阶段——AI决定出牌，玩家可见

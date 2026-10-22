@@ -701,8 +701,10 @@ func create_dice_bar(slots: int, speeds: Array, unknown: bool = false) -> void:
 		_dice_bar.z_index = 20
 
 ## 揭示玩家骰子速度（回合准备后调用）
-func reveal_player_dice() -> void:
+func reveal_player_dice(speeds: Array = []) -> void:
 	_dice_unknown = false
+	if speeds.size() > 0:
+		_dice_speeds = speeds.duplicate()
 	for i in _dice_nodes.size():
 		_set_dice_value(_dice_nodes[i], _dice_speeds[i] if i < _dice_speeds.size() else 1)
 
