@@ -202,6 +202,7 @@ func _on_enemy_turn_phase() -> void:
 func _on_enemy_select_phase() -> void:
 	_roll_all_speeds()
 	_pending_plays.clear()
+	_enemy_card_systems.clear()
 	for enemy_idx in enemy_system.enemies.size():
 		var enemy = enemy_system.enemies[enemy_idx]
 		if enemy.is_dead:
@@ -209,10 +210,14 @@ func _on_enemy_select_phase() -> void:
 		var enemy_cs = CardSystem.new()
 		enemy_cs.initialize_deck(_get_enemy_deck(enemy))
 		enemy_cs.draw_cards(5)
+		_enemy_card_systems[enemy_idx] = enemy_cs
 		var EnemyAIClass = load("res://scripts/battle/enemy_ai.gd")
 		var plays = EnemyAIClass.decide_plays(enemy, enemy_cs, player_manager, enemy_system.enemies)
+		var enemy_speeds: Array = _enemy_slot_speeds.get(enemy_idx, [])
 		for play in plays:
-			_add_pending_play(play.card, enemy, play.target, _enemy_slot_speeds[play.slot_index], false, play.slot_index, enemy_idx)
+			var s_idx: int = play.slot_index
+			var spd: int = enemy_speeds[s_idx] if s_idx < enemy_speeds.size() else 1
+			_add_pending_play(play.card, enemy, play.target, spd, false, s_idx, enemy_idx)
 		if ui_controller:
 			ui_controller.show_enemy_intent(enemy_idx, plays)
 	if not _check_battle_end_state():
@@ -223,7 +228,76 @@ func _on_player_select_phase() -> void:
 	if ui_controller:
 		ui_controller.set_interactive(true)
 		ui_controller.show_turn_banner("你的回合（选牌）")
+	_player_queued_plays.clear()
 	_update_player_ui()
+	# 显示新流程HUD（能量/槽位/速度）
+	if ui_controller:
+		ui_controller.update_energy_display(player_manager.energy, player_manager.energy_max)
+		ui_controller.update_slots_display(player_manager.slots, _player_slot_speeds)
+		ui_controller.update_end_turn_button_text("确认出牌")
+
+## B4: 队列一张玩家卡牌（选牌阶段）
+func _queue_player_card(card: CardData, target) -> void:
+	# 检查槽位
+	if _player_queued_plays.size() >= player_manager.slots:
+		ui_controller.show_state_message("槽位已满", 1.0)
+		return
+	# 检查能量
+	var queued_cost: int = 0
+	for p in _player_queued_plays:
+		queued_cost += p.card.cost
+	if queued_cost + card.cost > player_manager.energy:
+		ui_controller.show_state_message("能量不足", 1.0)
+		return
+	# 检查是否已在队列中
+	for p in _player_queued_plays:
+		if p.card == card:
+			return
+	# 确定目标
+	var target_to_use = target
+	if card.target_type == "self":
+		target_to_use = player_manager
+	elif card.target_type == "single_enemy" and target == null:
+		# 自动选择第一个存活敌人
+		for e in enemy_system.get_alive_enemies():
+			target_to_use = e
+			break
+		if target_to_use == null:
+			return
+	_player_queued_plays.append({"card": card, "target": target_to_use})
+	# 更新UI
+	_update_new_flow_hud()
+	# 卡牌视觉反馈：上移表示已队列
+	if ui_controller:
+		var card_node = ui_controller.get_card_node(card)
+		if card_node and card_node.has_method("set_queued"):
+			card_node.set_queued(true)
+
+## B4: 取消队列一张玩家卡牌
+func unqueue_player_card(card: CardData) -> void:
+	for i in _player_queued_plays.size():
+		if _player_queued_plays[i].card == card:
+			_player_queued_plays.remove_at(i)
+			if ui_controller:
+				var card_node = ui_controller.get_card_node(card)
+				if card_node and card_node.has_method("set_queued"):
+					card_node.set_queued(false)
+			_update_new_flow_hud()
+			return
+
+## B4: 更新新流程HUD
+func _update_new_flow_hud() -> void:
+	if not ui_controller:
+		return
+	var remaining_energy = player_manager.energy
+	for p in _player_queued_plays:
+		remaining_energy -= p.card.cost
+	ui_controller.update_energy_display(remaining_energy, player_manager.energy_max)
+	var used_slots = _player_queued_plays.size()
+	ui_controller.update_slots_display(player_manager.slots - used_slots, _player_slot_speeds)
+	# 显示队列信息
+	var queue_text = "已选牌: %d/%d" % [used_slots, player_manager.slots]
+	ui_controller.show_state_message(queue_text, 0.5)
 
 ## B4: 玩家确认出牌——收集玩家槽位出牌，进入结算
 func confirm_player_plays(slot_plays: Array) -> void:
@@ -233,6 +307,16 @@ func confirm_player_plays(slot_plays: Array) -> void:
 		var target = play.target
 		var speed = _player_slot_speeds[i] if i < _player_slot_speeds.size() else 1
 		_add_pending_play(card, player_manager, target, speed, true, i)
+		# 消耗玩家能量
+		player_manager.spend_energy(card.cost)
+	# 消耗敌人能量（AI选出的牌）
+	for enemy_idx in _enemy_card_systems.size():
+		var enemy = enemy_system.enemies[enemy_idx] if enemy_idx < enemy_system.enemies.size() else null
+		if enemy == null or enemy.is_dead:
+			continue
+		for play in _pending_plays:
+			if not play.is_player and play.enemy_index == enemy_idx:
+				enemy.spend_energy(play.card.cost)
 	state_machine.change_state(StateMachine.BattleState.RESOLVING)
 	_resolve_all_plays()
 	if not _check_battle_end_state():
@@ -251,6 +335,11 @@ func _get_enemy_deck(_enemy: EnemyUnit) -> Array:
 	])
 
 func _on_turn_end_phase() -> void:
+	# 新流程：无弃牌阶段，直接进入回合结束处理
+	if use_new_flow:
+		await _resolve_end_turn()
+		return
+	# 旧流程：Retain 标签检查 + 弃牌阶段
 	# Retain 标签：有 Retain 的牌不计入弃牌数量
 	var non_retain_count := 0
 	for card in card_system.hand:
@@ -579,6 +668,10 @@ func _on_ui_card_released(_card: CardData, _card_node: Control) -> void:
 func _on_ui_card_played(card: CardData, target) -> void:
 	if card == null:
 		return
+	# 新流程：在PLAYER_SELECT阶段，队列出牌而非立即打出
+	if use_new_flow and state_machine.is_player_select():
+		_queue_player_card(card, target)
+		return
 	var card_node = ui_controller.get_card_node(card) if ui_controller else null
 	play_card_with_animation(card, target, card_node)
 
@@ -598,6 +691,18 @@ func _on_ui_card_dropped(card: CardData, target) -> void:
 	if target == null:
 		if card_node and card_node.has_method("reset_position"):
 			card_node.reset_position()
+		return
+	# 新流程：在PLAYER_SELECT阶段，队列出牌
+	if use_new_flow and state_machine.is_player_select():
+		if card.target_type == "single_enemy" and target is EnemyUnit:
+			_queue_player_card(card, target)
+		elif card.target_type == "single_ally" and target is PlayerManager:
+			_queue_player_card(card, target)
+		elif card.target_type == "self":
+			_queue_player_card(card, player_manager)
+		else:
+			if card_node and card_node.has_method("reset_position"):
+				card_node.reset_position()
 		return
 	if card.target_type == "single_enemy" and target is EnemyUnit:
 		play_card_with_animation(card, target, card_node)
@@ -634,12 +739,23 @@ func play_card_with_animation(card: CardData, target, card_node: Control) -> voi
 
 func _on_ui_enemy_selected(enemy: EnemyUnit) -> void:
 	player_manager.selected_target = enemy
+	# 新流程：在PLAYER_SELECT阶段，如果有pending_card，将其队列
+	if use_new_flow and state_machine.is_player_select() and pending_card != null:
+		_queue_player_card(pending_card, enemy)
+		pending_card = null
+		ui_controller.clear_target_highlights()
+		return
 	if pending_card != null:
 		play_card_with_animation(pending_card, enemy, null)
 		pending_card = null
 		ui_controller.clear_target_highlights()
 
 func _on_ui_end_turn_clicked() -> void:
+	# 新流程：确认出牌
+	if use_new_flow and state_machine.is_player_select():
+		confirm_player_plays(_player_queued_plays)
+		_player_queued_plays.clear()
+		return
 	end_player_turn()
 
 func get_tree():
@@ -651,10 +767,15 @@ func get_tree():
 ## 槽位出牌列表（每回合收集双方所有槽位的出牌）
 var _pending_plays: Array = []
 
+## 玩家已队列出牌（PLAYER_SELECT阶段）
+var _player_queued_plays: Array = []
+
 ## 玩家槽位速度（回合开始掷骰分配）
 var _player_slot_speeds: Array = []
-## 敌人槽位速度
-var _enemy_slot_speeds: Array = []
+## 敌人槽位速度：{enemy_index: [speed_per_slot]}
+var _enemy_slot_speeds: Dictionary = {}
+## 敌人卡组CardSystem：{enemy_index: CardSystem}
+var _enemy_card_systems: Dictionary = {}
 
 ## 回合开始时为所有槽位掷速度骰
 func _roll_all_speeds() -> void:
@@ -662,10 +783,14 @@ func _roll_all_speeds() -> void:
 	for i in player_manager.slots:
 		_player_slot_speeds.append(BattleRules.roll_speed(player_manager.speed))
 	_enemy_slot_speeds.clear()
-	for enemy in enemy_system.enemies:
-		if not enemy.is_dead:
-			for i in enemy.slots:
-				_enemy_slot_speeds.append(BattleRules.roll_speed(enemy.speed))
+	for enemy_idx in enemy_system.enemies.size():
+		var enemy = enemy_system.enemies[enemy_idx]
+		if enemy.is_dead:
+			continue
+		var speeds: Array = []
+		for i in enemy.slots:
+			speeds.append(BattleRules.roll_speed(enemy.speed))
+		_enemy_slot_speeds[enemy_idx] = speeds
 
 ## 添加一个槽位出牌到待结算列表
 func _add_pending_play(card: CardData, source, target, speed: int, is_player: bool, slot_index: int, enemy_index: int = 0) -> void:
@@ -705,8 +830,20 @@ func _resolve_all_plays() -> void:
 		# 打出的牌回牌库
 		if source is PlayerManager:
 			card_system.play_card(card, target)
+		elif source is EnemyUnit:
+			var e_idx: int = play.enemy_index
+			var e_cs = _enemy_card_systems.get(e_idx)
+			if e_cs:
+				e_cs.play_card(card, target)
+		# 更新UI
+		if ui_controller:
+			if source is PlayerManager:
+				_update_player_ui()
+			elif source is EnemyUnit:
+				ui_controller.update_single_enemy(source)
 	_update_player_ui()
 	_pending_plays.clear()
+	_enemy_card_systems.clear()
 
 ## 排序比较函数：速度↓ → 玩家优先 → 槽位↑ → 敌人索引↑
 func _compare_plays(a: Dictionary, b: Dictionary) -> bool:

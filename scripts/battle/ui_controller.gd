@@ -1460,11 +1460,51 @@ func _exit_card_select_mode() -> void:
 ## B4: 新流程UI方法
 ## ==========================================
 
+## 更改结束回合按钮文字（新流程用）
+func update_end_turn_button_text(text: String) -> void:
+	if end_turn_button:
+		end_turn_button.text = text
+
+## 恢复结束回合按钮默认文字
+func reset_end_turn_button_text() -> void:
+	if end_turn_button:
+		end_turn_button.text = "结束回合"
+
 ## 显示敌人出牌意图（同时出牌模式下）
 func show_enemy_intent(enemy_idx: int, plays: Array) -> void:
+	# 在敌人区域显示意图
+	var enemy_node = null
+	if enemy_container and enemy_idx < enemy_container.get_child_count():
+		enemy_node = enemy_container.get_child(enemy_idx)
+	if enemy_node:
+		# 查找或创建意图标签
+		var intent_label = enemy_node.get_node_or_null("IntentLabel")
+		if intent_label == null:
+			intent_label = Label.new()
+			intent_label.name = "IntentLabel"
+			intent_label.add_theme_font_size_override("font_size", 11)
+			intent_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.3))
+			intent_label.position = Vector2(0, -20)
+			enemy_node.add_child(intent_label)
+		var text = ""
+		for play in plays:
+			var card: CardData = play.card
+			if text != "":
+				text += " | "
+			text += card.name
+		intent_label.text = text
+	# 同时打印调试信息
 	for play in plays:
 		var card: CardData = play.card
 		print("[UI] 敌人%d 槽位%d: %s (cost=%d)" % [enemy_idx, play.slot_index, card.name, card.cost])
+
+## 清除所有敌人意图显示
+func clear_all_enemy_intents() -> void:
+	if enemy_container:
+		for enemy_node in enemy_container.get_children():
+			var intent_label = enemy_node.get_node_or_null("IntentLabel")
+			if intent_label:
+				intent_label.text = ""
 
 ## 更新能量显示
 func update_energy_display(current: int, maximum: int) -> void:

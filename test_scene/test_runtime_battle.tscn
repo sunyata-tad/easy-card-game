@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://test_scene/test_runtime_battle.gd" id="1_r"]
+
+[node name="TestRuntimeBattle" type="Control"]
+script = ExtResource("1_r")
