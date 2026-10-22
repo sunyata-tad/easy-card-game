@@ -9,14 +9,17 @@ class_name StateMachine
 
 ## 战斗状态枚举
 enum BattleState {
-	INIT,         ## 初始化
-	DRAW_PHASE,   ## 抽牌阶段
-	PLAYER_TURN,  ## 玩家回合
-	RESOLVING,    ## 结算中（卡牌效果正在处理）
-	ENEMY_TURN,   ## 敌人回合
-	TURN_END,     ## 回合结束
-	VICTORY,      ## 战斗胜利
-	DEFEAT        ## 战斗失败
+	INIT,          ## 初始化
+	DRAW_PHASE,    ## 抽牌阶段
+	ENEMY_SELECT,  ## 敌人选牌阶段（AI决定出牌，玩家可见）
+	PLAYER_SELECT, ## 玩家选牌阶段（玩家决定出牌）
+	RESOLVING,     ## 结算中（速度排序依次执行）
+	TURN_END,      ## 回合结束
+	VICTORY,       ## 战斗胜利
+	DEFEAT,        ## 战斗失败
+	## 旧状态（向后兼容）
+	PLAYER_TURN,   ## 玩家回合（旧模式）
+	ENEMY_TURN,    ## 敌人回合（旧模式）
 }
 
 var current_state: BattleState = BattleState.INIT     ## 当前状态
@@ -37,13 +40,16 @@ func _init():
 func _setup_valid_transitions() -> void:
 	_valid_transitions = {
 		BattleState.INIT: [BattleState.DRAW_PHASE],
-		BattleState.DRAW_PHASE: [BattleState.PLAYER_TURN, BattleState.VICTORY, BattleState.DEFEAT],
-		BattleState.PLAYER_TURN: [BattleState.RESOLVING, BattleState.ENEMY_TURN, BattleState.VICTORY, BattleState.DEFEAT],
-		BattleState.RESOLVING: [BattleState.PLAYER_TURN, BattleState.ENEMY_TURN, BattleState.VICTORY, BattleState.DEFEAT],
-		BattleState.ENEMY_TURN: [BattleState.TURN_END, BattleState.VICTORY, BattleState.DEFEAT],
+		BattleState.DRAW_PHASE: [BattleState.ENEMY_SELECT, BattleState.PLAYER_TURN, BattleState.VICTORY, BattleState.DEFEAT],
+		BattleState.ENEMY_SELECT: [BattleState.PLAYER_SELECT, BattleState.VICTORY, BattleState.DEFEAT],
+		BattleState.PLAYER_SELECT: [BattleState.RESOLVING, BattleState.VICTORY, BattleState.DEFEAT],
+		BattleState.RESOLVING: [BattleState.TURN_END, BattleState.PLAYER_TURN, BattleState.ENEMY_TURN, BattleState.VICTORY, BattleState.DEFEAT],
 		BattleState.TURN_END: [BattleState.DRAW_PHASE, BattleState.VICTORY, BattleState.DEFEAT],
-		BattleState.VICTORY: [],  ## 终态，不允许再转换
-		BattleState.DEFEAT: []    ## 终态，不允许再转换
+		## 旧模式兼容
+		BattleState.PLAYER_TURN: [BattleState.RESOLVING, BattleState.ENEMY_TURN, BattleState.VICTORY, BattleState.DEFEAT],
+		BattleState.ENEMY_TURN: [BattleState.TURN_END, BattleState.VICTORY, BattleState.DEFEAT],
+		BattleState.VICTORY: [],
+		BattleState.DEFEAT: []
 	}
 
 ## 尝试切换到新状态，非法转换会被拒绝
@@ -70,16 +76,24 @@ func get_state_name(state: BattleState) -> String:
 	match state:
 		BattleState.INIT: return "INIT"
 		BattleState.DRAW_PHASE: return "DRAW_PHASE"
-		BattleState.PLAYER_TURN: return "PLAYER_TURN"
+		BattleState.ENEMY_SELECT: return "ENEMY_SELECT"
+		BattleState.PLAYER_SELECT: return "PLAYER_SELECT"
 		BattleState.RESOLVING: return "RESOLVING"
-		BattleState.ENEMY_TURN: return "ENEMY_TURN"
 		BattleState.TURN_END: return "TURN_END"
 		BattleState.VICTORY: return "VICTORY"
 		BattleState.DEFEAT: return "DEFEAT"
-		_: return "UNKNOWN"  ## 通配符（match 中类似 default）
+		BattleState.PLAYER_TURN: return "PLAYER_TURN"
+		BattleState.ENEMY_TURN: return "ENEMY_TURN"
+		_: return "UNKNOWN"
 
 func is_player_turn() -> bool:
-	return current_state == BattleState.PLAYER_TURN
+	return current_state == BattleState.PLAYER_TURN or current_state == BattleState.PLAYER_SELECT
+
+func is_enemy_select() -> bool:
+	return current_state == BattleState.ENEMY_SELECT
+
+func is_player_select() -> bool:
+	return current_state == BattleState.PLAYER_SELECT
 
 ## [未调用] 是否敌人回合。若已实现调用方，请删除此标记注释。
 func is_enemy_turn() -> bool:
