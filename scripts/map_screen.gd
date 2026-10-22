@@ -827,7 +827,7 @@ func _on_battle_request_internal(enemy_id: String):
 	var enemy = enemy_db.get_enemy(enemy_id)
 	if enemy:
 		SaveManager.save_before_battle(enemy_id, map_controller.map_state.current_map_id)
-		TransitionManager.transition(GameManager.start_battle.bind([enemy], map_controller.test_mode), null)
+		TransitionManager.transition(GameManager.go_to_pre_battle_select.bind([enemy], map_controller.test_mode), null)
 
 ## 启动群体战斗（支持多个敌人ID）
 func _start_group_battle(enemy_ids: Array, layer: int) -> void:
@@ -852,7 +852,7 @@ func _start_group_battle(enemy_ids: Array, layer: int) -> void:
 	else:
 		SaveManager.save_before_battle(primary_id, map_controller.map_state.current_map_id, 0)
 	
-	TransitionManager.transition(GameManager.start_battle.bind(enemies, map_controller.test_mode), null)
+	TransitionManager.transition(GameManager.go_to_pre_battle_select.bind(enemies, map_controller.test_mode), null)
 
 func get_map_state() -> Dictionary:
 	return map_controller.serialize_state()

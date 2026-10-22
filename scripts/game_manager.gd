@@ -13,6 +13,7 @@ enum GameScene {
 	SETTINGS,          ## 设置（主界面入口）
 	DECK_CONFIG,       ## 卡组配置
 	MAP,               ## 地图
+	PRE_BATTLE_SELECT, ## 战斗前选卡
 	BATTLE,            ## 战斗
 	REWARD,            ## 奖励
 	RELIC_REWARD,      ## 遗物奖励（Boss 战后三选一）
@@ -25,6 +26,7 @@ const SCENES := {
 	GameScene.SETTINGS: "res://scenes/SettingsScene.tscn",
 	GameScene.DECK_CONFIG: "res://scenes/DeckConfigScene.tscn",
 	GameScene.MAP: "res://scenes/MapScreen.tscn",
+	GameScene.PRE_BATTLE_SELECT: "res://scenes/PreBattleCardSelect.tscn",
 	GameScene.BATTLE: "res://scenes/BattleScene.tscn",
 	GameScene.REWARD: "res://scenes/RewardScreen.tscn",
 	GameScene.RELIC_REWARD: "res://scenes/RelicRewardScreen.tscn",
@@ -140,6 +142,11 @@ func start_battle(enemies: Array = [], test_mode: bool = false) -> void:
 	var data = {"enemies": enemies, "test_mode": test_mode}
 	change_scene(GameScene.BATTLE, data)
 	battle_started.emit()
+
+## 战斗前选卡：进入选卡界面，选完卡后自动进入战斗
+func go_to_pre_battle_select(enemies: Array = [], test_mode: bool = false) -> void:
+	var data = {"enemies": enemies, "test_mode": test_mode}
+	change_scene(GameScene.PRE_BATTLE_SELECT, data)
 
 ## 战斗结束处理
 ## [未调用] 结束战斗。若已实现调用方，请删除此标记注释。
