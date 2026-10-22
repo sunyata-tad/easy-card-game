@@ -717,7 +717,7 @@ func reveal_enemy_dice() -> void:
 func _set_dice_value(node: Control, speed: int) -> void:
 	var dl = node.get_node_or_null("DiceVBox/DiceLabel")
 	if dl:
-		dl.text = "🎲%d" % speed
+		dl.text = "%d" % speed
 
 ## B4: 创建敌人骰子栏
 func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array, unknown: bool = false) -> void:
@@ -752,9 +752,9 @@ func _create_dice_node(index: int, speed: int, is_enemy: bool, enemy_idx: int, u
 	panel.add_child(vbox)
 	var dice_label = Label.new()
 	dice_label.name = "DiceLabel"
-	dice_label.text = "🎲?" if unknown else "🎲%d" % speed
+	dice_label.text = "?" if unknown else "%d" % speed
 	dice_label.horizontal_alignment = 1
-	dice_label.add_theme_font_size_override("font_size", 15)
+	dice_label.add_theme_font_size_override("font_size", 18)
 	dice_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
 	dice_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(dice_label)
@@ -1903,6 +1903,62 @@ func show_end_turn_button(text: String, enabled: bool) -> void:
 	if end_turn_button:
 		end_turn_button.text = text
 		end_turn_button.disabled = not enabled
+
+## B4: 卡牌结算动画——显示卡牌本体+效果文字（敌我）
+func show_resolve_animation(card: CardData, is_player: bool, effect_text: String) -> void:
+	var container = PanelContainer.new()
+	container.name = "ResolveCard"
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.1, 0.12, 0.18, 0.97)
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(0.4, 0.8, 0.5, 0.9) if is_player else Color(0.9, 0.4, 0.4, 0.9)
+	style.set_corner_radius_all(6)
+	style.content_margin_left = 10
+	style.content_margin_top = 8
+	style.content_margin_right = 10
+	style.content_margin_bottom = 8
+	container.add_theme_stylebox_override("panel", style)
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 12)
+	container.add_child(hbox)
+	var cvbox = VBoxContainer.new()
+	cvbox.add_theme_constant_override("separation", 2)
+	hbox.add_child(cvbox)
+	var name_lbl = Label.new()
+	name_lbl.text = "%s（%d费）" % [card.name, card.cost]
+	name_lbl.add_theme_font_size_override("font_size", 16)
+	name_lbl.add_theme_color_override("font_color", Color(1.0, 0.95, 0.8))
+	cvbox.add_child(name_lbl)
+	var desc_lbl = Label.new()
+	desc_lbl.text = card.description
+	desc_lbl.add_theme_font_size_override("font_size", 11)
+	desc_lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
+	desc_lbl.custom_minimum_size = Vector2(170, 0)
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cvbox.add_child(desc_lbl)
+	var eff_lbl = Label.new()
+	eff_lbl.text = effect_text
+	eff_lbl.add_theme_font_size_override("font_size", 13)
+	eff_lbl.add_theme_color_override("font_color", Color(0.5, 1.0, 0.6) if is_player else Color(1.0, 0.6, 0.5))
+	eff_lbl.custom_minimum_size = Vector2(110, 0)
+	eff_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hbox.add_child(eff_lbl)
+	root_node.add_child(container)
+	container.z_index = 200
+	var vp = root_node.get_viewport_rect().size
+	container.global_position = Vector2(vp.x * 0.5 - 200, 160) if is_player else Vector2(vp.x * 0.5 - 200, 420)
+	container.modulate.a = 0.0
+	container.pivot_offset = Vector2(100, 30)
+	var tw = create_tween()
+	tw.tween_property(container, "modulate:a", 1.0, 0.15)
+	tw.tween_interval(0.7)
+	tw.tween_property(container, "modulate:a", 0.0, 0.15)
+	await tw.finished
+	if is_instance_valid(container):
+		container.queue_free()
 
 ## 恢复结束回合按钮默认文字
 func reset_end_turn_button_text() -> void:

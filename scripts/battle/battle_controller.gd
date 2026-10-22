@@ -363,7 +363,7 @@ func confirm_player_plays(slot_plays: Array = []) -> void:
 	if ui_controller:
 		ui_controller.clear_dice_ui()
 	state_machine.change_state(StateMachine.BattleState.RESOLVING)
-	_resolve_all_plays()
+	await _resolve_all_plays()
 	if not _check_battle_end_state():
 		state_machine.change_state(StateMachine.BattleState.TURN_END)
 
@@ -884,6 +884,9 @@ func _resolve_all_plays() -> void:
 			continue
 		if target is PlayerManager and target.is_dead:
 			continue
+		# 卡牌结算动画（显示卡牌本体+效果，敌我）
+		if ui_controller:
+			await ui_controller.show_resolve_animation(card, source is PlayerManager, _get_effect_text(card))
 		# 执行效果
 		effect_resolver.resolve_effects(card.effects, source, target)
 		# 打出的牌回牌库
@@ -917,3 +920,26 @@ func _compare_plays(a: Dictionary, b: Dictionary) -> bool:
 		return a.slot_index < b.slot_index
 	# 同速同方同槽位（敌人）：敌人索引小的在前（从左到右）
 	return a.enemy_index < b.enemy_index
+## B4: 生成卡牌效果文字（用于结算动画显示）
+func _get_effect_text(card: CardData) -> String:
+	var parts: Array = []
+	for effect in card.effects:
+		var et = effect.get("effect_type", "")
+		match et:
+			"damage":
+				parts.append("伤害%d" % effect.get("value", 0))
+			"damage_if_debuff":
+				parts.append("伤害%d" % effect.get("value", 0))
+			"block":
+				parts.append("护甲%d" % effect.get("value", 0))
+			"heal":
+				parts.append("回复%d" % effect.get("value", 0))
+			"apply_debuff", "apply_buff":
+				parts.append("施加%s" % effect.get("buff_id", ""))
+			"draw":
+				parts.append("抽牌%d" % effect.get("value", 0))
+			"pay_life":
+				parts.append("支付生命%d" % effect.get("value", 0))
+			_:
+				pass
+	return ", ".join(parts) if parts.size() > 0 else "生效"
