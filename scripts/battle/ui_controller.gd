@@ -22,6 +22,7 @@ var _dice_cards: Array = []                ## 骰子装载的卡牌数组
 var _dice_speeds: Array = []               ## 骰子速度值数组
 var _active_dice_index: int = -1           ## 当前激活的骰子索引（等待装载）
 var _dice_tooltip: PanelContainer = null   ## 骰子悬浮浮框
+var _dice_unknown: bool = false            ## 骰子速度是否未知（回合准备前显示?）
 ## 敌人骰子栏 {enemy_idx: {"bar":Node, "nodes":Array, "cards":Array, "speeds":Array}}
 var _enemy_dice_bars: Dictionary = {}
 
@@ -677,29 +678,49 @@ func _reposition_info_panel(panel: VBoxContainer) -> void:
 		panel.global_position = Vector2(pa_rect.position.x + pa_rect.size.x + 10, pa_rect.position.y)
 
 ## B4: 创建玩家骰子栏
-func create_dice_bar(slots: int, speeds: Array) -> void:
+func create_dice_bar(slots: int, speeds: Array, unknown: bool = false) -> void:
 	_dice_speeds = speeds.duplicate()
 	_dice_cards.clear()
 	_dice_cards.resize(slots)
 	_dice_nodes.clear()
 	_active_dice_index = -1
+	_dice_unknown = unknown
 	if _dice_bar and is_instance_valid(_dice_bar):
 		_dice_bar.queue_free()
 	_dice_bar = HBoxContainer.new()
 	_dice_bar.name = "DiceBar"
 	_dice_bar.add_theme_constant_override("separation", 10)
 	for i in slots:
-		var dice = _create_dice_node(i, speeds[i] if i < speeds.size() else 1, false, -1)
+		var dice = _create_dice_node(i, speeds[i] if i < speeds.size() else 1, false, -1, unknown)
 		_dice_nodes.append(dice)
 		_dice_bar.add_child(dice)
 	if player_area and is_instance_valid(player_area):
 		player_area.get_parent().add_child(_dice_bar)
-		# 玩家骰子栏放在玩家区域右上方，避免与敌人骰子栏重叠
+		# 玩家骰子栏放在玩家区域右侧
 		_dice_bar.global_position = Vector2(player_area.global_position.x + player_area.size.x + 10, player_area.global_position.y + 40)
 		_dice_bar.z_index = 20
 
+## 揭示玩家骰子速度（回合准备后调用）
+func reveal_player_dice() -> void:
+	_dice_unknown = false
+	for i in _dice_nodes.size():
+		_set_dice_value(_dice_nodes[i], _dice_speeds[i] if i < _dice_speeds.size() else 1)
+
+## 揭示敌人骰子速度
+func reveal_enemy_dice() -> void:
+	for enemy_idx in _enemy_dice_bars.keys():
+		var bar_data = _enemy_dice_bars[enemy_idx]
+		for i in bar_data.nodes.size():
+			_set_dice_value(bar_data.nodes[i], bar_data.speeds[i] if i < bar_data.speeds.size() else 1)
+
+## 设置骰子显示的速度值
+func _set_dice_value(node: Control, speed: int) -> void:
+	var dl = node.get_node_or_null("DiceVBox/DiceLabel")
+	if dl:
+		dl.text = "🎲%d" % speed
+
 ## B4: 创建敌人骰子栏
-func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array) -> void:
+func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array, unknown: bool = false) -> void:
 	var bar = HBoxContainer.new()
 	bar.name = "EnemyDiceBar_%d" % enemy_idx
 	bar.add_theme_constant_override("separation", 8)
@@ -707,47 +728,91 @@ func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array) -> void:
 	var cards: Array = []
 	cards.resize(slots)
 	for i in slots:
-		var dice = _create_dice_node(i, speeds[i] if i < speeds.size() else 1, true, enemy_idx)
+		var dice = _create_dice_node(i, speeds[i] if i < speeds.size() else 1, true, enemy_idx, unknown)
 		nodes.append(dice)
 		bar.add_child(dice)
 	# 定位到敌人区域下方（屏幕上方中央）
 	root_node.add_child(bar)
 	var vp = root_node.get_viewport_rect().size
-	bar.global_position = Vector2(vp.x * 0.5 - 40 + enemy_idx * 90, 360)
+	bar.global_position = Vector2(vp.x * 0.5 - 90 + enemy_idx * 200, 350)
 	bar.z_index = 20
 	_enemy_dice_bars[enemy_idx] = {"bar": bar, "nodes": nodes, "cards": cards, "speeds": speeds}
 
-## B4: 创建单个骰子节点
-func _create_dice_node(index: int, speed: int, is_enemy: bool, enemy_idx: int) -> PanelContainer:
+## B4: 创建单个骰子节点（含完整卡牌预览区）
+func _create_dice_node(index: int, speed: int, is_enemy: bool, enemy_idx: int, unknown: bool = false) -> PanelContainer:
 	var panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(72, 56)
+	panel.custom_minimum_size = Vector2(96, 124)
 	panel.name = "Dice_%s_%d" % ["E" if is_enemy else "P", index]
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_dice_style(panel, false)
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 1)
+	vbox.name = "DiceVBox"
+	vbox.add_theme_constant_override("separation", 2)
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(vbox)
 	var dice_label = Label.new()
 	dice_label.name = "DiceLabel"
-	dice_label.text = "🎲%d" % speed
+	dice_label.text = "🎲?" if unknown else "🎲%d" % speed
 	dice_label.horizontal_alignment = 1
 	dice_label.add_theme_font_size_override("font_size", 15)
 	dice_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
 	dice_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(dice_label)
-	var card_label = Label.new()
-	card_label.name = "CardLabel"
-	card_label.text = "空"
-	card_label.horizontal_alignment = 1
-	card_label.add_theme_font_size_override("font_size", 10)
-	card_label.add_theme_color_override("font_color", Color(0.55, 0.55, 0.6))
-	card_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_child(card_label)
+	var preview = PanelContainer.new()
+	preview.name = "CardPreview"
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	preview.custom_minimum_size = Vector2(88, 100)
+	preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_apply_empty_card_style(preview)
+	vbox.add_child(preview)
+	_show_empty_preview(preview)
 	panel.gui_input.connect(_on_dice_input.bind(index, is_enemy, enemy_idx))
 	panel.mouse_entered.connect(_on_dice_hover.bind(index, is_enemy, enemy_idx))
 	panel.mouse_exited.connect(_on_dice_unhover)
 	return panel
+
+## 骰子卡牌区样式（空/有卡）
+func _apply_empty_card_style(preview: PanelContainer) -> void:
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.06, 0.09, 0.8)
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.border_color = Color(0.3, 0.35, 0.45, 0.5)
+	style.set_corner_radius_all(4)
+	style.content_margin_left = 3
+	style.content_margin_top = 2
+	style.content_margin_right = 3
+	style.content_margin_bottom = 2
+	preview.add_theme_stylebox_override("panel", style)
+
+func _apply_filled_card_style(preview: PanelContainer) -> void:
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.12, 0.14, 0.2, 0.95)
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.border_color = Color(0.7, 0.75, 0.9, 0.8)
+	style.set_corner_radius_all(4)
+	style.content_margin_left = 3
+	style.content_margin_top = 2
+	style.content_margin_right = 3
+	style.content_margin_bottom = 2
+	preview.add_theme_stylebox_override("panel", style)
+
+func _show_empty_preview(preview: PanelContainer) -> void:
+	var lbl = Label.new()
+	lbl.name = "EmptyLabel"
+	lbl.text = "空"
+	lbl.horizontal_alignment = 1
+	lbl.vertical_alignment = 1
+	lbl.set_anchors_preset(Control.PRESET_FULL_RECT)
+	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_color_override("font_color", Color(0.45, 0.45, 0.5))
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	preview.add_child(lbl)
 
 ## 应用骰子样式（激活态金色边框）
 func _apply_dice_style(panel: PanelContainer, active: bool) -> void:
@@ -793,11 +858,13 @@ func _on_dice_input(event: InputEvent, index: int, is_enemy: bool, enemy_idx: in
 func has_active_dice() -> bool:
 	return _active_dice_index >= 0 and _active_dice_index < _dice_cards.size()
 
-## B4: 装载卡牌到骰子（由出牌流程调用，含卡牌飞入动画）
+## B4: 装载卡牌到骰子（由出牌流程调用，含飞入动画）
 func load_card_to_dice(card: CardData, card_node = null) -> bool:
 	if _active_dice_index < 0 or _active_dice_index >= _dice_cards.size():
+		_show_state_hint("请先点击一个骰子")
 		return false
 	if _dice_cards[_active_dice_index] != null:
+		_show_state_hint("该骰子已装载卡牌")
 		return false
 	var bc = _get_battle_controller()
 	if bc and not bc.player_manager.can_afford(card.cost):
@@ -816,7 +883,6 @@ func load_card_to_dice(card: CardData, card_node = null) -> bool:
 		_update_dice_display(dice_index, false, -1)
 		if bc:
 			update_hand_display(bc.card_system.get_hand())
-	# 取消激活
 	_apply_dice_style(_dice_nodes[dice_index], false)
 	_active_dice_index = -1
 	return true
@@ -825,13 +891,13 @@ func load_card_to_dice(card: CardData, card_node = null) -> bool:
 func _fly_card_to_dice(card_node: Control, dice_node: Control, dice_index: int) -> void:
 	card_node.z_index = 100
 	card_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var target_pos = dice_node.global_position + dice_node.size / 2
-	var start_pos = card_node.global_position + card_node.size / 2
-	var tween = card_node.create_tween()
+	var target_center = dice_node.global_position + dice_node.size / 2
+	var tween = create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(card_node, "global_position", target_pos - card_node.size / 2, 0.25)
-	tween.tween_property(card_node, "scale", Vector2(0.2, 0.2), 0.25)
-	tween.tween_property(card_node, "modulate:a", 0.0, 0.25)
+	tween.tween_property(card_node, "global_position", target_center - card_node.size * 0.5, 0.3) \
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(card_node, "scale", Vector2(0.15, 0.15), 0.3)
+	tween.tween_property(card_node, "modulate:a", 0.3, 0.3)
 	tween.set_parallel(false)
 	tween.tween_callback(func():
 		if is_instance_valid(card_node):
@@ -864,7 +930,7 @@ func _unload_dice_card(index: int, is_enemy: bool, enemy_idx: int) -> void:
 	_dice_cards[index] = null
 	_update_dice_display(index, false, -1)
 
-## B4: 更新骰子显示
+## B4: 更新骰子卡牌显示（完整卡牌预览）
 func _update_dice_display(index: int, is_enemy: bool, enemy_idx: int) -> void:
 	var nodes: Array = []
 	var cards: Array = []
@@ -879,16 +945,37 @@ func _update_dice_display(index: int, is_enemy: bool, enemy_idx: int) -> void:
 		cards = _dice_cards
 	if index >= nodes.size():
 		return
-	var card_label = nodes[index].get_node_or_null("VBoxContainer/CardLabel")
-	if card_label == null:
+	var preview = nodes[index].get_node_or_null("DiceVBox/CardPreview")
+	if preview == null:
 		return
+	for child in preview.get_children():
+		preview.remove_child(child)
+		child.queue_free()
 	var card: CardData = cards[index]
-	if card:
-		card_label.text = card.name
-		card_label.add_theme_color_override("font_color", Color(0.9, 0.9, 1.0))
-	else:
-		card_label.text = "空"
-		card_label.add_theme_color_override("font_color", Color(0.55, 0.55, 0.6))
+	if card == null:
+		_apply_empty_card_style(preview)
+		_show_empty_preview(preview)
+		return
+	_apply_filled_card_style(preview)
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 1)
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	preview.add_child(vbox)
+	var name_lbl = Label.new()
+	name_lbl.text = "%s(%d)" % [card.name, card.cost]
+	name_lbl.add_theme_font_size_override("font_size", 10)
+	name_lbl.add_theme_color_override("font_color", Color(1.0, 0.95, 0.8))
+	name_lbl.horizontal_alignment = 1
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(name_lbl)
+	var desc_lbl = Label.new()
+	desc_lbl.text = card.description
+	desc_lbl.add_theme_font_size_override("font_size", 8)
+	desc_lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.custom_minimum_size = Vector2(80, 0)
+	desc_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(desc_lbl)
 
 ## B4: 敌方骰子装载卡牌（AI结算时调用，仅作显示）
 func place_enemy_dice_card(enemy_idx: int, index: int, card: CardData) -> void:
@@ -1810,6 +1897,12 @@ func _exit_card_select_mode() -> void:
 func update_end_turn_button_text(text: String) -> void:
 	if end_turn_button:
 		end_turn_button.text = text
+
+## 设置回合按钮文字和可用状态（新流程用）
+func show_end_turn_button(text: String, enabled: bool) -> void:
+	if end_turn_button:
+		end_turn_button.text = text
+		end_turn_button.disabled = not enabled
 
 ## 恢复结束回合按钮默认文字
 func reset_end_turn_button_text() -> void:

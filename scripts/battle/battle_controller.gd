@@ -16,6 +16,7 @@ var pending_card: CardData = null
 var is_first_turn: bool = true
 var is_discard_phase: bool = false
 var use_new_flow: bool = true   ## B4: 使用同时出牌新流程
+var is_turn_ready: bool = false  ## 回合准备是否完成（投骰+敌人意图）
 
 
 ## [未连接] 战斗开始通知。若已连接接收方，请删除此标记注释。
@@ -132,6 +133,7 @@ func _on_state_enter(state: int) -> void:
 	match state:
 		StateMachine.BattleState.INIT: _on_battle_init()
 		StateMachine.BattleState.DRAW_PHASE: _on_draw_phase()
+		StateMachine.BattleState.TURN_PREPARE: _on_turn_prepare_phase()
 		StateMachine.BattleState.ENEMY_SELECT: _on_enemy_select_phase()
 		StateMachine.BattleState.PLAYER_SELECT: _on_player_select_phase()
 		StateMachine.BattleState.PLAYER_TURN: _on_player_turn_phase()
@@ -182,7 +184,7 @@ func _on_draw_phase() -> void:
 		if ui_controller:
 			ui_controller.clear_all_enemy_intents()
 		if not _check_battle_end_state():
-			state_machine.change_state(StateMachine.BattleState.ENEMY_SELECT)
+			state_machine.change_state(StateMachine.BattleState.TURN_PREPARE)
 	else:
 		_decide_all_enemy_intents()
 		if not _check_battle_end_state():
@@ -198,7 +200,8 @@ func _on_player_turn_phase() -> void:
 func _on_resolving_phase() -> void:
 	ui_controller.set_interactive(false)
 	if use_new_flow:
-		ui_controller.reset_end_turn_button_text()
+		# 结算中：按钮灰色不可用
+		ui_controller.show_end_turn_button("回合开始", false)
 
 func _on_enemy_turn_phase() -> void:
 	ui_controller.set_interactive(false)
@@ -207,9 +210,27 @@ func _on_enemy_turn_phase() -> void:
 	turn_changed.emit(false)
 	await _execute_enemy_turns()
 
+## B4: 回合准备阶段——骰子速度未知(?)，等待玩家按下"回合准备"
+func _on_turn_prepare_phase() -> void:
+	is_turn_ready = false
+	if ui_controller:
+		ui_controller.set_interactive(false)
+		ui_controller.create_dice_bar(player_manager.slots, _player_slot_speeds, true)
+		ui_controller.update_energy_display(player_manager.energy, player_manager.max_energy)
+		ui_controller.update_slots_display(player_manager.slots, _player_slot_speeds)
+		ui_controller.show_end_turn_button("回合准备", true)
+
+## 玩家按下"回合准备"——投骰+揭示速度+进入敌人选牌阶段
+func on_turn_prepare_clicked() -> void:
+	if not state_machine.is_turn_prepare():
+		return
+	_roll_all_speeds()
+	if ui_controller:
+		ui_controller.reveal_player_dice()
+	state_machine.change_state(StateMachine.BattleState.ENEMY_SELECT)
+
 ## B4: 敌人选牌阶段——AI决定出牌，玩家可见
 func _on_enemy_select_phase() -> void:
-	_roll_all_speeds()
 	_pending_plays.clear()
 	_enemy_card_systems.clear()
 	for enemy_idx in enemy_system.enemies.size():
@@ -236,18 +257,23 @@ func _on_enemy_select_phase() -> void:
 	if not _check_battle_end_state():
 		state_machine.change_state(StateMachine.BattleState.PLAYER_SELECT)
 
-## B4: 玩家选牌阶段——显示骰子，等待玩家装载卡牌
+## B4: 玩家选牌阶段——骰子已就绪，等待玩家装载卡牌
 func _on_player_select_phase() -> void:
 	if ui_controller:
 		ui_controller.set_interactive(true)
-		ui_controller.show_turn_banner("你的回合（选牌）")
-		ui_controller.create_dice_bar(player_manager.slots, _player_slot_speeds)
+		ui_controller.show_turn_banner("你的回合")
+		ui_controller.reveal_player_dice()
+		ui_controller.show_end_turn_button("回合开始", true)
 	_update_player_ui()
-	# 显示新流程HUD（能量/槽位/速度）
 	if ui_controller:
 		ui_controller.update_energy_display(player_manager.energy, player_manager.max_energy)
 		ui_controller.update_slots_display(player_manager.slots, _player_slot_speeds)
-		ui_controller.update_end_turn_button_text("确认出牌")
+
+## 玩家按下"回合开始"——结算
+func on_turn_start_clicked() -> void:
+	if not state_machine.is_player_select():
+		return
+	confirm_player_plays()
 
 ## B4: 队列一张玩家卡牌（选牌阶段）
 func _queue_player_card(card: CardData, target) -> void:
@@ -781,10 +807,13 @@ func _on_ui_enemy_selected(enemy: EnemyUnit) -> void:
 		ui_controller.clear_target_highlights()
 
 func _on_ui_end_turn_clicked() -> void:
-	# 新流程：确认出牌
+	# 新流程：回合准备阶段（按下"回合准备"→投骰+敌人意图）
+	if use_new_flow and state_machine.is_turn_prepare():
+		on_turn_prepare_clicked()
+		return
+	# 新流程：玩家选牌阶段（按下"回合开始"→结算）
 	if use_new_flow and state_machine.is_player_select():
-		confirm_player_plays(_player_queued_plays)
-		_player_queued_plays.clear()
+		on_turn_start_clicked()
 		return
 	end_player_turn()
 

@@ -10,9 +10,10 @@ class_name StateMachine
 ## 战斗状态枚举
 enum BattleState {
 	INIT,          ## 初始化
-	DRAW_PHASE,    ## 抽牌阶段
-	ENEMY_SELECT,  ## 敌人选牌阶段（AI决定出牌，玩家可见）
-	PLAYER_SELECT, ## 玩家选牌阶段（玩家决定出牌）
+	DRAW_PHASE,    ## 抽牌阶段（抽牌+恢复能量）
+	TURN_PREPARE,  ## 回合准备（骰子显示?，等待按下"回合准备"）
+	ENEMY_SELECT,  ## 敌人选牌阶段（投骰+AI决定出牌，玩家可见）
+	PLAYER_SELECT, ## 玩家选牌阶段（玩家装载骰子）
 	RESOLVING,     ## 结算中（速度排序依次执行）
 	TURN_END,      ## 回合结束
 	VICTORY,       ## 战斗胜利
@@ -40,7 +41,8 @@ func _init():
 func _setup_valid_transitions() -> void:
 	_valid_transitions = {
 		BattleState.INIT: [BattleState.DRAW_PHASE],
-		BattleState.DRAW_PHASE: [BattleState.ENEMY_SELECT, BattleState.PLAYER_TURN, BattleState.VICTORY, BattleState.DEFEAT],
+		BattleState.DRAW_PHASE: [BattleState.TURN_PREPARE, BattleState.PLAYER_TURN, BattleState.VICTORY, BattleState.DEFEAT],
+		BattleState.TURN_PREPARE: [BattleState.ENEMY_SELECT, BattleState.VICTORY, BattleState.DEFEAT],
 		BattleState.ENEMY_SELECT: [BattleState.PLAYER_SELECT, BattleState.VICTORY, BattleState.DEFEAT],
 		BattleState.PLAYER_SELECT: [BattleState.RESOLVING, BattleState.VICTORY, BattleState.DEFEAT],
 		BattleState.RESOLVING: [BattleState.TURN_END, BattleState.PLAYER_TURN, BattleState.ENEMY_TURN, BattleState.VICTORY, BattleState.DEFEAT],
@@ -76,6 +78,7 @@ func get_state_name(state: BattleState) -> String:
 	match state:
 		BattleState.INIT: return "INIT"
 		BattleState.DRAW_PHASE: return "DRAW_PHASE"
+		BattleState.TURN_PREPARE: return "TURN_PREPARE"
 		BattleState.ENEMY_SELECT: return "ENEMY_SELECT"
 		BattleState.PLAYER_SELECT: return "PLAYER_SELECT"
 		BattleState.RESOLVING: return "RESOLVING"
@@ -94,6 +97,9 @@ func is_enemy_select() -> bool:
 
 func is_player_select() -> bool:
 	return current_state == BattleState.PLAYER_SELECT
+
+func is_turn_prepare() -> bool:
+	return current_state == BattleState.TURN_PREPARE
 
 ## [未调用] 是否敌人回合。若已实现调用方，请删除此标记注释。
 func is_enemy_turn() -> bool:
