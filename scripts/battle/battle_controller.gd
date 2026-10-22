@@ -229,15 +229,19 @@ func _on_enemy_select_phase() -> void:
 			_add_pending_play(play.card, enemy, play.target, spd, false, s_idx, enemy_idx)
 		if ui_controller:
 			ui_controller.show_enemy_intent(enemy_idx, plays)
+			# 创建敌人骰子栏并显示AI出的牌
+			ui_controller.create_enemy_dice_bar(enemy_idx, enemy.slots, enemy_speeds)
+			for play in plays:
+				ui_controller.place_enemy_dice_card(enemy_idx, play.slot_index, play.card)
 	if not _check_battle_end_state():
 		state_machine.change_state(StateMachine.BattleState.PLAYER_SELECT)
 
-## B4: 玩家选牌阶段——显示槽位+骰子，等待玩家选牌
+## B4: 玩家选牌阶段——显示骰子，等待玩家装载卡牌
 func _on_player_select_phase() -> void:
 	if ui_controller:
 		ui_controller.set_interactive(true)
 		ui_controller.show_turn_banner("你的回合（选牌）")
-		ui_controller.create_slot_area(player_manager.slots, _player_slot_speeds)
+		ui_controller.create_dice_bar(player_manager.slots, _player_slot_speeds)
 	_update_player_ui()
 	# 显示新流程HUD（能量/槽位/速度）
 	if ui_controller:
@@ -309,13 +313,16 @@ func _update_new_flow_hud() -> void:
 	ui_controller.show_state_message(queue_text, 0.5)
 
 ## B4: 玩家确认出牌——收集玩家槽位出牌，进入结算
-func confirm_player_plays(slot_plays: Array) -> void:
-	for i in slot_plays.size():
-		var play = slot_plays[i]
+func confirm_player_plays(slot_plays: Array = []) -> void:
+	# 未显式传入时从骰子UI获取装载的卡牌
+	if slot_plays.is_empty() and ui_controller:
+		slot_plays = ui_controller.get_loaded_plays()
+	for play in slot_plays:
 		var card: CardData = play.card
 		var target = play.target
-		var speed = _player_slot_speeds[i] if i < _player_slot_speeds.size() else 1
-		_add_pending_play(card, player_manager, target, speed, true, i)
+		var slot_index: int = play.get("slot_index", 0)
+		var speed = _player_slot_speeds[slot_index] if slot_index < _player_slot_speeds.size() else 1
+		_add_pending_play(card, player_manager, target, speed, true, slot_index)
 		# 消耗玩家能量
 		player_manager.spend_energy(card.cost)
 	# 消耗敌人能量（AI选出的牌）
@@ -326,6 +333,9 @@ func confirm_player_plays(slot_plays: Array) -> void:
 		for play in _pending_plays:
 			if not play.is_player and play.enemy_index == enemy_idx:
 				enemy.spend_energy(play.card.cost)
+	# 清理骰子UI
+	if ui_controller:
+		ui_controller.clear_dice_ui()
 	state_machine.change_state(StateMachine.BattleState.RESOLVING)
 	_resolve_all_plays()
 	if not _check_battle_end_state():
@@ -672,15 +682,15 @@ func _update_initial_ui() -> void:
 	_update_player_ui()
 	ui_controller.update_deck_info(card_system.get_draw_pile_count(), card_system.get_discard_pile_count())
 
-func _on_ui_card_clicked(card: CardData, _card_node: Control) -> void:
+func _on_ui_card_clicked(card: CardData, card_node: Control) -> void:
 	if card == null or ui_controller.is_card_select_active():
 		return
-	# 新流程：点击已队列的卡牌取消队列
+	# 新流程：骰子激活时，点击手牌装载到骰子
 	if use_new_flow and state_machine.is_player_select():
-		for p in _player_queued_plays:
-			if p.card == card:
-				unqueue_player_card(card)
-				return
+		if ui_controller.has_active_dice():
+			ui_controller.load_card_to_dice(card, card_node)
+			_update_new_flow_hud()
+		return
 
 func _on_ui_card_released(_card: CardData, _card_node: Control) -> void:
 	pass

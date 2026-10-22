@@ -15,14 +15,15 @@ var player_manager: PlayerManager = null  ## 玩家状态引用
 var screen_shake: Node = null             ## 屏幕震动器（由 battle.gd 注入）
 var _player_flash_tween: Tween = null     ## 玩家受击闪红 tween（防止叠加）
 
-## B4: 槽位UI
-var _slot_area: HBoxContainer = null       ## 槽位区域
-var _slot_nodes: Array = []                ## 槽位节点数组
-var _slot_cards: Array = []                ## 槽位已选卡牌数组
-var _slot_speeds: Array = []               ## 槽位速度值数组
-var _active_slot_index: int = -1           ## 当前正在选卡的槽位索引
-var _slot_confirm_btn: Button = null       ## 确认出牌按钮
-var _slot_select_panel: PanelContainer = null  ## 手牌选择面板
+## B4: 骰子UI（玩家）
+var _dice_bar: HBoxContainer = null        ## 玩家骰子栏
+var _dice_nodes: Array = []                ## 玩家骰子节点数组
+var _dice_cards: Array = []                ## 骰子装载的卡牌数组
+var _dice_speeds: Array = []               ## 骰子速度值数组
+var _active_dice_index: int = -1           ## 当前激活的骰子索引（等待装载）
+var _dice_tooltip: PanelContainer = null   ## 骰子悬浮浮框
+## 敌人骰子栏 {enemy_idx: {"bar":Node, "nodes":Array, "cards":Array, "speeds":Array}}
+var _enemy_dice_bars: Dictionary = {}
 
 ## UI 节点引用（从场景中查找获取）
 var hand_container: Node       ## 手牌区域的容器节点
@@ -675,180 +676,328 @@ func _reposition_info_panel(panel: VBoxContainer) -> void:
 		var pa_rect = player_area.get_global_rect()
 		panel.global_position = Vector2(pa_rect.position.x + pa_rect.size.x + 10, pa_rect.position.y)
 
-## B4: 创建槽位区域
-func create_slot_area(slots: int, speeds: Array) -> void:
-	_slot_speeds = speeds.duplicate()
-	_slot_cards.clear()
-	_slot_cards.resize(slots)
-	_slot_nodes.clear()
-	if _slot_area and is_instance_valid(_slot_area):
-		_slot_area.queue_free()
-	_slot_area = HBoxContainer.new()
-	_slot_area.name = "SlotArea"
-	_slot_area.add_theme_constant_override("separation", 8)
+## B4: 创建玩家骰子栏
+func create_dice_bar(slots: int, speeds: Array) -> void:
+	_dice_speeds = speeds.duplicate()
+	_dice_cards.clear()
+	_dice_cards.resize(slots)
+	_dice_nodes.clear()
+	_active_dice_index = -1
+	if _dice_bar and is_instance_valid(_dice_bar):
+		_dice_bar.queue_free()
+	_dice_bar = HBoxContainer.new()
+	_dice_bar.name = "DiceBar"
+	_dice_bar.add_theme_constant_override("separation", 10)
 	for i in slots:
-		var slot_node = _create_slot_node(i, speeds[i] if i < speeds.size() else 1)
-		_slot_nodes.append(slot_node)
-		_slot_area.add_child(slot_node)
-	# 注：确认出牌按钮使用EndTurnButton（新流程中已改名为"确认出牌"），不在此重复创建
-	# 添加到场景：放在玩家区域上方（可见区域）
+		var dice = _create_dice_node(i, speeds[i] if i < speeds.size() else 1, false, -1)
+		_dice_nodes.append(dice)
+		_dice_bar.add_child(dice)
 	if player_area and is_instance_valid(player_area):
-		player_area.get_parent().add_child(_slot_area)
-		# 槽位区域放在玩家区域上方80px处，确保在屏幕内可见
-		_slot_area.global_position = Vector2(player_area.global_position.x + 10, player_area.global_position.y - 75)
+		player_area.get_parent().add_child(_dice_bar)
+		_dice_bar.global_position = Vector2(player_area.global_position.x + 10, player_area.global_position.y - 85)
 
-## B4: 创建单个槽位节点
-func _create_slot_node(index: int, speed: int) -> PanelContainer:
+## B4: 创建敌人骰子栏
+func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array) -> void:
+	var bar = HBoxContainer.new()
+	bar.name = "EnemyDiceBar_%d" % enemy_idx
+	bar.add_theme_constant_override("separation", 8)
+	var nodes: Array = []
+	var cards: Array = []
+	cards.resize(slots)
+	for i in slots:
+		var dice = _create_dice_node(i, speeds[i] if i < speeds.size() else 1, true, enemy_idx)
+		nodes.append(dice)
+		bar.add_child(dice)
+	# 定位到对应敌人节点下方
+	var enemy_container = root_node.get_node_or_null("Background/EnemyArea")
+	if enemy_container and enemy_idx < enemy_container.get_child_count():
+		var enemy_node = enemy_container.get_child(enemy_idx)
+		root_node.add_child(bar)
+		bar.global_position = Vector2(enemy_node.global_position.x, enemy_node.global_position.y + enemy_node.size.y + 5)
+	else:
+		root_node.add_child(bar)
+		bar.global_position = Vector2(200 + enemy_idx * 200, 460)
+	_enemy_dice_bars[enemy_idx] = {"bar": bar, "nodes": nodes, "cards": cards, "speeds": speeds}
+
+## B4: 创建单个骰子节点
+func _create_dice_node(index: int, speed: int, is_enemy: bool, enemy_idx: int) -> PanelContainer:
 	var panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(80, 60)
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.1, 0.15, 0.9)
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.border_color = Color(0.5, 0.6, 0.8, 0.7)
-	style.set_corner_radius_all(6)
-	style.content_margin_left = 4
-	style.content_margin_top = 4
-	style.content_margin_right = 4
-	style.content_margin_bottom = 4
-	panel.add_theme_stylebox_override("panel", style)
+	panel.custom_minimum_size = Vector2(72, 56)
+	panel.name = "Dice_%s_%d" % ["E" if is_enemy else "P", index]
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_dice_style(panel, false)
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 2)
+	vbox.add_theme_constant_override("separation", 1)
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(vbox)
-	# 骰子标签
 	var dice_label = Label.new()
 	dice_label.name = "DiceLabel"
-	dice_label.text = "🎲 %d" % speed
+	dice_label.text = "🎲%d" % speed
 	dice_label.horizontal_alignment = 1
-	dice_label.add_theme_font_size_override("font_size", 16)
+	dice_label.add_theme_font_size_override("font_size", 15)
 	dice_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	dice_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(dice_label)
-	# 卡牌预览
 	var card_label = Label.new()
 	card_label.name = "CardLabel"
-	card_label.text = "（空）"
+	card_label.text = "空"
 	card_label.horizontal_alignment = 1
-	card_label.add_theme_font_size_override("font_size", 11)
-	card_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
+	card_label.add_theme_font_size_override("font_size", 10)
+	card_label.add_theme_color_override("font_color", Color(0.55, 0.55, 0.6))
+	card_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(card_label)
-	# 交互
-	panel.gui_input.connect(_on_slot_input.bind(index))
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.gui_input.connect(_on_dice_input.bind(index, is_enemy, enemy_idx))
+	panel.mouse_entered.connect(_on_dice_hover.bind(index, is_enemy, enemy_idx))
+	panel.mouse_exited.connect(_on_dice_unhover)
 	return panel
 
-## B4: 槽位交互
-func _on_slot_input(event: InputEvent, slot_index: int) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_active_slot_index = slot_index
-		_show_hand_select_panel()
-
-## B4: 显示手牌选择面板
-func _show_hand_select_panel() -> void:
-	if _slot_select_panel and is_instance_valid(_slot_select_panel):
-		_slot_select_panel.queue_free()
-	_slot_select_panel = PanelContainer.new()
-	_slot_select_panel.custom_minimum_size = Vector2(400, 200)
+## 应用骰子样式（激活态金色边框）
+func _apply_dice_style(panel: PanelContainer, active: bool) -> void:
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.07, 0.1, 0.98)
+	style.bg_color = Color(0.1, 0.12, 0.18, 0.95) if not active else Color(0.2, 0.16, 0.05, 0.95)
+	var border_color = Color(0.5, 0.6, 0.8, 0.7)
+	if active:
+		border_color = Color(1.0, 0.85, 0.3, 1.0)
 	style.border_width_left = 2
 	style.border_width_top = 2
 	style.border_width_right = 2
 	style.border_width_bottom = 2
-	style.border_color = Color(0.5, 0.6, 0.8, 1.0)
-	style.set_corner_radius_all(8)
-	style.content_margin_left = 10
-	style.content_margin_top = 10
-	style.content_margin_right = 10
-	style.content_margin_bottom = 10
-	_slot_select_panel.add_theme_stylebox_override("panel", style)
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 6)
-	_slot_select_panel.add_child(vbox)
-	var title = Label.new()
-	title.text = "选择卡牌 (槽位 %d)" % (_active_slot_index + 1)
-	title.horizontal_alignment = 1
-	title.add_theme_font_size_override("font_size", 14)
-	vbox.add_child(title)
-	# 手牌按钮
-	if player_manager and player_manager.has_method("get"):
-		var bc = _get_battle_controller()
+	style.border_color = border_color
+	style.set_corner_radius_all(6)
+	style.content_margin_left = 4
+	style.content_margin_top = 3
+	style.content_margin_right = 4
+	style.content_margin_bottom = 3
+	panel.add_theme_stylebox_override("panel", style)
 
+## B4: 骰子交互（左键激活/取消，右键卸载）
+func _on_dice_input(event: InputEvent, index: int, is_enemy: bool, enemy_idx: int) -> void:
+	if not (event is InputEventMouseButton and event.pressed):
+		return
+	if event.button_index == MOUSE_BUTTON_LEFT:
+		if is_enemy:
+			return
+		if _active_dice_index == index:
+			# 取消激活
+			_apply_dice_style(_dice_nodes[index], false)
+			_active_dice_index = -1
+		else:
+			# 激活该骰子
+			if _active_dice_index >= 0 and _active_dice_index < _dice_nodes.size():
+				_apply_dice_style(_dice_nodes[_active_dice_index], false)
+			_apply_dice_style(_dice_nodes[index], true)
+			_active_dice_index = index
+			_show_state_hint("请点击手牌装载到骰子 %d" % (index + 1))
+	elif event.button_index == MOUSE_BUTTON_RIGHT:
+		_unload_dice_card(index, is_enemy, enemy_idx)
+
+## B4: 是否有激活的骰子（等待装载）
+func has_active_dice() -> bool:
+	return _active_dice_index >= 0 and _active_dice_index < _dice_cards.size()
+
+## B4: 装载卡牌到骰子（由出牌流程调用，含卡牌飞入动画）
+func load_card_to_dice(card: CardData, card_node = null) -> bool:
+	if _active_dice_index < 0 or _active_dice_index >= _dice_cards.size():
+		return false
+	if _dice_cards[_active_dice_index] != null:
+		return false
+	var bc = _get_battle_controller()
+	if bc and not bc.player_manager.can_afford(card.cost):
+		show_state_message("能量不足", 1.0)
+		return false
+	var dice_index = _active_dice_index
+	_dice_cards[dice_index] = card
+	# 从手牌移除
+	if bc:
+		bc.card_system.hand.erase(card)
+	# 卡牌飞入骰子动画
+	var dice_node = _dice_nodes[dice_index]
+	if card_node and is_instance_valid(card_node) and dice_node:
+		_fly_card_to_dice(card_node, dice_node, dice_index)
+	else:
+		_update_dice_display(dice_index, false, -1)
 		if bc:
-			for card in bc.card_system.get_hand():
-				if card.cost <= bc.player_manager.energy:
-					var btn = Button.new()
-					btn.text = "%s (cost %d) — %s" % [card.name, card.cost, card.description]
-					btn.custom_minimum_size = Vector2(380, 30)
-					btn.pressed.connect(_on_slot_card_selected.bind(card))
-					vbox.add_child(btn)
-	# 取消按钮
-	var cancel_btn = Button.new()
-	cancel_btn.text = "取消"
-	cancel_btn.pressed.connect(_close_hand_select_panel)
-	vbox.add_child(cancel_btn)
-	# 显示在屏幕中央
-	root_node.get_tree().root.add_child(_slot_select_panel)
-	_slot_select_panel.global_position = Vector2(
-		(root_node.get_tree().root.size.x - _slot_select_panel.size.x) / 2,
-		(root_node.get_tree().root.size.y - _slot_select_panel.size.y) / 2
+			update_hand_display(bc.card_system.get_hand())
+	# 取消激活
+	_apply_dice_style(_dice_nodes[dice_index], false)
+	_active_dice_index = -1
+	return true
+
+## B4: 卡牌缩小飞入骰子动画
+func _fly_card_to_dice(card_node: Control, dice_node: Control, dice_index: int) -> void:
+	card_node.z_index = 100
+	card_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var target_pos = dice_node.global_position + dice_node.size / 2
+	var start_pos = card_node.global_position + card_node.size / 2
+	var tween = card_node.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(card_node, "global_position", target_pos - card_node.size / 2, 0.25)
+	tween.tween_property(card_node, "scale", Vector2(0.2, 0.2), 0.25)
+	tween.tween_property(card_node, "modulate:a", 0.0, 0.25)
+	tween.set_parallel(false)
+	tween.tween_callback(func():
+		if is_instance_valid(card_node):
+			card_node.queue_free()
+		_update_dice_display(dice_index, false, -1)
+		var bc = _get_battle_controller()
+		if bc:
+			update_hand_display(bc.card_system.get_hand())
 	)
 
-## B4: 选择卡牌绑定到槽位
-func _on_slot_card_selected(card: CardData) -> void:
-	if _active_slot_index < 0 or _active_slot_index >= _slot_cards.size():
+## B4: 卸载骰子卡牌
+func _unload_dice_card(index: int, is_enemy: bool, enemy_idx: int) -> void:
+	if is_enemy:
+		var bar_data = _enemy_dice_bars.get(enemy_idx)
+		if bar_data and bar_data.cards[index] != null:
+			bar_data.cards[index] = null
+			_update_dice_display(index, true, enemy_idx)
 		return
-	_slot_cards[_active_slot_index] = card
-	# 更新槽位显示
-	var slot_node = _slot_nodes[_active_slot_index]
-	var card_label = slot_node.get_node_or_null("VBoxContainer/CardLabel")
-	if card_label:
+	if index < 0 or index >= _dice_cards.size():
+		return
+	var card: CardData = _dice_cards[index]
+	if card == null:
+		return
+	# 卡牌回手牌
+	var bc = _get_battle_controller()
+	if bc:
+		bc.card_system.add_to_hand(card)
+		if bc.ui_controller:
+			bc.ui_controller.update_hand_display(bc.card_system.get_hand())
+	_dice_cards[index] = null
+	_update_dice_display(index, false, -1)
+
+## B4: 更新骰子显示
+func _update_dice_display(index: int, is_enemy: bool, enemy_idx: int) -> void:
+	var nodes: Array = []
+	var cards: Array = []
+	if is_enemy:
+		var bar_data = _enemy_dice_bars.get(enemy_idx)
+		if not bar_data:
+			return
+		nodes = bar_data.nodes
+		cards = bar_data.cards
+	else:
+		nodes = _dice_nodes
+		cards = _dice_cards
+	if index >= nodes.size():
+		return
+	var card_label = nodes[index].get_node_or_null("VBoxContainer/CardLabel")
+	if card_label == null:
+		return
+	var card: CardData = cards[index]
+	if card:
 		card_label.text = card.name
 		card_label.add_theme_color_override("font_color", Color(0.9, 0.9, 1.0))
-	_close_hand_select_panel()
-	# 检查是否所有槽位都选了卡
-	_check_slot_confirm()
+	else:
+		card_label.text = "空"
+		card_label.add_theme_color_override("font_color", Color(0.55, 0.55, 0.6))
 
-## B4: 关闭手牌选择面板
-func _close_hand_select_panel() -> void:
-	if _slot_select_panel and is_instance_valid(_slot_select_panel):
-		_slot_select_panel.queue_free()
-	_slot_select_panel = null
-	_active_slot_index = -1
-
-## B4: 检查确认按钮状态
-func _check_slot_confirm() -> void:
-	if _slot_confirm_btn == null:
+## B4: 敌方骰子装载卡牌（AI结算时调用，仅作显示）
+func place_enemy_dice_card(enemy_idx: int, index: int, card: CardData) -> void:
+	var bar_data = _enemy_dice_bars.get(enemy_idx)
+	if not bar_data:
 		return
-	var all_filled = true
-	for card in _slot_cards:
-		if card == null:
-			all_filled = false
-			break
-	_slot_confirm_btn.disabled = not all_filled
-
-## B4: 确认出牌
-func _on_slot_confirm() -> void:
-	var bc = _get_battle_controller()
-	if bc == null:
+	if index < 0 or index >= bar_data.cards.size():
 		return
-	var slot_plays: Array = []
-	for i in _slot_cards.size():
-		var card: CardData = _slot_cards[i]
-		if card == null:
-			continue
-		var target = bc.player_manager if card.target_type == "self" else bc.player_manager.selected_target
-		if target == null and card.target_type == "single_enemy":
-			var enemies = bc.enemy_system.get_alive_enemies()
-			target = enemies[0] if enemies.size() > 0 else null
-		slot_plays.append({"card": card, "target": target})
-	bc.confirm_player_plays(slot_plays)
-	# 清理槽位UI
-	if _slot_area and is_instance_valid(_slot_area):
-		_slot_area.queue_free()
-	_slot_cards.clear()
-	_slot_nodes.clear()
+	bar_data.cards[index] = card
+	_update_dice_display(index, true, enemy_idx)
+
+## B4: 骰子悬浮——显示对应卡牌浮框
+func _on_dice_hover(index: int, is_enemy: bool, enemy_idx: int) -> void:
+	var card: CardData = null
+	if is_enemy:
+		var bar_data = _enemy_dice_bars.get(enemy_idx)
+		if bar_data and index < bar_data.cards.size():
+			card = bar_data.cards[index]
+	else:
+		if index < _dice_cards.size():
+			card = _dice_cards[index]
+	if card == null:
+		return
+	_show_dice_tooltip(card)
+
+## B4: 骰子取消悬浮
+func _on_dice_unhover() -> void:
+	_hide_dice_tooltip()
+
+## B4: 显示骰子卡牌浮框
+func _show_dice_tooltip(card: CardData) -> void:
+	_hide_dice_tooltip()
+	_dice_tooltip = PanelContainer.new()
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.06, 0.1, 0.96)
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.border_color = Color(0.5, 0.6, 0.8, 0.8)
+	style.set_corner_radius_all(6)
+	style.content_margin_left = 8
+	style.content_margin_top = 6
+	style.content_margin_right = 8
+	style.content_margin_bottom = 6
+	_dice_tooltip.add_theme_stylebox_override("panel", style)
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 3)
+	_dice_tooltip.add_child(vbox)
+	var name_label = Label.new()
+	name_label.text = "%s (cost %d)" % [card.name, card.cost]
+	name_label.add_theme_font_size_override("font_size", 13)
+	name_label.add_theme_color_override("font_color", Color(1, 1, 1))
+	vbox.add_child(name_label)
+	var desc_label = Label.new()
+	desc_label.text = card.description
+	desc_label.add_theme_font_size_override("font_size", 11)
+	desc_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
+	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_label.custom_minimum_size = Vector2(160, 0)
+	vbox.add_child(desc_label)
+	# 显示在鼠标附近
+	var mouse_pos = root_node.get_viewport().get_mouse_position()
+	root_node.add_child(_dice_tooltip)
+	_dice_tooltip.global_position = mouse_pos + Vector2(15, 15)
+
+## B4: 隐藏骰子浮框
+func _hide_dice_tooltip() -> void:
+	if _dice_tooltip and is_instance_valid(_dice_tooltip):
+		_dice_tooltip.queue_free()
+	_dice_tooltip = null
+
+## B4: 显示状态提示（简化）
+func _show_state_hint(text: String) -> void:
+	show_state_message(text, 1.0)
+
+## B4: 获取玩家装载的出牌列表
+func get_loaded_plays() -> Array:
+	var plays: Array = []
+	for i in _dice_cards.size():
+		var card: CardData = _dice_cards[i]
+		if card != null:
+			var target = null
+			var bc = _get_battle_controller()
+			if bc:
+				if card.target_type == "self":
+					target = bc.player_manager
+				elif card.target_type == "single_enemy":
+					var enemies = bc.enemy_system.get_alive_enemies()
+					target = enemies[0] if enemies.size() > 0 else null
+			plays.append({"card": card, "target": target, "slot_index": i})
+	return plays
+
+## B4: 清理骰子UI
+func clear_dice_ui() -> void:
+	if _dice_bar and is_instance_valid(_dice_bar):
+		_dice_bar.queue_free()
+	_dice_bar = null
+	_dice_cards.clear()
+	_dice_nodes.clear()
+	_active_dice_index = -1
+	for enemy_idx in _enemy_dice_bars.keys():
+		var bar_data = _enemy_dice_bars[enemy_idx]
+		if bar_data.bar and is_instance_valid(bar_data.bar):
+			bar_data.bar.queue_free()
+	_enemy_dice_bars.clear()
+	_hide_dice_tooltip()
 
 ## B4: 获取BattleController
 func _get_battle_controller():
