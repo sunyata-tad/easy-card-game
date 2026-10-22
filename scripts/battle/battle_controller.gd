@@ -585,3 +585,80 @@ func _on_ui_end_turn_clicked() -> void:
 
 func get_tree():
 	return Engine.get_main_loop()
+## ==========================================
+## B4: 同时出牌+速度排序结算
+## ==========================================
+
+## 槽位出牌列表（每回合收集双方所有槽位的出牌）
+var _pending_plays: Array = []
+
+## 玩家槽位速度（回合开始掷骰分配）
+var _player_slot_speeds: Array = []
+## 敌人槽位速度
+var _enemy_slot_speeds: Array = []
+
+## 回合开始时为所有槽位掷速度骰
+func _roll_all_speeds() -> void:
+	_player_slot_speeds.clear()
+	for i in player_manager.slots:
+		_player_slot_speeds.append(BattleRules.roll_speed(player_manager.speed))
+	_enemy_slot_speeds.clear()
+	for enemy in enemy_system.enemies:
+		if not enemy.is_dead:
+			for i in enemy.slots:
+				_enemy_slot_speeds.append(BattleRules.roll_speed(enemy.speed))
+
+## 添加一个槽位出牌到待结算列表
+func _add_pending_play(card: CardData, source, target, speed: int, is_player: bool, slot_index: int, enemy_index: int = 0) -> void:
+	_pending_plays.append({
+		"card": card,
+		"source": source,
+		"target": target,
+		"speed": speed,
+		"is_player": is_player,
+		"slot_index": slot_index,
+		"enemy_index": enemy_index,
+	})
+
+## 速度排序结算：按速度↓排序，同速按规则排序，依次执行
+func _resolve_all_plays() -> void:
+	# 排序：速度↓ → 玩家优先 → 槽位索引↑ → 敌人索引↑
+	_pending_plays.sort_custom(_compare_plays)
+	# 依次执行
+	for play in _pending_plays:
+		if _check_battle_end_state():
+			break
+		var card: CardData = play.card
+		var source = play.source
+		var target = play.target
+		# 检查source是否还存活
+		if source is PlayerManager and source.is_dead:
+			continue
+		if source is EnemyUnit and source.is_dead:
+			continue
+		# 检查target是否还存活
+		if target is EnemyUnit and target.is_dead:
+			continue
+		if target is PlayerManager and target.is_dead:
+			continue
+		# 执行效果
+		effect_resolver.resolve_effects(card.effects, source, target)
+		# 打出的牌回牌库
+		if source is PlayerManager:
+			card_system.play_card(card, target)
+	_update_player_ui()
+	_pending_plays.clear()
+
+## 排序比较函数：速度↓ → 玩家优先 → 槽位↑ → 敌人索引↑
+func _compare_plays(a: Dictionary, b: Dictionary) -> bool:
+	# 速度高的在前
+	if a.speed != b.speed:
+		return a.speed > b.speed
+	# 同速：玩家优先
+	if a.is_player != b.is_player:
+		return a.is_player
+	# 同速同方：槽位索引小的在前
+	if a.slot_index != b.slot_index:
+		return a.slot_index < b.slot_index
+	# 同速同方同槽位（敌人）：敌人索引小的在前（从左到右）
+	return a.enemy_index < b.enemy_index
