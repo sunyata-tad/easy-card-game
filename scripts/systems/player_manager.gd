@@ -13,6 +13,8 @@ var base_dexterity: int = 0    ## 基础敏捷（影响格挡值）
 var energy: int = 5            ## 当前能量
 var max_energy: int = 5        ## 能量上限（可成长）
 var energy_regen: int = 1      ## 每回合能量恢复
+var speed: int = 1             ## 速度属性（掷s个d6取最高）
+var slots: int = 2             ## 槽位数量（每回合出卡次数）
 var buff_manager: BuffManager  ## buff 管理器
 var hook_chain: HookChain      ## 钩子链
 var relic_manager: RelicManager ## 遗物管理器（规则改变来源）

@@ -43,3 +43,11 @@ func from_json(path: String) -> BattleRules:
 ## 查询规则值（未来可在此接入钩子链做动态修改）
 func query(rule_name: String) -> Variant:
 	return self.get(rule_name)
+## 速度掷骰：掷s个d6取最高，s<=0时返回1
+static func roll_speed(speed_attr: int) -> int:
+	if speed_attr <= 0:
+		return 1
+	var best := 1
+	for i in speed_attr:
+		best = maxi(best, randi_range(1, 6))
+	return best

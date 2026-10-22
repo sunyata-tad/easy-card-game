@@ -12,6 +12,8 @@ var block: int = 0               ## 当前格挡值
 var energy: int = 0              ## 当前能量
 var max_energy: int = 3          ## 能量上限
 var energy_regen: int = 1        ## 每回合能量恢复
+var speed: int = 1               ## 速度属性（掷s个d6取最高）
+var slots: int = 1               ## 槽位数量（每回合出卡次数）
 var buff_manager: BuffManager    ## buff 管理器
 var hook_chain: HookChain        ## 钩子链（处理伤害计算修正）
 var is_dead: bool = false        ## 是否已死亡
