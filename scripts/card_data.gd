@@ -67,7 +67,8 @@ func duplicate() -> CardData:
 		"tags": tags.duplicate(),
 		"treated_as": treated_as.duplicate(),
 		"play_condition": play_condition.duplicate(true),
-		"art": art
+		"art": art,
+		"cost": cost
 	}
 	return CardData.new(data, is_upgraded)
 

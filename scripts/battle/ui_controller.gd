@@ -1468,8 +1468,8 @@ func show_enemy_intent(enemy_idx: int, plays: Array) -> void:
 
 ## 更新能量显示
 func update_energy_display(current: int, maximum: int) -> void:
-	if player_stats_panel:
-		var energy_label = player_stats_panel.get_node_or_null("EnergyLabel")
+	if _player_stats_panel:
+		var energy_label = _player_stats_panel.get_node_or_null("EnergyLabel")
 		if energy_label:
 			energy_label.text = "能量: %d/%d" % [current, maximum]
 		else:
@@ -1478,12 +1478,12 @@ func update_energy_display(current: int, maximum: int) -> void:
 			energy_label.text = "能量: %d/%d" % [current, maximum]
 			energy_label.add_theme_font_size_override("font_size", 14)
 			energy_label.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0))
-			player_stats_panel.add_child(energy_label)
+			_player_stats_panel.add_child(energy_label)
 
 ## 更新槽位/速度显示
 func update_slots_display(slots: int, speeds: Array) -> void:
-	if player_stats_panel:
-		var slots_label = player_stats_panel.get_node_or_null("SlotsLabel")
+	if _player_stats_panel:
+		var slots_label = _player_stats_panel.get_node_or_null("SlotsLabel")
 		var text = "槽位: %d" % slots
 		if speeds.size() > 0:
 			text += " 速度: " + str(speeds)
@@ -1495,4 +1495,4 @@ func update_slots_display(slots: int, speeds: Array) -> void:
 			slots_label.text = text
 			slots_label.add_theme_font_size_override("font_size", 12)
 			slots_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8))
-			player_stats_panel.add_child(slots_label)
+			_player_stats_panel.add_child(slots_label)

@@ -27,10 +27,8 @@ static func decide_plays(enemy: EnemyUnit, card_system: CardSystem, player_manag
 ## 根据AI策略选择最优卡牌
 static func _pick_best_card(hand: Array, enemy: EnemyUnit, available_energy: int, enemy_data) -> CardData:
 	var ai_type = "aggressive"
-	if enemy_data and enemy_data is Dictionary:
-		ai_type = enemy_data.get("ai_type", "aggressive")
-	elif enemy_data and enemy_data.get("ai_type"):
-		ai_type = enemy_data.ai_type
+	if enemy_data and enemy_data is EnemyData:
+		ai_type = enemy_data.ai_type if enemy_data.ai_type != "" else "aggressive"
 	var affordable: Array = []
 	for card in hand:
 		if card.cost <= available_energy:

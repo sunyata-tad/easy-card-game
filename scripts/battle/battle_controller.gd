@@ -209,7 +209,8 @@ func _on_enemy_select_phase() -> void:
 		var enemy_cs = CardSystem.new()
 		enemy_cs.initialize_deck(_get_enemy_deck(enemy))
 		enemy_cs.draw_cards(5)
-		var plays = EnemyAI.decide_plays(enemy, enemy_cs, player_manager, enemy_system.enemies)
+		var EnemyAIClass = load("res://scripts/battle/enemy_ai.gd")
+		var plays = EnemyAIClass.decide_plays(enemy, enemy_cs, player_manager, enemy_system.enemies)
 		for play in plays:
 			_add_pending_play(play.card, enemy, play.target, _enemy_slot_speeds[play.slot_index], false, play.slot_index, enemy_idx)
 		if ui_controller:
@@ -238,21 +239,16 @@ func confirm_player_plays(slot_plays: Array) -> void:
 		state_machine.change_state(StateMachine.BattleState.TURN_END)
 
 ## B4: 获取敌人卡组（basic卡组或自定义）
-func _get_enemy_deck(enemy: EnemyUnit) -> Array:
-	var deck_id = "basic"
-	if enemy.data and enemy.data is Dictionary:
-		deck_id = enemy.data.get("deck", "basic")
-	if deck_id == "basic":
-		var db = CardDatabase.new()
-		return db.create_deck([
-			{"card_id": "斩击", "count": 2},
-			{"card_id": "格挡", "count": 2},
-			{"card_id": "重斩", "count": 1},
-			{"card_id": "铁壁", "count": 1},
-			{"card_id": "攻守兼备", "count": 2},
-			{"card_id": "烈斩", "count": 1}
-		])
-	return []
+func _get_enemy_deck(_enemy: EnemyUnit) -> Array:
+	var db = CardDatabase.new()
+	return db.create_deck([
+		{"card_id": "斩击", "count": 2},
+		{"card_id": "格挡", "count": 2},
+		{"card_id": "重斩", "count": 1},
+		{"card_id": "铁壁", "count": 1},
+		{"card_id": "攻守兼备", "count": 2},
+		{"card_id": "烈斩", "count": 1}
+	])
 
 func _on_turn_end_phase() -> void:
 	# Retain 标签：有 Retain 的牌不计入弃牌数量
