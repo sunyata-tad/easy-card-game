@@ -644,9 +644,10 @@ func update_deck_info(draw_count: int, discard_count: int) -> void:
 	var discard_label = deck_info_node.get_node_or_null("DiscardPile")
 	
 	if draw_label:
-		draw_label.text = "抽牌堆: %d" % draw_count
+		draw_label.text = "牌库: %d" % draw_count
 	if discard_label:
-		discard_label.text = "弃牌堆: %d" % discard_count
+		# 新流程只有手牌+牌库，隐藏弃牌堆显示
+		discard_label.visible = false
 
 func _create_player_info_panels() -> void:
 	if player_area == null:
@@ -689,13 +690,7 @@ func create_slot_area(slots: int, speeds: Array) -> void:
 		var slot_node = _create_slot_node(i, speeds[i] if i < speeds.size() else 1)
 		_slot_nodes.append(slot_node)
 		_slot_area.add_child(slot_node)
-	# 确认按钮
-	_slot_confirm_btn = Button.new()
-	_slot_confirm_btn.text = "确认出牌"
-	_slot_confirm_btn.custom_minimum_size = Vector2(100, 40)
-	_slot_confirm_btn.disabled = true
-	_slot_confirm_btn.pressed.connect(_on_slot_confirm)
-	_slot_area.add_child(_slot_confirm_btn)
+	# 注：确认出牌按钮使用EndTurnButton（新流程中已改名为"确认出牌"），不在此重复创建
 	# 添加到场景：放在玩家区域上方（可见区域）
 	if player_area and is_instance_valid(player_area):
 		player_area.get_parent().add_child(_slot_area)
@@ -869,6 +864,11 @@ func update_player_stats_info(pm: PlayerManager) -> void:
 	
 	for child in _player_stats_panel.get_children():
 		child.queue_free()
+	
+	# 新流程不需要弃牌攻击显示（卡牌自带伤害值）
+	var bc = _get_battle_controller()
+	if bc and bc.use_new_flow:
+		return
 	
 	var effective = pm.get_expected_attack_damage()
 	
