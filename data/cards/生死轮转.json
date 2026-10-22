@@ -2,7 +2,7 @@
 	"id": "生死轮转",
 	"name": "生死轮转",
 	"type": "skill",
-	"description": "支付20点生命值，交换卡组与墓地所有卡",
+	"description": "支付20点生命值，重新洗牌牌库",
 	"rarity": "rare",
 	"target_type": "self",
 	"tags": [

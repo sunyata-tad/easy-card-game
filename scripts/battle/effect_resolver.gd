@@ -344,7 +344,8 @@ func _resolve_contract(effect: Dictionary, source, target) -> Dictionary:
 		return result
 	return {"success": false, "value": 0}
 
-## 逆流：选5张手牌回抽牌堆（顶部）+ 墓地（弃牌堆）回手。
+## 逆流：选5张手牌回抽牌堆（顶部）+ 从牌库选择至多3张回手。
+## 新牌堆模型：无墓地，改为从牌库选牌回手。
 ## 出牌条件（生命<最大10%）由 play_card 拦截，此处只做效果。
 func _resolve_flow_reversal(effect: Dictionary, source) -> Dictionary:
 	if ui_controller == null or card_system == null:
@@ -364,16 +365,26 @@ func _flow_step_hand_to_draw(selected: Array, cs: CardSystem) -> void:
 		return  # 取消：效果作废
 	for card in selected:
 		cs.move_hand_to_draw_pile(card, true)
-	var discard: Array = cs.discard_pile
-	if discard.size() <= 3:
-		for card in discard.duplicate():
-			cs.move_discard_to_hand(card)
-	else:
-		ui_controller.enter_discard_select_mode(
-			"逆流：从墓地选择至多 3 张回手", discard.duplicate(), 3,
+	# 新模型：从牌库选择至多3张回手（替代旧的从墓地选择）
+	var draw_pile: Array = cs.draw_pile
+	if draw_pile.size() <= 3:
+		for card in draw_pile.duplicate():
+			cs.draw_pile.erase(card)
+			cs.hand.append(card)
+			cs.card_drawn.emit(card)
+		cs.hand_changed.emit(cs.hand)
+		cs._emit_deck_count()
+	elif draw_pile.size() > 3:
+		ui_controller.enter_card_select_mode(
+			"逆流：从牌库选择至多 3 张回手", 1, 3,
 			func(selected2: Array) -> void:
 				for card in selected2:
-					cs.move_discard_to_hand(card)
+					if cs.draw_pile.has(card):
+						cs.draw_pile.erase(card)
+						cs.hand.append(card)
+						cs.card_drawn.emit(card)
+				cs.hand_changed.emit(cs.hand)
+				cs._emit_deck_count()
 		)
 
 ## 杀意：根据敌人意图条件造成不同伤害
