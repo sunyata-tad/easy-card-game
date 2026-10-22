@@ -844,7 +844,7 @@ func _on_slot_confirm() -> void:
 		var target = bc.player_manager if card.target_type == "self" else bc.player_manager.selected_target
 		if target == null and card.target_type == "single_enemy":
 			var enemies = bc.enemy_system.get_alive_enemies()
-			target = enemies[0] if enemies+enemies.size() > 0 else null
+			target = enemies[0] if enemies.size() > 0 else null
 		slot_plays.append({"card": card, "target": target})
 	bc.confirm_player_plays(slot_plays)
 	# 清理槽位UI
