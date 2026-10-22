@@ -717,9 +717,10 @@ func reveal_enemy_dice() -> void:
 
 ## 设置骰子显示的速度值
 func _set_dice_value(node: Control, speed: int) -> void:
-	var dl = node.get_node_or_null("DiceVBox/DiceLabel")
-	if dl:
-		dl.text = "%d" % speed
+	if node is DiceHex:
+		node.set_value("%d" % speed)
+	elif node.has_node("DiceLabel"):
+		node.get_node("DiceLabel").text = "%d" % speed
 
 ## B4: 创建敌人骰子栏
 func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array, unknown: bool = false) -> void:
@@ -740,51 +741,33 @@ func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array, unknown: b
 	bar.z_index = 20
 	_enemy_dice_bars[enemy_idx] = {"bar": bar, "nodes": nodes, "cards": cards, "speeds": speeds}
 
-## B4: 创建单个骰子节点（只显示速度，悬浮时显示卡牌）
-func _create_dice_node(index: int, speed: int, is_enemy: bool, enemy_idx: int, unknown: bool = false) -> PanelContainer:
-	var panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(72, 72)
-	panel.name = "Dice_%s_%d" % ["E" if is_enemy else "P", index]
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	_apply_dice_style(panel, false, false)
-	var dice_label = Label.new()
-	dice_label.name = "DiceLabel"
-	dice_label.text = "?" if unknown else "%d" % speed
-	dice_label.horizontal_alignment = 1
-	dice_label.vertical_alignment = 1
-	dice_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dice_label.add_theme_font_size_override("font_size", 26)
-	dice_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
-	dice_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(dice_label)
-	panel.gui_input.connect(_on_dice_input.bind(index, is_enemy, enemy_idx))
-	panel.mouse_entered.connect(_on_dice_hover.bind(index, is_enemy, enemy_idx))
-	panel.mouse_exited.connect(_on_dice_unhover)
-	return panel
+## B4: 创建单个骰子节点（六边形，只显示速度）
+func _create_dice_node(index: int, speed: int, is_enemy: bool, enemy_idx: int, unknown: bool = false) -> DiceHex:
+	var dice = DiceHex.new()
+	dice.custom_minimum_size = Vector2(76, 84)
+	dice.name = "Dice_%s_%d" % ["E" if is_enemy else "P", index]
+	dice.dice_value = "?" if unknown else "%d" % speed
+	dice.set_state_colors(false, false)
+	dice.gui_input.connect(_on_dice_input.bind(index, is_enemy, enemy_idx))
+	dice.mouse_entered.connect(_on_dice_hover.bind(index, is_enemy, enemy_idx))
+	dice.mouse_exited.connect(_on_dice_unhover.bind(index, is_enemy, enemy_idx))
+	return dice
 
-## 应用骰子样式（active=激活金色边框, filled=已装填绿色边框, 默认蓝色）
-func _apply_dice_style(panel: PanelContainer, active: bool, filled: bool = false) -> void:
+## 应用骰子样式（active=激活金色, filled=已装填正常色, 空=灰色）
+func _apply_dice_style(panel: Control, active: bool, filled: bool = false) -> void:
+	if panel is DiceHex:
+		panel.set_state_colors(filled, active)
+
+## 配置骰子界面元素样式（stylebox辅助，保留兼容）
+func _dice_stylebox(border_color: Color) -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()
-	var border_color = Color(0.5, 0.6, 0.8, 0.7)
-	if active:
-		style.bg_color = Color(0.2, 0.16, 0.05, 0.95)
-		border_color = Color(1.0, 0.85, 0.3, 1.0)
-	elif filled:
-		style.bg_color = Color(0.1, 0.18, 0.12, 0.95)
-		border_color = Color(0.4, 0.9, 0.5, 0.9)
-	else:
-		style.bg_color = Color(0.1, 0.12, 0.18, 0.95)
 	style.border_width_left = 2
 	style.border_width_top = 2
 	style.border_width_right = 2
 	style.border_width_bottom = 2
 	style.border_color = border_color
 	style.set_corner_radius_all(6)
-	style.content_margin_left = 4
-	style.content_margin_top = 3
-	style.content_margin_right = 4
-	style.content_margin_bottom = 3
-	panel.add_theme_stylebox_override("panel", style)
+	return style
 
 ## B4: 骰子交互（左键激活/取消，右键卸载）
 func _on_dice_input(event: InputEvent, index: int, is_enemy: bool, enemy_idx: int) -> void:
@@ -793,16 +776,19 @@ func _on_dice_input(event: InputEvent, index: int, is_enemy: bool, enemy_idx: in
 	if event.button_index == MOUSE_BUTTON_LEFT:
 		if is_enemy:
 			return
+		var node = _dice_nodes[index]
 		if _active_dice_index == index:
 			# 取消激活
-			_apply_dice_style(_dice_nodes[index], false)
+			_apply_dice_style(node, false, _dice_cards[index] != null)
 			_active_dice_index = -1
 		else:
 			# 激活该骰子
 			if _active_dice_index >= 0 and _active_dice_index < _dice_nodes.size():
-				_apply_dice_style(_dice_nodes[_active_dice_index], false)
-			_apply_dice_style(_dice_nodes[index], true)
+				_apply_dice_style(_dice_nodes[_active_dice_index], false, _dice_cards[_active_dice_index] != null)
+			_apply_dice_style(node, true, _dice_cards[index] != null)
 			_active_dice_index = index
+			if node is DiceHex:
+				node.set_hover_scale(1.15)
 			_show_state_hint("请点击手牌装载到骰子 %d" % (index + 1))
 	elif event.button_index == MOUSE_BUTTON_RIGHT:
 		_unload_dice_card(index, is_enemy, enemy_idx)
@@ -911,22 +897,40 @@ func place_enemy_dice_card(enemy_idx: int, index: int, card: CardData) -> void:
 	bar_data.cards[index] = card
 	_update_dice_display(index, true, enemy_idx)
 
-## B4: 骰子悬浮——显示对应卡牌浮框
+## B4: 骰子悬浮——显示对应卡牌浮框 + 缩放反馈
 func _on_dice_hover(index: int, is_enemy: bool, enemy_idx: int) -> void:
+	var node: Control = null
 	var card: CardData = null
 	if is_enemy:
 		var bar_data = _enemy_dice_bars.get(enemy_idx)
-		if bar_data and index < bar_data.cards.size():
-			card = bar_data.cards[index]
+		if bar_data:
+			if index < bar_data.nodes.size():
+				node = bar_data.nodes[index]
+			if index < bar_data.cards.size():
+				card = bar_data.cards[index]
 	else:
+		if index < _dice_nodes.size():
+			node = _dice_nodes[index]
 		if index < _dice_cards.size():
 			card = _dice_cards[index]
+	if node is DiceHex:
+		node.set_hover_scale(1.12)
 	if card == null:
 		return
 	_show_dice_tooltip(card)
 
 ## B4: 骰子取消悬浮
-func _on_dice_unhover() -> void:
+func _on_dice_unhover(index: int = -1, is_enemy: bool = false, enemy_idx: int = -1) -> void:
+	var node: Control = null
+	if is_enemy:
+		var bar_data = _enemy_dice_bars.get(enemy_idx)
+		if bar_data and index >= 0 and index < bar_data.nodes.size():
+			node = bar_data.nodes[index]
+	else:
+		if index >= 0 and index < _dice_nodes.size():
+			node = _dice_nodes[index]
+	if node is DiceHex:
+		node.set_hover_scale(1.0)
 	_hide_dice_tooltip()
 
 ## B4: 显示骰子卡牌浮框
@@ -961,10 +965,18 @@ func _show_dice_tooltip(card: CardData) -> void:
 	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_label.custom_minimum_size = Vector2(160, 0)
 	vbox.add_child(desc_label)
-	# 显示在鼠标附近
+	# 显示在鼠标附近（z_index 置顶避免被遮挡，边界自动翻转）
 	var mouse_pos = root_node.get_viewport().get_mouse_position()
 	root_node.add_child(_dice_tooltip)
-	_dice_tooltip.global_position = mouse_pos + Vector2(15, 15)
+	_dice_tooltip.z_index = 500
+	var vp_size = root_node.get_viewport_rect().size
+	var tsize = _dice_tooltip.get_combined_minimum_size()
+	var pos = mouse_pos + Vector2(15, 15)
+	if pos.x + tsize.x > vp_size.x:
+		pos.x = mouse_pos.x - tsize.x - 15
+	if pos.y + tsize.y > vp_size.y:
+		pos.y = mouse_pos.y - tsize.y - 15
+	_dice_tooltip.global_position = pos
 
 ## B4: 隐藏骰子浮框
 func _hide_dice_tooltip() -> void:
@@ -1828,57 +1840,81 @@ func show_end_turn_button(text: String, enabled: bool) -> void:
 		end_turn_button.text = text
 		end_turn_button.disabled = not enabled
 
-## B4: 卡牌结算动画——显示卡牌本体+效果文字（敌我）
+## B4: 卡牌结算动画——显示卡牌本体（卡图+名称+描述）+效果文字（敌我）
 func show_resolve_animation(card: CardData, is_player: bool, effect_text: String) -> void:
 	var container = PanelContainer.new()
 	container.name = "ResolveCard"
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.12, 0.18, 0.97)
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.border_color = Color(0.4, 0.8, 0.5, 0.9) if is_player else Color(0.9, 0.4, 0.4, 0.9)
-	style.set_corner_radius_all(6)
+	style.bg_color = Color(0.08, 0.09, 0.13, 0.98)
+	style.border_width_left = 3
+	style.border_width_top = 3
+	style.border_width_right = 3
+	style.border_width_bottom = 3
+	style.border_color = Color(0.4, 0.8, 0.5, 0.95) if is_player else Color(0.9, 0.4, 0.4, 0.95)
+	style.set_corner_radius_all(8)
 	style.content_margin_left = 10
-	style.content_margin_top = 8
+	style.content_margin_top = 10
 	style.content_margin_right = 10
-	style.content_margin_bottom = 8
+	style.content_margin_bottom = 10
 	container.add_theme_stylebox_override("panel", style)
-	var hbox = HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 12)
-	container.add_child(hbox)
-	var cvbox = VBoxContainer.new()
-	cvbox.add_theme_constant_override("separation", 2)
-	hbox.add_child(cvbox)
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 5)
+	container.add_child(vbox)
+	# 归属标签
+	var side_lbl = Label.new()
+	side_lbl.text = "我方出牌" if is_player else "敌方出牌"
+	side_lbl.add_theme_font_size_override("font_size", 12)
+	side_lbl.add_theme_color_override("font_color", Color(0.6, 0.95, 0.6) if is_player else Color(0.95, 0.6, 0.6))
+	side_lbl.horizontal_alignment = 1
+	vbox.add_child(side_lbl)
+	# 卡图
+	var art_panel = PanelContainer.new()
+	art_panel.custom_minimum_size = Vector2(150, 90)
+	var astyle = StyleBoxFlat.new()
+	astyle.bg_color = Color(0.05, 0.05, 0.08, 1)
+	astyle.set_corner_radius_all(5)
+	astyle.clip_contents = true
+	art_panel.add_theme_stylebox_override("panel", astyle)
+	if card.art != "":
+		var tex = TextureRect.new()
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		var t = load(card.art)
+		if t:
+			tex.texture = t
+		art_panel.add_child(tex)
+	vbox.add_child(art_panel)
+	# 名称+费用
 	var name_lbl = Label.new()
-	name_lbl.text = "%s（%d费）" % [card.name, card.cost]
-	name_lbl.add_theme_font_size_override("font_size", 16)
+	name_lbl.text = "%s  [%d费]" % [card.name, card.cost]
+	name_lbl.add_theme_font_size_override("font_size", 17)
 	name_lbl.add_theme_color_override("font_color", Color(1.0, 0.95, 0.8))
-	cvbox.add_child(name_lbl)
+	name_lbl.horizontal_alignment = 1
+	vbox.add_child(name_lbl)
+	# 描述
 	var desc_lbl = Label.new()
 	desc_lbl.text = card.description
-	desc_lbl.add_theme_font_size_override("font_size", 11)
-	desc_lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
-	desc_lbl.custom_minimum_size = Vector2(170, 0)
+	desc_lbl.add_theme_font_size_override("font_size", 12)
+	desc_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	cvbox.add_child(desc_lbl)
+	desc_lbl.custom_minimum_size = Vector2(170, 0)
+	vbox.add_child(desc_lbl)
+	# 效果文字（增益情况）
 	var eff_lbl = Label.new()
-	eff_lbl.text = effect_text
-	eff_lbl.add_theme_font_size_override("font_size", 13)
+	eff_lbl.text = "→ " + effect_text
+	eff_lbl.add_theme_font_size_override("font_size", 14)
 	eff_lbl.add_theme_color_override("font_color", Color(0.5, 1.0, 0.6) if is_player else Color(1.0, 0.6, 0.5))
-	eff_lbl.custom_minimum_size = Vector2(110, 0)
-	eff_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hbox.add_child(eff_lbl)
+	eff_lbl.horizontal_alignment = 1
+	vbox.add_child(eff_lbl)
 	root_node.add_child(container)
-	container.z_index = 200
+	container.z_index = 500
 	var vp = root_node.get_viewport_rect().size
-	container.global_position = Vector2(vp.x * 0.5 - 200, 160) if is_player else Vector2(vp.x * 0.5 - 200, 420)
+	container.global_position = Vector2(vp.x * 0.5 - 100, 110) if is_player else Vector2(vp.x * 0.5 - 100, 360)
 	container.modulate.a = 0.0
-	container.pivot_offset = Vector2(100, 30)
+	container.pivot_offset = Vector2(100, 100)
 	var tw = root_node.create_tween()
 	tw.tween_property(container, "modulate:a", 1.0, 0.15)
-	tw.tween_interval(0.7)
+	tw.tween_interval(0.9)
 	tw.tween_property(container, "modulate:a", 0.0, 0.15)
 	await tw.finished
 	if is_instance_valid(container):
