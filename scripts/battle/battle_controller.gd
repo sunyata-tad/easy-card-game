@@ -15,6 +15,7 @@ var rules: BattleRules
 var pending_card: CardData = null
 var is_first_turn: bool = true
 var is_discard_phase: bool = false
+var use_new_flow: bool = false  ## B4: 使用同时出牌新流程
 
 
 ## [未连接] 战斗开始通知。若已连接接收方，请删除此标记注释。
@@ -131,6 +132,8 @@ func _on_state_enter(state: int) -> void:
 	match state:
 		StateMachine.BattleState.INIT: _on_battle_init()
 		StateMachine.BattleState.DRAW_PHASE: _on_draw_phase()
+		StateMachine.BattleState.ENEMY_SELECT: _on_enemy_select_phase()
+		StateMachine.BattleState.PLAYER_SELECT: _on_player_select_phase()
 		StateMachine.BattleState.PLAYER_TURN: _on_player_turn_phase()
 		StateMachine.BattleState.RESOLVING: _on_resolving_phase()
 		StateMachine.BattleState.ENEMY_TURN: _on_enemy_turn_phase()
@@ -170,10 +173,14 @@ func _on_draw_phase() -> void:
 	# 超出的部分由回合结束的弃牌阶段处理（弃牌降到 max_hand_size）。
 	card_system.draw_cards(draw_count)
 	turn_changed.emit(true)
-	_decide_all_enemy_intents()
-	if not _check_battle_end_state():
-		turn_manager.start_new_turn(true)
-		state_machine.change_state(StateMachine.BattleState.PLAYER_TURN)
+	if use_new_flow:
+		if not _check_battle_end_state():
+			state_machine.change_state(StateMachine.BattleState.ENEMY_SELECT)
+	else:
+		_decide_all_enemy_intents()
+		if not _check_battle_end_state():
+			turn_manager.start_new_turn(true)
+			state_machine.change_state(StateMachine.BattleState.PLAYER_TURN)
 
 func _on_player_turn_phase() -> void:
 	ui_controller.set_interactive(true)
@@ -190,6 +197,62 @@ func _on_enemy_turn_phase() -> void:
 	turn_manager.start_new_turn(false)
 	turn_changed.emit(false)
 	await _execute_enemy_turns()
+
+## B4: 敌人选牌阶段——AI决定出牌，玩家可见
+func _on_enemy_select_phase() -> void:
+	_roll_all_speeds()
+	_pending_plays.clear()
+	for enemy_idx in enemy_system.enemies.size():
+		var enemy = enemy_system.enemies[enemy_idx]
+		if enemy.is_dead:
+			continue
+		var enemy_cs = CardSystem.new()
+		enemy_cs.initialize_deck(_get_enemy_deck(enemy))
+		enemy_cs.draw_cards(5)
+		var plays = EnemyAI.decide_plays(enemy, enemy_cs, player_manager, enemy_system.enemies)
+		for play in plays:
+			_add_pending_play(play.card, enemy, play.target, _enemy_slot_speeds[play.slot_index], false, play.slot_index, enemy_idx)
+		if ui_controller:
+			ui_controller.show_enemy_intent(enemy_idx, plays)
+	if not _check_battle_end_state():
+		state_machine.change_state(StateMachine.BattleState.PLAYER_SELECT)
+
+## B4: 玩家选牌阶段——等待玩家选牌
+func _on_player_select_phase() -> void:
+	if ui_controller:
+		ui_controller.set_interactive(true)
+		ui_controller.show_turn_banner("你的回合（选牌）")
+	_update_player_ui()
+
+## B4: 玩家确认出牌——收集玩家槽位出牌，进入结算
+func confirm_player_plays(slot_plays: Array) -> void:
+	for i in slot_plays.size():
+		var play = slot_plays[i]
+		var card: CardData = play.card
+		var target = play.target
+		var speed = _player_slot_speeds[i] if i < _player_slot_speeds.size() else 1
+		_add_pending_play(card, player_manager, target, speed, true, i)
+	state_machine.change_state(StateMachine.BattleState.RESOLVING)
+	_resolve_all_plays()
+	if not _check_battle_end_state():
+		state_machine.change_state(StateMachine.BattleState.TURN_END)
+
+## B4: 获取敌人卡组（basic卡组或自定义）
+func _get_enemy_deck(enemy: EnemyUnit) -> Array:
+	var deck_id = "basic"
+	if enemy.data and enemy.data is Dictionary:
+		deck_id = enemy.data.get("deck", "basic")
+	if deck_id == "basic":
+		var db = CardDatabase.new()
+		return db.create_deck([
+			{"card_id": "斩击", "count": 2},
+			{"card_id": "格挡", "count": 2},
+			{"card_id": "重斩", "count": 1},
+			{"card_id": "铁壁", "count": 1},
+			{"card_id": "攻守兼备", "count": 2},
+			{"card_id": "烈斩", "count": 1}
+		])
+	return []
 
 func _on_turn_end_phase() -> void:
 	# Retain 标签：有 Retain 的牌不计入弃牌数量
