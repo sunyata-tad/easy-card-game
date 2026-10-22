@@ -636,7 +636,7 @@ func _on_delete():
 		_show_status("删除失败")
 
 func _on_back():
-	TransitionManager.transition(GameManager.go_to_main_menu)
+	TransitionManager.transition(GameManager.back_from_deck_config)
 
 func _build_detail_panel():
 	_detail_panel = Panel.new()

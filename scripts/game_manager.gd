@@ -94,7 +94,25 @@ func go_to_settings() -> void:
 	change_scene(GameScene.SETTINGS)
 
 func go_to_deck_config() -> void:
+	_change_deck_config_return = {}
 	change_scene(GameScene.DECK_CONFIG)
+
+## 从战斗前界面进入卡组编辑（返回时回到战斗前界面）
+var _change_deck_config_return: Dictionary = {}
+func go_to_deck_config_from_prebattle(enemies: Array, test_mode: bool) -> void:
+	_change_deck_config_return = {"from_prebattle": true, "enemies": enemies, "test_mode": test_mode}
+	change_scene(GameScene.DECK_CONFIG, _change_deck_config_return)
+
+## 卡组编辑返回（根据来源决定返回主菜单或战斗前界面）
+func back_from_deck_config() -> void:
+	if _change_deck_config_return.get("from_prebattle", false):
+		var enemies = _change_deck_config_return.get("enemies", [])
+		var test_mode = _change_deck_config_return.get("test_mode", false)
+		_change_deck_config_return = {}
+		go_to_pre_battle_select(enemies, test_mode)
+	else:
+		_change_deck_config_return = {}
+		go_to_main_menu()
 
 
 ## 跳转到无尽地图模式
