@@ -319,13 +319,12 @@ func _resolve_pay_life(value: int, source) -> Dictionary:
 	return {"success": false, "value": 0}
 
 ## 交换抽牌堆与弃牌堆所有卡（生死轮转）
+## 新模型中打出回牌库，无弃牌堆，改为洗牌
 func _resolve_swap_draw_discard(source) -> Dictionary:
 	var cs = card_system
 	if not cs and source.has_method("get") and source.get("card_system"): cs = source.card_system
 	if cs:
-		var tmp = cs.draw_pile
-		cs.draw_pile = cs.discard_pile
-		cs.discard_pile = tmp
+		cs.shuffle_draw_pile()
 		cs._emit_deck_count()
 		return {"success": true, "value": 1}
 	return {"success": false, "value": 0}
