@@ -1,0 +1,21 @@
+{
+	"id": "铁壁",
+	"name": "铁壁",
+	"type": "skill",
+	"description": "获得 14 点护甲",
+	"rarity": "basic",
+	"cost": 1,
+	"target_type": "self",
+	"tags": [
+		"Skill",
+		"Basic"
+	],
+	"treated_as": [],
+	"effects": [
+		{
+			"effect_type": "block",
+			"value": 14
+		}
+	],
+	"art": ""
+}

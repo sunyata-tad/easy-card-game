@@ -2,8 +2,9 @@
 	"id": "斩击",
 	"name": "斩击",
 	"type": "attack",
-	"description": "造成 6 点伤害",
+	"description": "造成 5 点伤害",
 	"rarity": "basic",
+	"cost": 0,
 	"target_type": "single_enemy",
 	"tags": [
 		"Attack",
@@ -13,7 +14,7 @@
 	"effects": [
 		{
 			"effect_type": "damage",
-			"value": 6
+			"value": 5
 		}
 	],
 	"art": "res://art_assets/pixel/card_zhanji.png"

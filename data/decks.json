@@ -1,6 +1,10 @@
 {
 	"starter_deck": [
-		{"card_id": "斩击", "count": 5},
-		{"card_id": "格挡", "count": 5}
+		{"card_id": "斩击", "count": 2},
+		{"card_id": "格挡", "count": 2},
+		{"card_id": "重斩", "count": 1},
+		{"card_id": "铁壁", "count": 1},
+		{"card_id": "攻守兼备", "count": 2},
+		{"card_id": "烈斩", "count": 1}
 	]
 }

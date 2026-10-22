@@ -1,0 +1,25 @@
+{
+	"id": "攻守兼备",
+	"name": "攻守兼备",
+	"type": "skill",
+	"description": "造成 10 点伤害，获得 10 点护甲",
+	"rarity": "basic",
+	"cost": 2,
+	"target_type": "single_enemy",
+	"tags": [
+		"Skill",
+		"Basic"
+	],
+	"treated_as": [],
+	"effects": [
+		{
+			"effect_type": "damage",
+			"value": 10
+		},
+		{
+			"effect_type": "block",
+			"value": 10
+		}
+	],
+	"art": ""
+}

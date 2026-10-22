@@ -1,0 +1,21 @@
+{
+	"id": "烈斩",
+	"name": "烈斩",
+	"type": "attack",
+	"description": "造成 26 点伤害",
+	"rarity": "basic",
+	"cost": 3,
+	"target_type": "single_enemy",
+	"tags": [
+		"Attack",
+		"Basic"
+	],
+	"treated_as": [],
+	"effects": [
+		{
+			"effect_type": "damage",
+			"value": 26
+		}
+	],
+	"art": ""
+}

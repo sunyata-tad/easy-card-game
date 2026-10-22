@@ -35,10 +35,9 @@ const TYPE_CN := {
 const RARITY_CN := {
 	"basic": "基础",
 	"common": "普通",
-	"uncommon": "稀有",
-	"rare": "史诗",
+	"uncommon": "罕见",
+	"rare": "稀有",
 	"epic": "唯一",
-	"unique": "唯一",
 }
 const RARITY_ORDER := {
 	"basic": 0,
@@ -46,7 +45,6 @@ const RARITY_ORDER := {
 	"uncommon": 2,
 	"rare": 3,
 	"epic": 4,
-	"unique": 5,
 }
 const TAG_CN := {
 	"Attack": "攻击",
@@ -73,7 +71,7 @@ const RARITY_COLORS = {
 	"uncommon": Color(0.3, 0.7, 1.0),
 	"rare": Color(1.0, 0.7, 0.2),
 	"epic": Color(0.8, 0.3, 1.0),
-	"unique": Color(1.0, 0.4, 0.4),
+
 }
 
 func _ready():
@@ -468,7 +466,7 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 		lock_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		panel.add_child(lock_lbl)
 	elif count > 0:
-		var is_unique = card.rarity == "unique"
+		var is_unique = card.rarity == "epic"
 		var dot_total = 1 if is_unique else 3
 		var filled = min(count, dot_total)
 		var dot_size = 4.0
@@ -497,8 +495,7 @@ func _create_card_visual(card: CardData, w: float, h: float, count: int = 0, is_
 			frame_path = "res://art_assets/frames/frame_rare.png"
 		"epic":
 			frame_path = "res://art_assets/frames/frame_epic.png"
-		"unique":
-			frame_path = "res://art_assets/frames/frame_unique.png"
+
 	var frame_tex = load(frame_path)
 	if frame_tex:
 		var frame_rect = TextureRect.new()
@@ -580,7 +577,7 @@ func _on_card_widget_input(event: InputEvent, card_id: String, is_library: bool,
 func _add_card_to_deck(card_id: String):
 	var current_count = current_deck_cards.get(card_id, 0)
 	var card = card_database.get_card(card_id)
-	if card and card.rarity == "unique" and current_count >= 1:
+	if card and card.rarity == "epic" and current_count >= 1:
 		_show_status("唯一卡牌「%s」只能放入1张" % card.name)
 		return
 	if current_count >= deck_manager.MAX_CARD_COPIES:

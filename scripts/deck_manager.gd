@@ -60,7 +60,7 @@ func validate_deck(cards: Array) -> Dictionary:
 		if count > MAX_CARD_COPIES:
 			return {"valid": false, "error": "每张卡至多放入%d张" % MAX_CARD_COPIES}
 		var card = card_db.get_card(card_id)
-		if card and card.rarity == "unique" and count > 1:
+		if card and card.rarity == "epic" and count > 1:
 			return {"valid": false, "error": "唯一卡牌「%s」只能放入1张" % card.name}
 		total += count
 	if total < MIN_DECK_SIZE:

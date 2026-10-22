@@ -4,6 +4,7 @@
 	"type": "skill",
 	"description": "获得 5 点护甲",
 	"rarity": "basic",
+	"cost": 0,
 	"target_type": "self",
 	"tags": [
 		"Skill",

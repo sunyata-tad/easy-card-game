@@ -200,8 +200,7 @@ func _set_frame_art(rarity: String) -> void:
 			frame_path = "res://art_assets/frames/frame_rare.png"
 		"epic":
 			frame_path = "res://art_assets/frames/frame_epic.png"
-		"unique":
-			frame_path = "res://art_assets/frames/frame_unique.png"
+
 	var frame_rect := get_node_or_null("FrameArt") as TextureRect
 	if frame_rect:
 		var tex = load(frame_path)
