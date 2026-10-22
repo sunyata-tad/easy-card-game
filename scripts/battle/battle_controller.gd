@@ -724,12 +724,17 @@ func _on_ui_card_released(_card: CardData, _card_node: Control) -> void:
 func _on_ui_card_played(card: CardData, target) -> void:
 	if card == null:
 		return
-	# 新流程：在PLAYER_SELECT阶段，队列出牌而非立即打出
+	# 新流程：骰子激活时装载到骰子（而非旧队列）
 	if use_new_flow and state_machine.is_player_select():
-		_queue_player_card(card, target)
+		if ui_controller.has_active_dice():
+			var card_node = ui_controller.get_card_node(card)
+			ui_controller.load_card_to_dice(card, card_node)
+			_update_new_flow_hud()
+		else:
+			ui_controller.show_state_message("请先点击一个骰子再打出卡牌", 1.2)
 		return
-	var card_node = ui_controller.get_card_node(card) if ui_controller else null
-	play_card_with_animation(card, target, card_node)
+	var node = ui_controller.get_card_node(card) if ui_controller else null
+	play_card_with_animation(card, target, node)
 
 func _on_ui_card_cancelled(card: CardData) -> void:
 	if pending_card == card:
@@ -748,17 +753,15 @@ func _on_ui_card_dropped(card: CardData, target) -> void:
 		if card_node and card_node.has_method("reset_position"):
 			card_node.reset_position()
 		return
-	# 新流程：在PLAYER_SELECT阶段，队列出牌
+	# 新流程：在PLAYER_SELECT阶段，装载到骰子
 	if use_new_flow and state_machine.is_player_select():
-		if card.target_type == "single_enemy" and target is EnemyUnit:
-			_queue_player_card(card, target)
-		elif card.target_type == "single_ally" and target is PlayerManager:
-			_queue_player_card(card, target)
-		elif card.target_type == "self":
-			_queue_player_card(card, player_manager)
+		if ui_controller.has_active_dice():
+			ui_controller.load_card_to_dice(card, card_node)
+			_update_new_flow_hud()
 		else:
 			if card_node and card_node.has_method("reset_position"):
 				card_node.reset_position()
+			ui_controller.show_state_message("请先点击一个骰子再打出卡牌", 1.2)
 		return
 	if card.target_type == "single_enemy" and target is EnemyUnit:
 		play_card_with_animation(card, target, card_node)

@@ -738,89 +738,40 @@ func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array, unknown: b
 	bar.z_index = 20
 	_enemy_dice_bars[enemy_idx] = {"bar": bar, "nodes": nodes, "cards": cards, "speeds": speeds}
 
-## B4: 创建单个骰子节点（含完整卡牌预览区）
+## B4: 创建单个骰子节点（只显示速度，悬浮时显示卡牌）
 func _create_dice_node(index: int, speed: int, is_enemy: bool, enemy_idx: int, unknown: bool = false) -> PanelContainer:
 	var panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(96, 124)
+	panel.custom_minimum_size = Vector2(72, 72)
 	panel.name = "Dice_%s_%d" % ["E" if is_enemy else "P", index]
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	_apply_dice_style(panel, false)
-	var vbox = VBoxContainer.new()
-	vbox.name = "DiceVBox"
-	vbox.add_theme_constant_override("separation", 2)
-	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(vbox)
+	_apply_dice_style(panel, false, false)
 	var dice_label = Label.new()
 	dice_label.name = "DiceLabel"
 	dice_label.text = "?" if unknown else "%d" % speed
 	dice_label.horizontal_alignment = 1
-	dice_label.add_theme_font_size_override("font_size", 18)
+	dice_label.vertical_alignment = 1
+	dice_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dice_label.add_theme_font_size_override("font_size", 26)
 	dice_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
 	dice_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_child(dice_label)
-	var preview = PanelContainer.new()
-	preview.name = "CardPreview"
-	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	preview.custom_minimum_size = Vector2(88, 100)
-	preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_apply_empty_card_style(preview)
-	vbox.add_child(preview)
-	_show_empty_preview(preview)
+	panel.add_child(dice_label)
 	panel.gui_input.connect(_on_dice_input.bind(index, is_enemy, enemy_idx))
 	panel.mouse_entered.connect(_on_dice_hover.bind(index, is_enemy, enemy_idx))
 	panel.mouse_exited.connect(_on_dice_unhover)
 	return panel
 
-## 骰子卡牌区样式（空/有卡）
-func _apply_empty_card_style(preview: PanelContainer) -> void:
+## 应用骰子样式（active=激活金色边框, filled=已装填绿色边框, 默认蓝色）
+func _apply_dice_style(panel: PanelContainer, active: bool, filled: bool = false) -> void:
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.06, 0.09, 0.8)
-	style.border_width_left = 1
-	style.border_width_top = 1
-	style.border_width_right = 1
-	style.border_width_bottom = 1
-	style.border_color = Color(0.3, 0.35, 0.45, 0.5)
-	style.set_corner_radius_all(4)
-	style.content_margin_left = 3
-	style.content_margin_top = 2
-	style.content_margin_right = 3
-	style.content_margin_bottom = 2
-	preview.add_theme_stylebox_override("panel", style)
-
-func _apply_filled_card_style(preview: PanelContainer) -> void:
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.12, 0.14, 0.2, 0.95)
-	style.border_width_left = 1
-	style.border_width_top = 1
-	style.border_width_right = 1
-	style.border_width_bottom = 1
-	style.border_color = Color(0.7, 0.75, 0.9, 0.8)
-	style.set_corner_radius_all(4)
-	style.content_margin_left = 3
-	style.content_margin_top = 2
-	style.content_margin_right = 3
-	style.content_margin_bottom = 2
-	preview.add_theme_stylebox_override("panel", style)
-
-func _show_empty_preview(preview: PanelContainer) -> void:
-	var lbl = Label.new()
-	lbl.name = "EmptyLabel"
-	lbl.text = "空"
-	lbl.horizontal_alignment = 1
-	lbl.vertical_alignment = 1
-	lbl.set_anchors_preset(Control.PRESET_FULL_RECT)
-	lbl.add_theme_font_size_override("font_size", 12)
-	lbl.add_theme_color_override("font_color", Color(0.45, 0.45, 0.5))
-	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	preview.add_child(lbl)
-
-## 应用骰子样式（激活态金色边框）
-func _apply_dice_style(panel: PanelContainer, active: bool) -> void:
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.12, 0.18, 0.95) if not active else Color(0.2, 0.16, 0.05, 0.95)
 	var border_color = Color(0.5, 0.6, 0.8, 0.7)
 	if active:
+		style.bg_color = Color(0.2, 0.16, 0.05, 0.95)
 		border_color = Color(1.0, 0.85, 0.3, 1.0)
+	elif filled:
+		style.bg_color = Color(0.1, 0.18, 0.12, 0.95)
+		border_color = Color(0.4, 0.9, 0.5, 0.9)
+	else:
+		style.bg_color = Color(0.1, 0.12, 0.18, 0.95)
 	style.border_width_left = 2
 	style.border_width_top = 2
 	style.border_width_right = 2
@@ -930,7 +881,7 @@ func _unload_dice_card(index: int, is_enemy: bool, enemy_idx: int) -> void:
 	_dice_cards[index] = null
 	_update_dice_display(index, false, -1)
 
-## B4: 更新骰子卡牌显示（完整卡牌预览）
+## B4: 更新骰子显示（仅更新边框装填状态，卡牌悬浮时显示）
 func _update_dice_display(index: int, is_enemy: bool, enemy_idx: int) -> void:
 	var nodes: Array = []
 	var cards: Array = []
@@ -945,37 +896,8 @@ func _update_dice_display(index: int, is_enemy: bool, enemy_idx: int) -> void:
 		cards = _dice_cards
 	if index >= nodes.size():
 		return
-	var preview = nodes[index].get_node_or_null("DiceVBox/CardPreview")
-	if preview == null:
-		return
-	for child in preview.get_children():
-		preview.remove_child(child)
-		child.queue_free()
 	var card: CardData = cards[index]
-	if card == null:
-		_apply_empty_card_style(preview)
-		_show_empty_preview(preview)
-		return
-	_apply_filled_card_style(preview)
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 1)
-	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	preview.add_child(vbox)
-	var name_lbl = Label.new()
-	name_lbl.text = "%s(%d)" % [card.name, card.cost]
-	name_lbl.add_theme_font_size_override("font_size", 10)
-	name_lbl.add_theme_color_override("font_color", Color(1.0, 0.95, 0.8))
-	name_lbl.horizontal_alignment = 1
-	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_child(name_lbl)
-	var desc_lbl = Label.new()
-	desc_lbl.text = card.description
-	desc_lbl.add_theme_font_size_override("font_size", 8)
-	desc_lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
-	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_lbl.custom_minimum_size = Vector2(80, 0)
-	desc_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_child(desc_lbl)
+	_apply_dice_style(nodes[index], false, card != null)
 
 ## B4: 敌方骰子装载卡牌（AI结算时调用，仅作显示）
 func place_enemy_dice_card(enemy_idx: int, index: int, card: CardData) -> void:
