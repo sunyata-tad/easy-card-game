@@ -777,7 +777,7 @@ func _show_hand_select_panel() -> void:
 	# 手牌按钮
 	if player_manager and player_manager.has_method("get"):
 		var bc = _get_battle_controller()
-9,0)
+
 		if bc:
 			for card in bc.card_system.get_hand():
 				if card.cost <= bc.player_manager.energy:
@@ -792,10 +792,10 @@ func _show_hand_select_panel() -> void:
 	cancel_btn.pressed.connect(_close_hand_select_panel)
 	vbox.add_child(cancel_btn)
 	# 显示在屏幕中央
-	get_tree().root.add_child(_slot_select_panel)
+	root_node.get_tree().root.add_child(_slot_select_panel)
 	_slot_select_panel.global_position = Vector2(
-		(get_tree().root.size.x - _slot_select_panel.size.x) / 2,
-		(get_tree().root.size.y - _slot_select_panel.size.y) / 2
+		(root_node.get_tree().root.size.x - _slot_select_panel.size.x) / 2,
+		(root_node.get_tree().root.size.y - _slot_select_panel.size.y) / 2
 	)
 
 ## B4: 选择卡牌绑定到槽位
@@ -855,7 +855,7 @@ func _on_slot_confirm() -> void:
 
 ## B4: 获取BattleController
 func _get_battle_controller():
-	var root = get_tree().root
+	var root = root_node.get_tree().root
 	for child in root.get_children():
 		if child.name == "BattleScene":
 			return child.get("battle_controller")
