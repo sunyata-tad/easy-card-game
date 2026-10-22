@@ -1456,3 +1456,43 @@ func _exit_card_select_mode() -> void:
 	_card_select_auto_confirm = false
 	_card_select_info_label = null
 	_card_selected_cards.clear()
+## ==========================================
+## B4: 新流程UI方法
+## ==========================================
+
+## 显示敌人出牌意图（同时出牌模式下）
+func show_enemy_intent(enemy_idx: int, plays: Array) -> void:
+	for play in plays:
+		var card: CardData = play.card
+		print("[UI] 敌人%d 槽位%d: %s (cost=%d)" % [enemy_idx, play.slot_index, card.name, card.cost])
+
+## 更新能量显示
+func update_energy_display(current: int, maximum: int) -> void:
+	if player_stats_panel:
+		var energy_label = player_stats_panel.get_node_or_null("EnergyLabel")
+		if energy_label:
+			energy_label.text = "能量: %d/%d" % [current, maximum]
+		else:
+			energy_label = Label.new()
+			energy_label.name = "EnergyLabel"
+			energy_label.text = "能量: %d/%d" % [current, maximum]
+			energy_label.add_theme_font_size_override("font_size", 14)
+			energy_label.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0))
+			player_stats_panel.add_child(energy_label)
+
+## 更新槽位/速度显示
+func update_slots_display(slots: int, speeds: Array) -> void:
+	if player_stats_panel:
+		var slots_label = player_stats_panel.get_node_or_null("SlotsLabel")
+		var text = "槽位: %d" % slots
+		if speeds.size() > 0:
+			text += " 速度: " + str(speeds)
+		if slots_label:
+			slots_label.text = text
+		else:
+			slots_label = Label.new()
+			slots_label.name = "SlotsLabel"
+			slots_label.text = text
+			slots_label.add_theme_font_size_override("font_size", 12)
+			slots_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8))
+			player_stats_panel.add_child(slots_label)
