@@ -646,12 +646,28 @@ func reset_position():
 	is_awaiting_target = false
 	is_playing_animation = false
 	is_selected = false
+	_is_queued = false
 	_clear_interacting()
 	
 	if press_tween and press_tween.is_valid():
 		press_tween.kill()
 	modulate = Color.WHITE
 	z_index = 0
+
+## B4: 设置/取消队列状态（新流程选牌阶段）
+## 队列的卡牌上移20px并加蓝色边框
+var _is_queued: bool = false
+func set_queued(queued: bool) -> void:
+	_is_queued = queued
+	if queued:
+		# 上移表示已队列
+		position = original_position + Vector2(0, -25)
+		modulate = Color(0.6, 0.8, 1.0, 1.0)  # 蓝色调
+		z_index = 5
+	else:
+		position = original_position
+		modulate = Color.WHITE
+		z_index = 0
 
 ## 仅清理交互状态标志，不重置位置/缩放（打出动画接管位置时使用）
 func clear_interaction_state():

@@ -151,6 +151,10 @@ func _on_draw_phase() -> void:
 	enemy_system.reset_all_block()
 	if not is_first_turn:
 		player_manager.regen_energy()
+		# 新流程：敌人也恢复能量
+		if use_new_flow:
+			for enemy in enemy_system.get_alive_enemies():
+				enemy.regen_energy()
 	player_manager.buff_manager.remove_at_turn_end()
 	effect_resolver.clear_all_temp_hooks(player_manager)
 	var draw_count = rules.initial_draw_count if is_first_turn else rules.turn_draw_count
@@ -174,6 +178,9 @@ func _on_draw_phase() -> void:
 	card_system.draw_cards(draw_count)
 	turn_changed.emit(true)
 	if use_new_flow:
+		# 清除上回合的敌人意图显示
+		if ui_controller:
+			ui_controller.clear_all_enemy_intents()
 		if not _check_battle_end_state():
 			state_machine.change_state(StateMachine.BattleState.ENEMY_SELECT)
 	else:
@@ -190,6 +197,8 @@ func _on_player_turn_phase() -> void:
 
 func _on_resolving_phase() -> void:
 	ui_controller.set_interactive(false)
+	if use_new_flow:
+		ui_controller.reset_end_turn_button_text()
 
 func _on_enemy_turn_phase() -> void:
 	ui_controller.set_interactive(false)
@@ -232,7 +241,7 @@ func _on_player_select_phase() -> void:
 	_update_player_ui()
 	# 显示新流程HUD（能量/槽位/速度）
 	if ui_controller:
-		ui_controller.update_energy_display(player_manager.energy, player_manager.energy_max)
+		ui_controller.update_energy_display(player_manager.energy, player_manager.max_energy)
 		ui_controller.update_slots_display(player_manager.slots, _player_slot_speeds)
 		ui_controller.update_end_turn_button_text("确认出牌")
 
@@ -292,7 +301,7 @@ func _update_new_flow_hud() -> void:
 	var remaining_energy = player_manager.energy
 	for p in _player_queued_plays:
 		remaining_energy -= p.card.cost
-	ui_controller.update_energy_display(remaining_energy, player_manager.energy_max)
+	ui_controller.update_energy_display(remaining_energy, player_manager.max_energy)
 	var used_slots = _player_queued_plays.size()
 	ui_controller.update_slots_display(player_manager.slots - used_slots, _player_slot_speeds)
 	# 显示队列信息
@@ -420,9 +429,12 @@ func _process_turn_end_effects() -> void:
 	_execute_player_auto_block()
 	if _check_battle_end_state():
 		return
-	await _execute_enemy_attacks()
-	if _check_battle_end_state():
-		return
+	# 旧流程：回合结束执行敌人攻击
+	# 新流程：敌人在结算阶段已出牌，跳过
+	if not use_new_flow:
+		await _execute_enemy_attacks()
+		if _check_battle_end_state():
+			return
 	player_manager.buff_manager.decrease_durations()
 	player_manager.buff_manager.remove_at_turn_end()
 	for enemy in enemy_system.get_alive_enemies():
@@ -661,6 +673,12 @@ func _update_initial_ui() -> void:
 func _on_ui_card_clicked(card: CardData, _card_node: Control) -> void:
 	if card == null or ui_controller.is_card_select_active():
 		return
+	# 新流程：点击已队列的卡牌取消队列
+	if use_new_flow and state_machine.is_player_select():
+		for p in _player_queued_plays:
+			if p.card == card:
+				unqueue_player_card(card)
+				return
 
 func _on_ui_card_released(_card: CardData, _card_node: Control) -> void:
 	pass

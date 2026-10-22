@@ -83,6 +83,7 @@ func receive_data(data: Dictionary) -> void:
 ## 初始化战斗：创建 BattleController，加载牌组和敌人
 func _initialize_battle(data: Dictionary = {}):
 	battle_controller = BattleController.new()
+	battle_controller.use_new_flow = true  ## 启用同时出牌新流程
 	battle_controller.battle_ended.connect(_on_battle_ended)
 	battle_controller.turn_changed.connect(_on_turn_changed)
 	battle_controller.discard_phase_started.connect(_on_discard_phase_started)
