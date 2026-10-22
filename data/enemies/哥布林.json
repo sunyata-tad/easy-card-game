@@ -1,0 +1,13 @@
+{
+	"id": "哥布林",
+	"name": "哥布林",
+	"max_hp": 12,
+	"deck": "basic",
+	"energy": 2,
+	"energy_regen": 1,
+	"slots": 2,
+	"speed": 2,
+	"ai_type": "aggressive",
+	"description": "弱小但敏捷的哥布林，双槽高速出牌",
+	"art": ""
+}

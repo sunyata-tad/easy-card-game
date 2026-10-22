@@ -1,0 +1,13 @@
+{
+	"id": "精英守卫",
+	"name": "精英守卫",
+	"max_hp": 40,
+	"deck": "basic",
+	"energy": 4,
+	"energy_regen": 1,
+	"slots": 2,
+	"speed": 1,
+	"ai_type": "defensive",
+	"description": "训练有素的精英守卫，高血量双槽防御",
+	"art": ""
+}

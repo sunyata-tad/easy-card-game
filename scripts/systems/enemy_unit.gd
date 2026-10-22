@@ -26,11 +26,17 @@ signal enemy_died()                              ## 敌人死亡
 signal enemy_damaged(amount: int)                ## 敌人受到伤害（发出实际伤害值）
 signal intent_changed(intent: Dictionary)        ## 意图变化
 
-## 构造函数：从 EnemyData 创建敌人，初始化血量、HookChain、BuffManager
+## 构造函数：从 EnemyData 创建敌人，初始化血量、能量、槽位、速度等
 func _init(enemy_data: EnemyData):
 	data = enemy_data
 	max_hp = enemy_data.max_hp
 	current_hp = max_hp
+	# 新流程属性：从 EnemyData 读取
+	energy = enemy_data.energy
+	max_energy = enemy_data.energy
+	energy_regen = enemy_data.energy_regen
+	slots = enemy_data.slots
+	speed = enemy_data.speed
 	# 每个敌人独立拥有钩子链和 buff 管理器
 	hook_chain = HookChain.new()
 	buff_manager = BuffManager.new(hook_chain)
