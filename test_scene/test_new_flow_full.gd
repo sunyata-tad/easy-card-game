@@ -78,18 +78,26 @@ func _process(delta: float) -> void:
 					var src = "玩家" if play.is_player else "敌人%d" % play.enemy_index
 					_log("  %s 速度=%d 卡=%s" % [src, play.speed, play.card.name])
 				
-				# 测试1: 队列卡牌
+				# 测试1: 队列卡牌（优先选攻击卡验证伤害）
 				var hand = _bc.card_system.get_hand()
+				var enemies_alive = _bc.enemy_system.get_alive_enemies()
 				var queued_count = 0
+				# 第一轮：优先选攻击卡
+				for card in hand:
+					if queued_count >= 2:
+						break
+					if card.target_type == "single_enemy" and card.cost <= _bc.player_manager.energy and enemies_alive.size() > 0:
+						_bc._queue_player_card(card, enemies_alive[0])
+						queued_count += 1
+						_log("队列: %s (cost=%d, 攻击)" % [card.name, card.cost])
+				# 第二轮：不够2张则补任意可出卡
 				for card in hand:
 					if queued_count >= 2:
 						break
 					if card.cost <= _bc.player_manager.energy:
 						var target = null
-						if card.target_type == "single_enemy":
-							for e in _bc.enemy_system.get_alive_enemies():
-								target = e
-								break
+						if card.target_type == "single_enemy" and enemies_alive.size() > 0:
+							target = enemies_alive[0]
 						elif card.target_type == "self":
 							target = _bc.player_manager
 						_bc._queue_player_card(card, target)
