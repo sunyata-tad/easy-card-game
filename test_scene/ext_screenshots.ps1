@@ -43,9 +43,9 @@ function Shot($hwnd, $name, $waitSec) {
     }
 }
 
-Shot $hwnd "ext_01_main.png" 4
-Shot $hwnd "ext_02_prebattle.png" 8
-Shot $hwnd "ext_03_battle.png" 8
+Shot $hwnd "ext_01_main.png" 3
+Shot $hwnd "ext_02_prebattle.png" 3
+Shot $hwnd "ext_03_battle.png" 3
 
 Start-Sleep -Seconds 2
 if (-not $proc.HasExited) { $proc.Kill() }

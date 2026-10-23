@@ -677,9 +677,11 @@ func _reposition_info_panel(panel: VBoxContainer) -> void:
 		var pa_rect = player_area.get_global_rect()
 		panel.global_position = Vector2(pa_rect.position.x + pa_rect.size.x + 10, pa_rect.position.y)
 
-## B4: 创建玩家骰子栏
+## B4: 创建玩家骰子栏（按速度降序排列便于对比）
 func create_dice_bar(slots: int, speeds: Array, unknown: bool = false) -> void:
 	_dice_speeds = speeds.duplicate()
+	_dice_speeds.sort()
+	_dice_speeds.reverse()
 	_dice_cards.clear()
 	_dice_cards.resize(slots)
 	_dice_nodes.clear()
@@ -691,7 +693,7 @@ func create_dice_bar(slots: int, speeds: Array, unknown: bool = false) -> void:
 	_dice_bar.name = "DiceBar"
 	_dice_bar.add_theme_constant_override("separation", 10)
 	for i in slots:
-		var dice = _create_dice_node(i, speeds[i] if i < speeds.size() else 1, false, -1, unknown)
+		var dice = _create_dice_node(i, _dice_speeds[i] if i < _dice_speeds.size() else 1, false, -1, unknown)
 		_dice_nodes.append(dice)
 		_dice_bar.add_child(dice)
 	if player_area and is_instance_valid(player_area):
@@ -724,6 +726,9 @@ func _set_dice_value(node: Control, speed: int) -> void:
 
 ## B4: 创建敌人骰子栏
 func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array, unknown: bool = false) -> void:
+	var sorted_speeds = speeds.duplicate()
+	sorted_speeds.sort()
+	sorted_speeds.reverse()
 	var bar = HBoxContainer.new()
 	bar.name = "EnemyDiceBar_%d" % enemy_idx
 	bar.add_theme_constant_override("separation", 8)
@@ -731,7 +736,7 @@ func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array, unknown: b
 	var cards: Array = []
 	cards.resize(slots)
 	for i in slots:
-		var dice = _create_dice_node(i, speeds[i] if i < speeds.size() else 1, true, enemy_idx, unknown)
+		var dice = _create_dice_node(i, sorted_speeds[i] if i < sorted_speeds.size() else 1, true, enemy_idx, unknown)
 		nodes.append(dice)
 		bar.add_child(dice)
 	# 定位到敌人区域下方（屏幕上方中央）
@@ -739,7 +744,7 @@ func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array, unknown: b
 	var vp = root_node.get_viewport_rect().size
 	bar.global_position = Vector2(vp.x * 0.5 - 90 + enemy_idx * 200, 350)
 	bar.z_index = 20
-	_enemy_dice_bars[enemy_idx] = {"bar": bar, "nodes": nodes, "cards": cards, "speeds": speeds}
+	_enemy_dice_bars[enemy_idx] = {"bar": bar, "nodes": nodes, "cards": cards, "speeds": sorted_speeds}
 
 ## B4: 创建单个骰子节点（六边形，只显示速度）
 func _create_dice_node(index: int, speed: int, is_enemy: bool, enemy_idx: int, unknown: bool = false) -> DiceHex:
@@ -1002,7 +1007,7 @@ func get_loaded_plays() -> Array:
 				elif card.target_type == "single_enemy":
 					var enemies = bc.enemy_system.get_alive_enemies()
 					target = enemies[0] if enemies.size() > 0 else null
-			plays.append({"card": card, "target": target, "slot_index": i})
+			plays.append({"card": card, "target": target, "slot_index": i, "speed": _dice_speeds[i] if i < _dice_speeds.size() else 1})
 	return plays
 
 ## B4: 清理骰子UI

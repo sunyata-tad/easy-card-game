@@ -347,7 +347,8 @@ func confirm_player_plays(slot_plays: Array = []) -> void:
 		var card: CardData = play.card
 		var target = play.target
 		var slot_index: int = play.get("slot_index", 0)
-		var speed = _player_slot_speeds[slot_index] if slot_index < _player_slot_speeds.size() else 1
+		var default_speed = _player_slot_speeds[slot_index] if slot_index < _player_slot_speeds.size() else 1
+		var speed: int = play.get("speed", default_speed)
 		_add_pending_play(card, player_manager, target, speed, true, slot_index)
 		# 消耗玩家能量
 		player_manager.spend_energy(card.cost)
