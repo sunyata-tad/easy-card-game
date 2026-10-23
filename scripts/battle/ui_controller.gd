@@ -1879,7 +1879,7 @@ func show_resolve_animation(card: CardData, is_player: bool, effect_text: String
 	var astyle = StyleBoxFlat.new()
 	astyle.bg_color = Color(0.05, 0.05, 0.08, 1)
 	astyle.set_corner_radius_all(5)
-	astyle.clip_contents = true
+	art_panel.clip_contents = true
 	art_panel.add_theme_stylebox_override("panel", astyle)
 	if card.art != "":
 		var tex = TextureRect.new()
