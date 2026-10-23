@@ -698,9 +698,10 @@ func create_dice_bar(slots: int, speeds: Array, unknown: bool = false) -> void:
 		_dice_bar.add_child(dice)
 	if player_area and is_instance_valid(player_area):
 		player_area.get_parent().add_child(_dice_bar)
-		# 玩家骰子栏放在玩家区域右侧
-		_dice_bar.global_position = Vector2(player_area.global_position.x + player_area.size.x + 10, player_area.global_position.y + 40)
-		_dice_bar.z_index = 20
+		# 玩家骰子栏放在手牌上方居中（避免遮挡手牌）
+		var vp = root_node.get_viewport_rect().size
+		_dice_bar.global_position = Vector2(vp.x * 0.5 - (slots * 88) / 2.0, vp.y - 340)
+		_dice_bar.z_index = 30
 
 ## 揭示玩家骰子速度（回合准备后调用）
 func reveal_player_dice(speeds: Array = []) -> void:

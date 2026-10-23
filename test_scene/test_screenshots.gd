@@ -58,7 +58,7 @@ func _process(delta: float) -> void:
 				_logged_battle = true
 				var root = GameManager.current_scene
 				_log_line("战斗场景: %s" % (root.name if root else "null"))
-			if _elapsed > 2.5:
+			if _elapsed > 6.0:
 				_log_line("=== 截图测试结束 ===")
 				if _log: _log.close()
 				get_tree().quit()
