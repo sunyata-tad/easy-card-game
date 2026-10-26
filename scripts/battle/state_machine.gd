@@ -27,11 +27,7 @@ var current_state: BattleState = BattleState.INIT     ## 当前状态
 var previous_state: BattleState = BattleState.INIT    ## 上一个状态
 var _valid_transitions: Dictionary = {}  ## 合法转换表：{ 当前状态: [允许的后继状态列表] }
 
-## [未连接] 状态变化通知。若已连接接收方，请删除此标记注释。
-signal state_changed(new_state: BattleState, old_state: BattleState)  ## 状态发生变化
 signal state_enter(state: BattleState)   ## 进入某状态
-## [未连接] 退出状态通知。若已连接接收方，请删除此标记注释。
-signal state_exit(state: BattleState)    ## 退出某状态
 
 func _init():
 	_setup_valid_transitions()
@@ -61,10 +57,8 @@ func change_state(new_state: BattleState) -> bool:
 		return false
 	
 	previous_state = current_state
-	state_exit.emit(current_state)
 	current_state = new_state
 	state_enter.emit(current_state)
-	state_changed.emit(current_state, previous_state)
 	return true
 
 ## 检查从当前状态到目标状态的转换是否合法
@@ -92,8 +86,6 @@ func get_state_name(state: BattleState) -> String:
 func is_player_turn() -> bool:
 	return current_state == BattleState.PLAYER_TURN or current_state == BattleState.PLAYER_SELECT
 
-func is_enemy_select() -> bool:
-	return current_state == BattleState.ENEMY_SELECT
 
 func is_player_select() -> bool:
 	return current_state == BattleState.PLAYER_SELECT
@@ -101,9 +93,6 @@ func is_player_select() -> bool:
 func is_turn_prepare() -> bool:
 	return current_state == BattleState.TURN_PREPARE
 
-## [未调用] 是否敌人回合。若已实现调用方，请删除此标记注释。
-func is_enemy_turn() -> bool:
-	return current_state == BattleState.ENEMY_TURN
 
 func is_resolving() -> bool:
 	return current_state == BattleState.RESOLVING

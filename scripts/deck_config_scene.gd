@@ -201,14 +201,6 @@ func _sort_card_ids(ids: Array) -> Array:
 	)
 	return ids
 
-func _calc_columns(scroll: ScrollContainer, card_w: float, sep: float) -> int:
-	var avail: float = scroll.size.x
-	if avail <= 0:
-		avail = scroll.custom_minimum_size.x
-	if avail <= 0:
-		return 1
-	var col = int(floor((avail + sep) / (card_w + sep)))
-	return max(1, col)
 
 func _get_filtered_card_ids() -> Array:
 	var result: Array = []

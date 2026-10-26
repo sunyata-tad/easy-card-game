@@ -18,7 +18,7 @@ var slots: int = 2             ## 槽位数量（每回合出卡次数）
 var buff_manager: BuffManager  ## buff 管理器
 var hook_chain: HookChain      ## 钩子链
 var relic_manager: RelicManager ## 遗物管理器（规则改变来源）
-var selected_target_index: int = 0   ## 选中敌人的索引
+
 var is_dead: bool = false      ## 是否已死亡
 var selected_target: EnemyUnit = null  ## 当前选中的敌人对象
 
@@ -30,8 +30,7 @@ signal player_died()                             ## 玩家死亡
 signal player_damaged(amount: int)               ## 玩家受到伤害
 ## [未连接] 玩家治疗通知。若已连接接收方，请删除此标记注释。
 signal player_healed(amount: int)                ## 玩家受到治疗
-## [未连接] 选中目标通知。若已连接接收方，请删除此标记注释。
-signal target_selected(index: int)               ## 选中目标变化
+
 signal counter_damage(amount: int)               ## 反击伤害（由 counter_stance buff 触发）
 
 func _init(initial_max_hp: int = 80):
@@ -69,10 +68,6 @@ func get_expected_attack_damage() -> int:
 func get_total_block() -> int:
 	return base_dexterity + int(buff_manager.get_flat_add("block"))
 
-## 设置选中的敌人目标
-func set_selected_target(index: int) -> void:
-	selected_target_index = index
-	target_selected.emit(index)
 
 ## 受到伤害，返回实际伤害值
 ## 拥有 counter_stance（反击架势）buff 时，被格挡的伤害会触发反击

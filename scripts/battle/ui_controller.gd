@@ -12,6 +12,7 @@ class_name UIController
 var root_node: Control              ## 战斗场景的根节点
 var card_scene: PackedScene         ## 卡牌 UI 场景（Card.tscn）
 var player_manager: PlayerManager = null  ## 玩家状态引用
+var battle_controller = null              ## 战斗控制器引用（由 setup_battle 注入，避免每次遍历场景树查找）
 var screen_shake: Node = null             ## 屏幕震动器（由 battle.gd 注入）
 var _player_flash_tween: Tween = null     ## 玩家受击闪红 tween（防止叠加）
 
@@ -22,7 +23,7 @@ var _dice_cards: Array = []                ## 骰子装载的卡牌数组
 var _dice_speeds: Array = []               ## 骰子速度值数组
 var _active_dice_index: int = -1           ## 当前激活的骰子索引（等待装载）
 var _dice_tooltip: PanelContainer = null   ## 骰子悬浮浮框
-var _dice_unknown: bool = false            ## 骰子速度是否未知（回合准备前显示?）
+
 ## 敌人骰子栏 {enemy_idx: {"bar":Node, "nodes":Array, "cards":Array, "speeds":Array}}
 var _enemy_dice_bars: Dictionary = {}
 
@@ -56,15 +57,11 @@ var _card_select_info_label: Label = null   ## 提示文字
 var _card_select_callback: Callable = Callable()  ## 选择完成后的回调
 
 
-## [未连接] 卡牌选择确认通知。若已连接接收方，请删除此标记注释。
-signal card_select_confirmed(selected_cards: Array)  ## 卡牌选择已确认
-
 ## 拖拽状态
 var is_dragging: bool = false             ## 是否正在拖拽
 var dragging_card: CardData = null        ## 正在拖拽的卡牌
 var drag_card_node: Control = null        ## 拖拽中卡牌的 UI 节点
 var last_hand: Array = []                 ## 上一次的手牌列表（用于恢复布局）
-var is_selecting_target: bool = false     ## 是否正在选择攻击目标
 
 ## 手牌轮盘（扇形窗口）滚动状态
 var _hand_scroll: int = 0                    ## 最左可见卡牌在手牌中的索引
@@ -84,13 +81,11 @@ var current_target_index: int = 0  ## 当前目标索引
 
 ## 交互信号
 signal card_clicked(card: CardData, card_node: Control)  ## 卡牌被点击
-signal card_released(card: CardData, card_node: Control) ## 卡牌被释放
 signal card_cancelled(card: CardData)                    ## 卡牌操作取消
 signal card_dropped(card: CardData, target)              ## 卡牌被拖放到目标上
 signal card_played(card: CardData, target)               ## 卡牌被打出
 signal enemy_selected(enemy: EnemyUnit)                  ## 敌人被选中
 signal end_turn_clicked()                                ## 结束回合按钮被点击
-signal attack_target_selected(enemy: EnemyUnit)          ## 攻击目标被选中
 
 
 ## 构造函数：接收战斗场景的根节点，初始化所有 UI
@@ -134,51 +129,6 @@ func _setup_target_marker() -> void:
 	target_marker.set_script(load("res://scripts/ui/target_marker.gd"))
 	root_node.add_child(target_marker)
 
-## 进入目标选择模式
-func start_target_selection() -> void:
-	is_selecting_target = true
-	highlight_all_enemies()
-	drag_arrow.show_arrow()
-	show_state_message("请选择攻击目标", 1.0)
-
-## 取消目标选择模式
-func cancel_target_selection() -> void:
-	is_selecting_target = false
-	clear_target_highlights()
-	drag_arrow.hide_arrow()
-	show_state_message("已取消", 0.5)
-
-## 高亮所有敌人
-func highlight_all_enemies() -> void:
-	for enemy in current_enemy_nodes:
-		var enemy_node = current_enemy_nodes[enemy]
-		if enemy_node.has_method("set_highlight_for_target"):
-			enemy_node.set_highlight_for_target(true)
-
-## 确认选择攻击目标
-func select_attack_target(enemy: EnemyUnit) -> void:
-	if not is_selecting_target:
-		return
-	
-	var index = 0
-	var enemies = current_enemy_nodes.keys()
-	for i in range(enemies.size()):
-		if enemies[i] == enemy:
-			index = i
-			break
-	
-	current_target_index = index
-	if player_manager:
-		player_manager.set_selected_target(index)
-	
-	is_selecting_target = false
-	clear_target_highlights()
-	drag_arrow.hide_arrow()
-	
-
-	update_target_marker(enemy)
-	attack_target_selected.emit(enemy)
-	show_state_message("已选择目标", 0.5)
 
 ## 更新目标标记位置
 func update_target_marker(enemy: EnemyUnit) -> void:
@@ -190,11 +140,6 @@ func update_target_marker(enemy: EnemyUnit) -> void:
 		if target_marker.has_method("set_target"):
 			target_marker.call("set_target", enemy_node)
 
-## 清除目标标记
-## [未调用] 清除目标标记。若已实现调用方，请删除此标记注释。
-func clear_target_marker() -> void:
-	if target_marker and target_marker.has_method("clear"):
-		target_marker.call("clear")
 
 var _state_tween: Tween = null
 
@@ -299,7 +244,7 @@ func _make_edge_hint(text: String) -> Label:
 func _on_hand_area_input(event: InputEvent) -> void:
 	if last_hand.size() <= HandLayoutPresets.MAX_VISIBLE:
 		return
-	if _card_select_active or is_selecting_target or is_dragging:
+	if _card_select_active or is_dragging:
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
@@ -327,7 +272,7 @@ func _on_hand_area_input(event: InputEvent) -> void:
 func _on_hand_scroll_tick() -> void:
 	if last_hand.size() <= HandLayoutPresets.MAX_VISIBLE:
 		return
-	if _card_select_active or is_selecting_target or is_dragging:
+	if _card_select_active or is_dragging:
 		return
 	if hand_container == null or not (hand_container is Control):
 		return
@@ -449,38 +394,17 @@ func _create_card_node(card: CardData) -> Control:
 		return null
 	
 	var card_node = card_scene.instantiate() as Control
-	
-	if card_node.has_method("setup"):
+	if card_node and card_node.has_method("setup"):
 		card_node.setup(card, player_manager)
 		card_node.card_clicked.connect(_on_card_ui_clicked)
-	else:
-		var name_label = card_node.get_node_or_null("NameLabel")
-		var desc_label = card_node.get_node_or_null("DescLabel")
-		var type_label = card_node.get_node_or_null("TypeLabel")
-		
-		if name_label:
-			name_label.text = card.name
-		if desc_label:
-			desc_label.text = card.get_description_text()
-		if type_label:
-			type_label.text = _get_type_text(card.type)
-	
 	return card_node
-
-func _get_type_text(type: String) -> String:
-	match type:
-		"attack": return "攻击"
-		"skill": return "技能"
-		"power": return "能力"
-		_: return ""
 
 func _setup_card_interaction(card_node: Control, card: CardData) -> void:
 	if card_node.has_signal("drag_started"):
 		card_node.drag_started.connect(_on_card_drag_started.bind(card_node))
 		card_node.drag_updated.connect(_on_card_drag_updated)
 		card_node.drag_ended.connect(_on_card_drag_ended)
-	if card_node.has_signal("card_released"):
-		card_node.card_released.connect(_on_card_released.bind(card_node))
+
 	if card_node.has_signal("card_cancelled"):
 		card_node.card_cancelled.connect(_on_card_cancelled)
 	if card_node.has_signal("target_mode_started"):
@@ -491,12 +415,7 @@ func _setup_card_interaction(card_node: Control, card: CardData) -> void:
 		card_node.target_mode_paused.connect(_on_target_mode_paused)
 	if card_node.has_signal("card_play_requested"):
 		card_node.card_play_requested.connect(_on_card_play_requested)
-	if not card_node.has_method("setup"):
-		card_node.gui_input.connect(_on_card_gui_input.bind(card, card_node))
 
-func _on_card_gui_input(event: InputEvent, card: CardData, card_node: Control) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		card_clicked.emit(card, card_node)
 
 func _on_card_ui_clicked(card: CardData) -> void:
 	if _card_select_active:
@@ -506,11 +425,7 @@ func _on_card_ui_clicked(card: CardData) -> void:
 func _on_card_play_requested(card: CardData) -> void:
 	if _card_select_active:
 		return
-	drag_arrow.hide_arrow()
-	clear_target_highlights()
-	is_dragging = false
-	dragging_card = null
-	drag_card_node = null
+	_clear_drag_state()
 	card_played.emit(card, null)
 
 func update_enemy_display(enemies: Array) -> void:
@@ -540,65 +455,23 @@ func _clear_enemies() -> void:
 
 func _create_enemy_node(enemy: EnemyUnit) -> Control:
 	var enemy_scene_path = "res://scenes/EnemyUI.tscn"
-	var enemy_node: Control = null
-	
-	if ResourceLoader.exists(enemy_scene_path):
-		var enemy_scene = load(enemy_scene_path)
-		enemy_node = enemy_scene.instantiate() as Control
-		
-		if enemy_node.has_method("setup"):
-			enemy_node.setup(enemy, player_manager)
-			enemy_node.enemy_selected.connect(_on_enemy_ui_selected)
-		enemy_node.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	else:
-		enemy_node = Control.new()
-		enemy_node.custom_minimum_size = Vector2(150, 200)
-		
-		var name_label = Label.new()
-		name_label.text = enemy.get_name()
-		name_label.position = Vector2(0, 0)
-		enemy_node.add_child(name_label)
-		
-		var hp_label = Label.new()
-		hp_label.name = "HPLabel"
-		hp_label.text = "%d/%d" % [enemy.current_hp, enemy.max_hp]
-		hp_label.position = Vector2(0, 30)
-		enemy_node.add_child(hp_label)
-		
-		var hp_bar = ProgressBar.new()
-		hp_bar.name = "HPBar"
-		hp_bar.max_value = enemy.max_hp
-		hp_bar.value = enemy.current_hp
-		hp_bar.position = Vector2(0, 60)
-		hp_bar.custom_minimum_size = Vector2(100, 20)
-		enemy_node.add_child(hp_bar)
-		
-		enemy_node.gui_input.connect(_on_enemy_gui_input.bind(enemy))
-	
+	if not ResourceLoader.exists(enemy_scene_path):
+		return null
+	var enemy_node = load(enemy_scene_path).instantiate() as Control
+	if enemy_node.has_method("setup"):
+		enemy_node.setup(enemy, player_manager)
+		enemy_node.enemy_selected.connect(_on_enemy_ui_selected)
+	enemy_node.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	return enemy_node
 
 func _on_enemy_ui_selected(enemy: EnemyUnit) -> void:
 	selected_target = enemy
 	enemy_selected.emit(enemy)
-	
-	if is_selecting_target:
-		select_attack_target(enemy)
-		return
-	
 	if is_dragging and dragging_card:
 		if drag_card_node and drag_card_node.has_method("clear_interaction_state"):
 			drag_card_node.clear_interaction_state()
 		card_dropped.emit(dragging_card, enemy)
-		is_dragging = false
-		drag_arrow.hide_arrow()
-		clear_target_highlights()
-		dragging_card = null
-		drag_card_node = null
-
-func _on_enemy_gui_input(event: InputEvent, enemy: EnemyUnit) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		selected_target = enemy
-		enemy_selected.emit(enemy)
+		_clear_drag_state()
 
 func update_single_enemy(enemy: EnemyUnit) -> void:
 	if current_enemy_nodes.has(enemy):
@@ -686,7 +559,7 @@ func create_dice_bar(slots: int, speeds: Array, unknown: bool = false) -> void:
 	_dice_cards.resize(slots)
 	_dice_nodes.clear()
 	_active_dice_index = -1
-	_dice_unknown = unknown
+
 	if _dice_bar and is_instance_valid(_dice_bar):
 		_dice_bar.queue_free()
 	_dice_bar = HBoxContainer.new()
@@ -703,20 +576,14 @@ func create_dice_bar(slots: int, speeds: Array, unknown: bool = false) -> void:
 		_dice_bar.global_position = Vector2(player_area.global_position.x + player_area.size.x + 10, vp.y - 235)
 		_dice_bar.z_index = 40
 
-## 揭示玩家骰子速度（回合准备后调用）
+## 揭示玩家骰子速度（回合准备后调用，按速度降序排列）
 func reveal_player_dice(speeds: Array = []) -> void:
-	_dice_unknown = false
 	if speeds.size() > 0:
 		_dice_speeds = speeds.duplicate()
+		_dice_speeds.sort()
+		_dice_speeds.reverse()
 	for i in _dice_nodes.size():
 		_set_dice_value(_dice_nodes[i], _dice_speeds[i] if i < _dice_speeds.size() else 1)
-
-## 揭示敌人骰子速度
-func reveal_enemy_dice() -> void:
-	for enemy_idx in _enemy_dice_bars.keys():
-		var bar_data = _enemy_dice_bars[enemy_idx]
-		for i in bar_data.nodes.size():
-			_set_dice_value(bar_data.nodes[i], bar_data.speeds[i] if i < bar_data.speeds.size() else 1)
 
 ## 设置骰子显示的速度值
 func _set_dice_value(node: Control, speed: int) -> void:
@@ -764,16 +631,6 @@ func _apply_dice_style(panel: Control, active: bool, filled: bool = false) -> vo
 	if panel is DiceHex:
 		panel.set_state_colors(filled, active)
 
-## 配置骰子界面元素样式（stylebox辅助，保留兼容）
-func _dice_stylebox(border_color: Color) -> StyleBoxFlat:
-	var style = StyleBoxFlat.new()
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.border_color = border_color
-	style.set_corner_radius_all(6)
-	return style
 
 ## B4: 骰子交互（左键激活/取消，右键卸载）
 func _on_dice_input(event: InputEvent, index: int, is_enemy: bool, enemy_idx: int) -> void:
@@ -1026,12 +883,15 @@ func clear_dice_ui() -> void:
 	_enemy_dice_bars.clear()
 	_hide_dice_tooltip()
 
-## B4: 获取BattleController
+## B4: 获取BattleController（优先使用注入的引用，否则遍历场景树兜底查找）
 func _get_battle_controller():
+	if battle_controller and is_instance_valid(battle_controller):
+		return battle_controller
 	var root = root_node.get_tree().root
 	for child in root.get_children():
 		if child.name == "BattleScene":
-			return child.get("battle_controller")
+			battle_controller = child.get("battle_controller")
+			return battle_controller
 	return null
 
 func update_player_stats_info(pm: PlayerManager) -> void:
@@ -1402,33 +1262,28 @@ func _on_card_drag_ended(card: CardData, end_pos: Vector2) -> void:
 	
 	if target:
 		card_dropped.emit(card, target)
-		is_dragging = false
-		drag_arrow.hide_arrow()
-		clear_target_highlights()
-		dragging_card = null
-		drag_card_node = null
+		_clear_drag_state()
 	elif dragging_card and not _card_select_active:
 		var needs_target = dragging_card.target_type == "single_enemy" or dragging_card.target_type == "single_ally"
-		if not needs_target:
-			if drag_card_node and drag_card_node.drag_exited_hand:
-				card_played.emit(card, null)
+		if not needs_target and drag_card_node and drag_card_node.drag_exited_hand:
+			card_played.emit(card, null)
 		if drag_card_node and drag_card_node.has_method("reset_position"):
 			drag_card_node.reset_position()
-		is_dragging = false
-		drag_arrow.hide_arrow()
-		clear_target_highlights()
-		dragging_card = null
-		drag_card_node = null
+		_clear_drag_state()
 		ensure_cards_layout_state()
 	else:
 		if drag_card_node and drag_card_node.has_method("reset_position"):
 			drag_card_node.reset_position()
-		is_dragging = false
-		drag_arrow.hide_arrow()
-		clear_target_highlights()
-		dragging_card = null
-		drag_card_node = null
+		_clear_drag_state()
 		ensure_cards_layout_state()
+
+## 统一清理拖拽状态：隐藏箭头、取消高亮、清空拖拽引用
+func _clear_drag_state() -> void:
+	is_dragging = false
+	drag_arrow.hide_arrow()
+	clear_target_highlights()
+	dragging_card = null
+	drag_card_node = null
 
 func _get_target_at_position(pos: Vector2):
 	for enemy in current_enemy_nodes:
@@ -1453,16 +1308,10 @@ func _update_hover_highlight(hover_target) -> void:
 	if player_area and player_area.has_method("set_highlight_for_target"):
 		player_area.set_highlight_for_target(hover_target == player_manager)
 
-func _on_card_released(card: CardData, card_node: Control) -> void:
-	card_released.emit(card, card_node)
 
 func _on_card_cancelled(card: CardData) -> void:
 	if is_dragging:
-		is_dragging = false
-		drag_arrow.hide_arrow()
-		clear_target_highlights()
-		dragging_card = null
-		drag_card_node = null
+		_clear_drag_state()
 	
 	card_cancelled.emit(card)
 	ensure_cards_layout_state()
@@ -1476,12 +1325,7 @@ func _on_target_mode_started(card: CardData) -> void:
 	drag_arrow.show_arrow()
 
 func _on_target_mode_ended(_card: CardData) -> void:
-	is_dragging = false
-	drag_arrow.hide_arrow()
-	clear_target_highlights()
-	dragging_card = null
-	drag_card_node = null
-	
+	_clear_drag_state()
 	ensure_cards_layout_state()
 
 ## 目标瞄准模式暂停：鼠标回到手牌区域，恢复为拖拽模式
@@ -1499,113 +1343,6 @@ func ensure_cards_layout_state() -> void:
 	if last_hand.size() > 0:
 		update_hand_display(last_hand)
 
-## ========== 弃牌堆选择模式（用于"从墓地选择"类效果，如逆流） ==========
-var _discard_select_panel: PanelContainer = null
-var _discard_select_cards: Array = []
-var _discard_select_selected: Array = []
-var _discard_select_max: int = 3
-var _discard_select_callback: Callable = Callable()
-
-## 进入"从给定卡牌列表（弃牌堆）中选择"模式
-func enter_discard_select_mode(prompt: String, cards: Array, max_count: int, callback: Callable) -> void:
-	_discard_select_cards = cards
-	_discard_select_selected.clear()
-	_discard_select_max = max_count
-	_discard_select_callback = callback
-	_build_discard_select_ui(prompt)
-
-func _build_discard_select_ui(prompt: String) -> void:
-	_close_discard_select_ui()
-	_discard_select_panel = PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.1, 0.15, 0.97)
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(14)
-	style.border_color = Color(0.5, 0.4, 0.25, 1)
-	style.border_width_top = 2
-	style.border_width_bottom = 2
-	style.border_width_left = 2
-	style.border_width_right = 2
-	_discard_select_panel.add_theme_stylebox_override("panel", style)
-	_discard_select_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_discard_select_panel.custom_minimum_size = Vector2(560, 400)
-	_discard_select_panel.z_index = 300
-	root_node.add_child(_discard_select_panel)
-
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
-	_discard_select_panel.add_child(vbox)
-
-	var title := Label.new()
-	title.text = prompt
-	title.add_theme_font_size_override("font_size", 18)
-	title.add_theme_color_override("font_color", Color(1, 0.9, 0.5))
-	vbox.add_child(title)
-
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 300)
-	vbox.add_child(scroll)
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 8)
-	grid.add_theme_constant_override("v_separation", 8)
-	scroll.add_child(grid)
-
-	for card in _discard_select_cards:
-		var btn := Button.new()
-		var plain_desc = card.get_description_text().replace("[b]", "").replace("[/b]", "")
-		btn.text = "%s\n%s" % [card.name, plain_desc]
-		btn.toggle_mode = true
-		btn.custom_minimum_size = Vector2(250, 72)
-		btn.add_theme_font_size_override("font_size", 13)
-		btn.toggled.connect(_on_discard_select_toggled.bind(card, btn))
-		grid.add_child(btn)
-		UIStyle.attach_button_anim(btn)
-
-	var btn_row := HBoxContainer.new()
-	btn_row.add_theme_constant_override("separation", 10)
-	vbox.add_child(btn_row)
-
-	var confirm := Button.new()
-	confirm.text = "确认"
-	confirm.custom_minimum_size = Vector2(120, 36)
-	confirm.pressed.connect(_on_discard_select_confirm)
-	btn_row.add_child(confirm)
-	UIStyle.attach_button_anim(confirm)
-
-	var cancel := Button.new()
-	cancel.text = "取消"
-	cancel.custom_minimum_size = Vector2(120, 36)
-	cancel.pressed.connect(_on_discard_select_cancel)
-	btn_row.add_child(cancel)
-	UIStyle.attach_button_anim(cancel)
-
-func _on_discard_select_toggled(pressed: bool, card, btn: Button) -> void:
-	if pressed:
-		if _discard_select_selected.size() >= _discard_select_max:
-			btn.set_pressed_no_signal(false)
-			return
-		_discard_select_selected.append(card)
-	else:
-		_discard_select_selected.erase(card)
-
-func _on_discard_select_confirm() -> void:
-	var cb = _discard_select_callback
-	var selected = _discard_select_selected.duplicate()
-	_close_discard_select_ui()
-	if cb.is_valid():
-		cb.call(selected)
-
-func _on_discard_select_cancel() -> void:
-	var cb = _discard_select_callback
-	_close_discard_select_ui()
-	if cb.is_valid():
-		cb.call([])
-
-func _close_discard_select_ui() -> void:
-	if _discard_select_panel and is_instance_valid(_discard_select_panel):
-		_discard_select_panel.queue_free()
-	_discard_select_panel = null
 
 func is_card_select_active() -> bool:
 	return _card_select_active
@@ -1680,9 +1417,6 @@ func enter_card_select_mode(prompt: String, min_select: int, max_select: int, ca
 				card_node.is_select_mode = true
 			card_node.mouse_filter = Control.MOUSE_FILTER_STOP
 
-## 弃牌攻击专用选牌模式（保留用于以后其他弃牌效果）
-func enter_attack_card_select(prompt: String, callback: Callable) -> void:
-	enter_card_select_mode(prompt, 1, 1, callback, true, false)
 
 
 func _on_card_select_card_clicked(card: CardData) -> void:
@@ -1708,26 +1442,9 @@ func _select_card(card: CardData) -> void:
 	var card_node = current_hand_cards.get(card)
 	if card_node == null:
 		return
-	var vp_size = card_node.get_viewport_rect().size
-	var parent = card_node.get_parent()
-	var idx = _card_selected_cards.find(card)
-	if idx < 0:
-		idx = _card_selected_cards.size()
-	var total = _card_selected_cards.size()
-	var card_w = card_node.size.x
-	var spacing = card_w + 20
-	var total_width = max(total, 1) * spacing
-	var offset_x = -total_width / 2.0 + idx * spacing + spacing / 2.0 - card_w / 2.0
-	var center_x = vp_size.x / 2.0 + offset_x
-	var center_y = vp_size.y * 0.65 - card_node.size.y / 2.0
-	var center_local: Vector2
-	if parent:
-		center_local = Vector2(center_x - parent.global_position.x, center_y - parent.global_position.y)
-	else:
-		center_local = Vector2(center_x, center_y)
+	# 位置由 _reposition_selected_cards 统一重排，这里只负责选中态的视觉反馈
 	var tween = card_node.create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(card_node, "position", center_local, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	tween.tween_property(card_node, "modulate", Color(1, 0.88, 0.5, 1), 0.15)
 	tween.tween_property(card_node, "scale", Vector2(1.1, 1.1), 0.15).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	tween.tween_property(card_node, "rotation_degrees", 0.0, 0.15)
@@ -1796,8 +1513,7 @@ func _on_card_select_confirm() -> void:
 	
 	if _card_select_callback.is_valid():
 		_card_select_callback.call(selected)
-	
-	card_select_confirmed.emit(selected)
+
 
 func _on_card_select_cancel() -> void:
 	_card_selected_cards.clear()
@@ -1835,10 +1551,6 @@ func _exit_card_select_mode() -> void:
 ## B4: 新流程UI方法
 ## ==========================================
 
-## 更改结束回合按钮文字（新流程用）
-func update_end_turn_button_text(text: String) -> void:
-	if end_turn_button:
-		end_turn_button.text = text
 
 ## 设置回合按钮文字和可用状态（新流程用）
 func show_end_turn_button(text: String, enabled: bool) -> void:
@@ -1926,10 +1638,6 @@ func show_resolve_animation(card: CardData, is_player: bool, effect_text: String
 	if is_instance_valid(container):
 		container.queue_free()
 
-## 恢复结束回合按钮默认文字
-func reset_end_turn_button_text() -> void:
-	if end_turn_button:
-		end_turn_button.text = "结束回合"
 
 ## 显示敌人出牌意图（同时出牌模式下）
 func show_enemy_intent(enemy_idx: int, plays: Array) -> void:

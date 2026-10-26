@@ -19,13 +19,9 @@ var use_new_flow: bool = true   ## B4: 使用同时出牌新流程
 var is_turn_ready: bool = false  ## 回合准备是否完成（投骰+敌人意图）
 
 
-## [未连接] 战斗开始通知。若已连接接收方，请删除此标记注释。
-signal battle_started()
 signal battle_ended(victory: bool)
 signal turn_changed(is_player_turn: bool)
 signal discard_phase_started(cards_to_discard: int)
-## [未连接] 弃牌阶段结束通知。若已连接接收方，请删除此标记注释。
-signal discard_phase_ended()
 
 func _init():
 	_initialize_systems()
@@ -67,6 +63,7 @@ func _on_player_damaged(amount: int) -> void:
 
 func setup_battle(root_node: Control, initial_deck: Array = [], enemies: Array = []) -> void:
 	ui_controller = UIController.new(root_node)
+	ui_controller.battle_controller = self
 	ui_controller.player_manager = player_manager
 	_connect_ui_signals()
 	card_system.initialize_deck(initial_deck)
@@ -95,13 +92,13 @@ func _load_player_relics() -> void:
 
 func start_battle() -> void:
 	_update_initial_ui()
-	battle_started.emit()
+
 	_on_battle_init()
 	state_machine.change_state(StateMachine.BattleState.DRAW_PHASE)
 
 func _connect_ui_signals() -> void:
 	ui_controller.card_clicked.connect(_on_ui_card_clicked)
-	ui_controller.card_released.connect(_on_ui_card_released)
+
 	ui_controller.card_cancelled.connect(_on_ui_card_cancelled)
 	ui_controller.card_dropped.connect(_on_ui_card_dropped)
 	ui_controller.card_played.connect(_on_ui_card_played)
@@ -312,17 +309,6 @@ func _queue_player_card(card: CardData, target) -> void:
 		if card_node and card_node.has_method("set_queued"):
 			card_node.set_queued(true)
 
-## B4: 取消队列一张玩家卡牌
-func unqueue_player_card(card: CardData) -> void:
-	for i in _player_queued_plays.size():
-		if _player_queued_plays[i].card == card:
-			_player_queued_plays.remove_at(i)
-			if ui_controller:
-				var card_node = ui_controller.get_card_node(card)
-				if card_node and card_node.has_method("set_queued"):
-					card_node.set_queued(false)
-			_update_new_flow_hud()
-			return
 
 ## B4: 更新新流程HUD
 func _update_new_flow_hud() -> void:
@@ -407,7 +393,7 @@ func _on_turn_end_phase() -> void:
 
 func _resolve_end_turn() -> void:
 	is_discard_phase = false
-	discard_phase_ended.emit()
+
 	await _process_turn_end_effects()
 	turn_manager.end_current_turn()
 	if not state_machine.is_battle_active() or _check_battle_end_state():
@@ -430,7 +416,7 @@ func confirm_discard_cards(cards_to_discard: Array) -> void:
 	for card in cards_to_discard:
 		_discard_card_with_animation(card)
 	is_discard_phase = false
-	discard_phase_ended.emit()
+
 	var excess = card_system.hand.size() - card_system.max_hand_size
 	if excess > 0:
 		is_discard_phase = true
@@ -719,8 +705,6 @@ func _on_ui_card_clicked(card: CardData, card_node: Control) -> void:
 			_update_new_flow_hud()
 		return
 
-func _on_ui_card_released(_card: CardData, _card_node: Control) -> void:
-	pass
 
 func _on_ui_card_played(card: CardData, target) -> void:
 	if card == null:

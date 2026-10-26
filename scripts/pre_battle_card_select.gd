@@ -214,11 +214,10 @@ func _refresh_my_deck() -> void:
 	_deck_count_label.text = "战斗卡组 (%d张)" % _deck_cards.size()
 	# 按卡牌逐个展开显示（含重复）
 	for card in _deck_cards:
-		var node = _create_deck_card_preview(card, 1)
-		_deck_grid.add_child(node)
+		_deck_grid.add_child(_create_deck_card_preview(card))
 
 ## 创建卡组卡牌预览
-func _create_deck_card_preview(card: CardData, count: int) -> Control:
+func _create_deck_card_preview(card: CardData) -> Control:
 	var panel = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(90, 110)
 	var rarity_color = {"basic": Color(0.6, 0.6, 0.6), "common": Color(0.3, 0.8, 0.3), "uncommon": Color(0.3, 0.5, 0.9), "rare": Color(0.8, 0.5, 0.9), "epic": Color(1.0, 0.7, 0.2)}.get(card.rarity, Color(0.5, 0.5, 0.5))
@@ -262,14 +261,7 @@ func _create_deck_card_preview(card: CardData, count: int) -> Control:
 	desc_label.custom_minimum_size = Vector2(82, 0)
 	desc_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(desc_label)
-	# 数量标记
-	if count > 1:
-		var count_label = Label.new()
-		count_label.text = "x%d" % count
-		count_label.add_theme_font_size_override("font_size", 11)
-		count_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
-		count_label.horizontal_alignment = 2
-		vbox.add_child(count_label)
+
 	return panel
 
 ## 编辑卡组：进入卡组编辑界面（返回时回到本界面）

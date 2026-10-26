@@ -43,14 +43,9 @@ var drag_start_global_pos: Vector2   ## 拖拽起始时卡牌的全局位置
 
 ## 交互信号
 signal card_clicked(card: CardData)                              ## 卡牌被点击
-## [未连接] 鼠标进入卡牌通知。若已连接接收方，请删除此标记注释。
-signal card_hovered(card: CardData)                              ## 鼠标进入
-## [未连接] 鼠标离开卡牌通知。若已连接接收方，请删除此标记注释。
-signal card_unhovered(card: CardData)                            ## 鼠标离开
 signal drag_started(card: CardData, start_pos: Vector2)          ## 开始拖拽
 signal drag_updated(card: CardData, current_pos: Vector2)        ## 拖拽中
 signal drag_ended(card: CardData, end_pos: Vector2)              ## 拖拽结束
-signal card_released(card: CardData)                             ## 卡牌释放
 signal card_cancelled(card: CardData)                            ## 卡牌操作取消
 signal target_mode_started(card: CardData)                       ## 进入目标选择模式
 signal target_mode_ended(card: CardData)                         ## 退出目标选择模式
@@ -485,7 +480,7 @@ func _on_mouse_entered():
 	if _interacting_card != null and _interacting_card != self and is_instance_valid(_interacting_card):
 		return
 	_animate_hover(true)
-	card_hovered.emit(card_data)
+
 	_show_buff_tooltip()
 
 func _on_mouse_exited():
@@ -495,7 +490,7 @@ func _on_mouse_exited():
 	if _interacting_card != null and _interacting_card != self and is_instance_valid(_interacting_card):
 		return
 	_animate_hover(false)
-	card_unhovered.emit(card_data)
+
 	_hide_buff_tooltip()
 
 ## 判断卡牌是否需要选择目标（single_enemy 或 single_ally 类型）
