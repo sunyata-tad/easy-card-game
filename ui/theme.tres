@@ -6,6 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://cchn71vljsfy6" path="res://art_assets/pixel/ui_concepts/panel_border.png" id="panel_tex"]
 [ext_resource type="Texture2D" uid="uid://cjh48wtfvrvqo" path="res://art_assets/pixel/ui_concepts/progress_bg.png" id="pbg"]
 [ext_resource type="Texture2D" uid="uid://bo06s2pxpipcv" path="res://art_assets/pixel/ui_concepts/progress_fill.png" id="pfill"]
+[ext_resource type="FontFile" uid="uid://bc7x0lb2437mk" path="res://assets/fonts/zpix.ttf" id="zpix"]
 
 [sub_resource type="StyleBoxTexture" id="panel"]
 texture = ExtResource("panel_tex")
@@ -190,6 +191,8 @@ expand_margin_right = 1.0
 expand_margin_bottom = 1.0
 
 [resource]
+default_font = ExtResource("zpix")
+default_font_size = 16
 AcceptDialog/styles/panel = SubResource("panel")
 Button/colors/font_color = Color(0.9, 0.88, 0.85, 1)
 Button/colors/font_disabled_color = Color(0.45, 0.45, 0.5, 1)

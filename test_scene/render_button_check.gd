@@ -1,10 +1,14 @@
 extends SceneTree
 
+var _frame_count = 0
+
 func _init():
+	get_root().size = Vector2i(1152, 648)
+	get_root().gui_embed_subwindows = true
 	var root = Control.new()
 	root.name = "TestRoot"
-	root.size = Vector2(1152, 648)
 	root.set_anchors_preset(15)
+	root.size = Vector2(1152, 648)
 	root.theme = load("res://ui/theme.tres")
 	get_root().add_child(root)
 	var panel = PanelContainer.new()
@@ -29,10 +33,15 @@ func _init():
 	pb.value = 65
 	pb.max_value = 100
 	vbox.add_child(pb)
-	create_timer(1.0).timeout.connect(_shot)
+	process_frame.connect(_on_frame)
+
+func _on_frame():
+	_frame_count += 1
+	if _frame_count == 30:
+		_shot()
 
 func _shot():
-	var img = get_root().get_viewport().get_texture().get_image()
+	var img = get_root().get_texture().get_image()
 	var path = "D:/游戏开发/项目文件/card/test_scene/progress_check.png"
 	img.save_png(path)
 	print("SAVED ", path)
