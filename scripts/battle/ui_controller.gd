@@ -462,6 +462,7 @@ func _create_enemy_node(enemy: EnemyUnit) -> Control:
 		enemy_node.setup(enemy, player_manager)
 		enemy_node.enemy_selected.connect(_on_enemy_ui_selected)
 	enemy_node.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	enemy_node.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	return enemy_node
 
 func _on_enemy_ui_selected(enemy: EnemyUnit) -> void:
@@ -531,7 +532,7 @@ func _create_player_info_panels() -> void:
 	var info_vbox = VBoxContainer.new()
 	info_vbox.name = "PlayerInfoVBox"
 	info_vbox.add_theme_constant_override("separation", 4)
-	player_area.get_parent().add_child(info_vbox)
+	player_area.add_child(info_vbox)
 	
 	_player_buff_bar = HBoxContainer.new()
 	_player_buff_bar.name = "PlayerBuffBar"
@@ -547,8 +548,14 @@ func _create_player_info_panels() -> void:
 
 func _reposition_info_panel(panel: VBoxContainer) -> void:
 	if player_area and is_instance_valid(panel):
-		var pa_rect = player_area.get_global_rect()
-		panel.global_position = Vector2(pa_rect.position.x + pa_rect.size.x + 10, pa_rect.position.y)
+		panel.size_flags_horizontal = Control.SIZE_FILL
+
+func _position_bar_above(bar: HBoxContainer, target: Control) -> void:
+	if not is_instance_valid(bar) or not is_instance_valid(target):
+		return
+	var t_rect = target.get_global_rect()
+	var bar_w = bar.size.x if bar.size.x > 0 else bar.get_combined_minimum_size().x
+	bar.global_position = Vector2(t_rect.position.x + t_rect.size.x / 2.0 - bar_w / 2.0, t_rect.position.y - bar.size.y - 4)
 
 ## B4: 创建玩家骰子栏（按速度降序排列便于对比）
 func create_dice_bar(slots: int, speeds: Array, unknown: bool = false) -> void:
@@ -570,10 +577,8 @@ func create_dice_bar(slots: int, speeds: Array, unknown: bool = false) -> void:
 		_dice_nodes.append(dice)
 		_dice_bar.add_child(dice)
 	if player_area and is_instance_valid(player_area):
-		player_area.get_parent().add_child(_dice_bar)
-		# 玩家骰子栏放在左侧玩家区域右上方（与敌人骰子水平分开，不遮挡手牌）
-		var vp = root_node.get_viewport_rect().size
-		_dice_bar.global_position = Vector2(player_area.global_position.x + player_area.size.x + 10, vp.y - 235)
+		player_area.add_child(_dice_bar)
+		player_area.move_child(_dice_bar, 0)
 		_dice_bar.z_index = 40
 
 ## 揭示玩家骰子速度（回合准备后调用，按速度降序排列）
@@ -607,17 +612,18 @@ func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array, unknown: b
 		var dice = _create_dice_node(i, sorted_speeds[i] if i < sorted_speeds.size() else 1, true, enemy_idx, unknown)
 		nodes.append(dice)
 		bar.add_child(dice)
-	# 定位到敌人区域下方（屏幕上方中央）
+	# 定位到对应敌人正上方
 	root_node.add_child(bar)
-	var vp = root_node.get_viewport_rect().size
-	bar.global_position = Vector2(vp.x * 0.5 - 90 + enemy_idx * 200, 350)
 	bar.z_index = 20
+	if enemy_container and enemy_container.get_child_count() > enemy_idx:
+		var enemy_node = enemy_container.get_child(enemy_idx)
+		_position_bar_above.call_deferred(bar, enemy_node)
 	_enemy_dice_bars[enemy_idx] = {"bar": bar, "nodes": nodes, "cards": cards, "speeds": sorted_speeds}
 
 ## B4: 创建单个骰子节点（六边形，只显示速度）
 func _create_dice_node(index: int, speed: int, is_enemy: bool, enemy_idx: int, unknown: bool = false) -> DiceHex:
 	var dice = DiceHex.new()
-	dice.custom_minimum_size = Vector2(76, 84)
+	dice.custom_minimum_size = Vector2(60, 66)
 	dice.name = "Dice_%s_%d" % ["E" if is_enemy else "P", index]
 	dice.dice_value = "?" if unknown else "%d" % speed
 	dice.set_state_colors(false, false)

@@ -153,18 +153,18 @@ func _update_intent_display():
 				var damage_taken_mult = player_manager.buff_manager.get_mult("damage_taken")
 				effective = int(effective * damage_taken_mult)
 			if intent_text != "":
-				intent_lbl.text = "⚔ %s %d" % [intent_text, effective]
+				intent_lbl.text = "%s %d" % [intent_text, effective]
 			else:
-				intent_lbl.text = "⚔ 攻击 %d" % effective
+				intent_lbl.text = "攻击 %d" % effective
 			intent_lbl.add_theme_color_override("font_color", Color(1, 0.3, 0.3, 1))
 		"defend":
 			var block = intent.get("block", 0)
 			var mult = enemy_unit.buff_manager.get_mult("block")
 			var effective = int(block * mult)
 			if intent_text != "":
-				intent_lbl.text = "🛡 %s %d" % [intent_text, effective]
+				intent_lbl.text = "%s %d" % [intent_text, effective]
 			else:
-				intent_lbl.text = "🛡 防御 %d" % effective
+				intent_lbl.text = "防御 %d" % effective
 			intent_lbl.add_theme_color_override("font_color", Color(0.4, 0.8, 1, 1))
 		"buff":
 			intent_lbl.text = "↑ %s" % (intent_text if intent_text != "" else "强化")

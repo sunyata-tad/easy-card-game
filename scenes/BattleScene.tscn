@@ -36,115 +36,58 @@ grow_vertical = 2
 color = Color(0.02, 0.025, 0.05, 0.2)
 mouse_filter = 2
 
-[node name="EnemyArea" type="HBoxContainer" parent="Background" unique_id=364006535]
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_top = 45.0
-offset_bottom = 415.0
-grow_horizontal = 2
-theme_override_constants/separation = 80
-alignment = 1
-
-[node name="EnemySlot" type="Control" parent="Background/EnemyArea" unique_id=1534305963]
-custom_minimum_size = Vector2(160, 220)
-layout_mode = 2
-
-[node name="EnemySprite" type="TextureRect" parent="Background/EnemyArea/EnemySlot" unique_id=107666477]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
-
-[node name="EnemyName" type="Label" parent="Background/EnemyArea/EnemySlot" unique_id=10838850]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
-horizontal_alignment = 1
-
-[node name="HPBar" type="ProgressBar" parent="Background/EnemyArea/EnemySlot" unique_id=41292668]
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = -27.0
-grow_horizontal = 2
-grow_vertical = 0
-show_percentage = false
-
-[node name="HPLabel" type="Label" parent="Background/EnemyArea/EnemySlot" unique_id=1078508809]
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -20.0
-offset_top = -23.0
-offset_right = 20.0
-grow_horizontal = 2
-grow_vertical = 0
-
-[node name="PlayerArea" type="Control" parent="Background" unique_id=1538916684]
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_top = -280.0
-offset_right = 130.0
-grow_vertical = 0
-
-[node name="PlayerSprite" type="TextureRect" parent="Background/PlayerArea" unique_id=1768716118]
+[node name="EnemyArea" type="VBoxContainer" parent="Background" unique_id=364006535]
 layout_mode = 1
 anchors_preset = 15
+anchor_left = 1.0
 anchor_right = 1.0
-anchor_bottom = 1.0
+offset_left = -170.0
+offset_top = 50.0
+offset_right = -10.0
+offset_bottom = -220.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="PlayerArea" type="VBoxContainer" parent="Background" unique_id=1538916684]
+layout_mode = 1
+anchors_preset = 15
+anchor_left = 0.0
+anchor_right = 0.0
+offset_left = 10.0
+offset_top = 50.0
+offset_right = 170.0
+offset_bottom = -220.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="PlayerSprite" type="TextureRect" parent="Background/PlayerArea" unique_id=1768716118]
+custom_minimum_size = Vector2(140, 100)
+layout_mode = 2
 texture = ExtResource("2_player")
 expand_mode = 1
 stretch_mode = 5
 mouse_filter = 2
 
 [node name="HPBar" type="ProgressBar" parent="Background/PlayerArea" unique_id=1785970450]
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = -27.0
-offset_right = -42.0
-grow_horizontal = 2
-grow_vertical = 0
+custom_minimum_size = Vector2(140, 16)
+layout_mode = 2
 show_percentage = false
 
 [node name="HPLabel" type="Label" parent="Background/PlayerArea" unique_id=1404095026]
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -20.0
-offset_top = -23.0
-offset_right = 20.0
-grow_horizontal = 2
-grow_vertical = 0
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+horizontal_alignment = 1
 
 [node name="BlockLabel" type="Label" parent="Background/PlayerArea" unique_id=1337690169]
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -40.0
-offset_top = -56.0
-offset_bottom = -30.0
-grow_horizontal = 2
-grow_vertical = 0
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.62352943, 1, 1, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 14
 
 [node name="HandArea" type="Control" parent="Background" unique_id=403637730]
 custom_minimum_size = Vector2(0, 200)
@@ -153,36 +96,11 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 130.0
-offset_top = -220.0
+offset_left = 180.0
+offset_top = -200.0
+offset_right = -180.0
 grow_horizontal = 2
 grow_vertical = 0
-
-[node name="CardTemplate" type="Control" parent="Background/HandArea" unique_id=2017809941]
-custom_minimum_size = Vector2(120, 160)
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
-
-[node name="CardFrame" type="Panel" parent="Background/HandArea/CardTemplate" unique_id=1036856201]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
-
-[node name="CardName" type="Label" parent="Background/HandArea/CardTemplate" unique_id=568532428]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
-
-[node name="CardDesc" type="Label" parent="Background/HandArea/CardTemplate" unique_id=348265259]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
-
-[node name="CardType" type="Label" parent="Background/HandArea/CardTemplate" unique_id=1410416968]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
 
 [node name="DeckInfo" type="HBoxContainer" parent="." unique_id=225147002]
 layout_mode = 1
@@ -190,9 +108,9 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 140.0
+offset_left = 190.0
 offset_top = -35.0
-offset_right = -160.0
+offset_right = -200.0
 grow_horizontal = 2
 grow_vertical = 0
 
@@ -210,9 +128,9 @@ anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
-offset_left = -140.0
+offset_left = -340.0
 offset_top = -56.0
-offset_right = -20.0
+offset_right = -200.0
 offset_bottom = -12.0
 grow_horizontal = 0
 grow_vertical = 0

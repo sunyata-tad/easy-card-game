@@ -49,7 +49,7 @@ func _process(_delta):
 	if label == null:
 		label = Label.new()
 		label.name = "TargetLabel"
-		label.text = "⚔"
+		label.text = "攻"
 		label.add_theme_font_size_override("font_size", 32)
 		label.add_theme_color_override("font_color", Color(1.0, 0.8, 0.0, 1.0))
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
