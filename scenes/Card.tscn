@@ -1,21 +1,18 @@
-[gd_scene load_steps=5 format=3 uid="uid://8xc335n74o87"]
+[gd_scene load_steps=6 format=3 uid="uid://8xc335n74o87"]
 
 [ext_resource type="Script" uid="uid://302mdp60w4jp" path="res://scripts/ui/card_ui.gd" id="1_yiag5"]
+[ext_resource type="Texture2D" uid="uid://b5f5tuapurcjv" path="res://art_assets/pixel/ui_concepts/card_frame_160x210.png" id="2_frame"]
 
-[sub_resource type="StyleBoxFlat" id="card_base"]
-bg_color = Color(0.13, 0.14, 0.18, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.72, 0.72, 0.75, 1)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-shadow_color = Color(0, 0, 0, 0.5)
-shadow_size = 6
-shadow_offset = Vector2(0, 3)
+[sub_resource type="StyleBoxTexture" id="card_base"]
+texture = ExtResource("2_frame")
+texture_margin_left = 10.0
+texture_margin_top = 18.0
+texture_margin_right = 10.0
+texture_margin_bottom = 18.0
+expand_margin_left = 1.0
+expand_margin_top = 1.0
+expand_margin_right = 1.0
+expand_margin_bottom = 1.0
 
 [sub_resource type="StyleBoxFlat" id="rarity_band"]
 bg_color = Color(0.72, 0.72, 0.75, 1)
@@ -43,6 +40,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+texture_filter = 1
 theme_override_styles/panel = SubResource("card_base")
 mouse_filter = 2
 
