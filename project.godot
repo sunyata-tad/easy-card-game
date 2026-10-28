@@ -26,6 +26,7 @@ TransitionManager="*res://scripts/transition_manager.gd"
 SettingsManager="*res://scripts/settings_manager.gd"
 MCPRuntimeProbe="*uid://bsg12huaf1u5i"
 
+
 [display]
 
 window/stretch/mode="canvas_items"

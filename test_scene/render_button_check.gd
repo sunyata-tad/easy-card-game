@@ -7,11 +7,18 @@ func _init():
 	root.set_anchors_preset(15)
 	root.theme = load("res://ui/theme.tres")
 	get_root().add_child(root)
+	var panel = PanelContainer.new()
+	panel.position = Vector2(420, 160)
+	panel.custom_minimum_size = Vector2(312, 0)
+	panel.add_theme_constant_override("separation", 0)
+	root.add_child(panel)
 	var vbox = VBoxContainer.new()
-	vbox.position = Vector2(440, 200)
-	vbox.custom_minimum_size = Vector2(272, 0)
 	vbox.add_theme_constant_override("separation", 20)
-	root.add_child(vbox)
+	vbox.add_theme_constant_override("margin_left", 16)
+	vbox.add_theme_constant_override("margin_right", 16)
+	vbox.add_theme_constant_override("margin_top", 16)
+	vbox.add_theme_constant_override("margin_bottom", 16)
+	panel.add_child(vbox)
 	for txt in ["开始游戏", "卡组配置", "设置", "退出游戏"]:
 		var b = Button.new()
 		b.text = txt
@@ -21,7 +28,7 @@ func _init():
 
 func _shot():
 	var img = get_root().get_viewport().get_texture().get_image()
-	var path = "D:/游戏开发/项目文件/card/test_scene/button_check.png"
+	var path = "D:/游戏开发/项目文件/card/test_scene/panel_check.png"
 	img.save_png(path)
 	print("SAVED ", path)
 	quit()

@@ -3,25 +3,22 @@
 [ext_resource type="Texture2D" uid="uid://dngjk645hnm5q" path="res://art_assets/pixel/ui_concepts/button_normal.png" id="btn_n"]
 [ext_resource type="Texture2D" uid="uid://r15eckxsten5" path="res://art_assets/pixel/ui_concepts/button_hover.png" id="btn_h"]
 [ext_resource type="Texture2D" uid="uid://bnan64fdd3ppu" path="res://art_assets/pixel/ui_concepts/button_pressed.png" id="btn_p"]
+[ext_resource type="Texture2D" uid="uid://cchn71vljsfy6" path="res://art_assets/pixel/ui_concepts/panel_border.png" id="panel_tex"]
 
-[sub_resource type="StyleBoxFlat" id="panel"]
-content_margin_left = 10.0
-content_margin_top = 10.0
-content_margin_right = 10.0
-content_margin_bottom = 10.0
-bg_color = Color(0.055, 0.065, 0.12, 0.94)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.32, 0.32, 0.52, 0.7)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-shadow_color = Color(0, 0, 0, 0.4)
-shadow_size = 10
-shadow_offset = Vector2(0, 4)
+[sub_resource type="StyleBoxTexture" id="panel"]
+texture = ExtResource("panel_tex")
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+texture_margin_left = 6.0
+texture_margin_top = 6.0
+texture_margin_right = 6.0
+texture_margin_bottom = 6.0
+expand_margin_left = 1.0
+expand_margin_top = 1.0
+expand_margin_right = 1.0
+expand_margin_bottom = 1.0
 
 [sub_resource type="StyleBoxFlat" id="btn_disabled"]
 content_margin_left = 12.0
