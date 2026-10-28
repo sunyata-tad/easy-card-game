@@ -4,6 +4,8 @@
 [ext_resource type="Texture2D" uid="uid://r15eckxsten5" path="res://art_assets/pixel/ui_concepts/button_hover.png" id="btn_h"]
 [ext_resource type="Texture2D" uid="uid://bnan64fdd3ppu" path="res://art_assets/pixel/ui_concepts/button_pressed.png" id="btn_p"]
 [ext_resource type="Texture2D" uid="uid://cchn71vljsfy6" path="res://art_assets/pixel/ui_concepts/panel_border.png" id="panel_tex"]
+[ext_resource type="Texture2D" uid="uid://cjh48wtfvrvqo" path="res://art_assets/pixel/ui_concepts/progress_bg.png" id="pbg"]
+[ext_resource type="Texture2D" uid="uid://bo06s2pxpipcv" path="res://art_assets/pixel/ui_concepts/progress_fill.png" id="pfill"]
 
 [sub_resource type="StyleBoxTexture" id="panel"]
 texture = ExtResource("panel_tex")
@@ -169,24 +171,23 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[sub_resource type="StyleBoxFlat" id="progress_bg"]
-bg_color = Color(0.07, 0.08, 0.14, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.2, 0.2, 0.3, 0.8)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+[sub_resource type="StyleBoxTexture" id="progress_bg"]
+texture = ExtResource("pbg")
+texture_margin_left = 2.0
+texture_margin_top = 2.0
+texture_margin_right = 2.0
+texture_margin_bottom = 2.0
+expand_margin_left = 1.0
+expand_margin_top = 1.0
+expand_margin_right = 1.0
+expand_margin_bottom = 1.0
 
-[sub_resource type="StyleBoxFlat" id="progress_fill"]
-bg_color = Color(0.85, 0.25, 0.28, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+[sub_resource type="StyleBoxTexture" id="progress_fill"]
+texture = ExtResource("pfill")
+expand_margin_left = 1.0
+expand_margin_top = 1.0
+expand_margin_right = 1.0
+expand_margin_bottom = 1.0
 
 [resource]
 AcceptDialog/styles/panel = SubResource("panel")

@@ -24,11 +24,16 @@ func _init():
 		b.text = txt
 		b.custom_minimum_size = Vector2(260, 54)
 		vbox.add_child(b)
+	var pb = ProgressBar.new()
+	pb.custom_minimum_size = Vector2(260, 28)
+	pb.value = 65
+	pb.max_value = 100
+	vbox.add_child(pb)
 	create_timer(1.0).timeout.connect(_shot)
 
 func _shot():
 	var img = get_root().get_viewport().get_texture().get_image()
-	var path = "D:/游戏开发/项目文件/card/test_scene/panel_check.png"
+	var path = "D:/游戏开发/项目文件/card/test_scene/progress_check.png"
 	img.save_png(path)
 	print("SAVED ", path)
 	quit()

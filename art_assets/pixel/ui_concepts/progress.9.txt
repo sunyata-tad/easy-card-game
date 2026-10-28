@@ -1,0 +1,1 @@
+9-slice: bg left=2, top=2, right=2, bottom=2; fill stretch
