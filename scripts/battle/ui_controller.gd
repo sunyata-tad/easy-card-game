@@ -528,23 +528,10 @@ func update_deck_info(draw_count: int, discard_count: int) -> void:
 func _create_player_info_panels() -> void:
 	if player_area == null:
 		return
-	
-	var info_vbox = VBoxContainer.new()
-	info_vbox.name = "PlayerInfoVBox"
-	info_vbox.add_theme_constant_override("separation", 4)
-	player_area.add_child(info_vbox)
-	
 	_player_buff_bar = HBoxContainer.new()
 	_player_buff_bar.name = "PlayerBuffBar"
 	_player_buff_bar.add_theme_constant_override("separation", 4)
-	info_vbox.add_child(_player_buff_bar)
-	
-	_player_stats_panel = HBoxContainer.new()
-	_player_stats_panel.name = "PlayerStatsPanel"
-	_player_stats_panel.add_theme_constant_override("separation", 8)
-	info_vbox.add_child(_player_stats_panel)
-	
-	_reposition_info_panel.call_deferred(info_vbox)
+	player_area.add_child(_player_buff_bar)
 
 func _reposition_info_panel(panel: VBoxContainer) -> void:
 	if player_area and is_instance_valid(panel):
@@ -1685,33 +1672,10 @@ func clear_all_enemy_intents() -> void:
 			if intent_label:
 				intent_label.text = ""
 
-## 更新能量显示
+## 更新能量显示（常态不显示，仅详细信息框使用）
 func update_energy_display(current: int, maximum: int) -> void:
-	if _player_stats_panel:
-		var energy_label = _player_stats_panel.get_node_or_null("EnergyLabel")
-		if energy_label:
-			energy_label.text = "能量: %d/%d" % [current, maximum]
-		else:
-			energy_label = Label.new()
-			energy_label.name = "EnergyLabel"
-			energy_label.text = "能量: %d/%d" % [current, maximum]
-			energy_label.add_theme_font_size_override("font_size", 14)
-			energy_label.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0))
-			_player_stats_panel.add_child(energy_label)
+	pass
 
-## 更新槽位/速度显示
+## 更新槽位/速度显示（常态不显示，仅详细信息框使用）
 func update_slots_display(slots: int, speeds: Array) -> void:
-	if _player_stats_panel:
-		var slots_label = _player_stats_panel.get_node_or_null("SlotsLabel")
-		var text = "槽位: %d" % slots
-		if speeds.size() > 0:
-			text += " 速度: " + str(speeds)
-		if slots_label:
-			slots_label.text = text
-		else:
-			slots_label = Label.new()
-			slots_label.name = "SlotsLabel"
-			slots_label.text = text
-			slots_label.add_theme_font_size_override("font_size", 12)
-			slots_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8))
-			_player_stats_panel.add_child(slots_label)
+	pass

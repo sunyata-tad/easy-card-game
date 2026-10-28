@@ -65,7 +65,7 @@ theme_override_constants/separation = 4
 alignment = 1
 
 [node name="PlayerSprite" type="TextureRect" parent="Background/PlayerArea" unique_id=1768716118]
-custom_minimum_size = Vector2(140, 100)
+custom_minimum_size = Vector2(100, 80)
 layout_mode = 2
 texture = ExtResource("2_player")
 expand_mode = 1
@@ -73,21 +73,9 @@ stretch_mode = 5
 mouse_filter = 2
 
 [node name="HPBar" type="ProgressBar" parent="Background/PlayerArea" unique_id=1785970450]
-custom_minimum_size = Vector2(140, 16)
+custom_minimum_size = Vector2(100, 12)
 layout_mode = 2
 show_percentage = false
-
-[node name="HPLabel" type="Label" parent="Background/PlayerArea" unique_id=1404095026]
-custom_minimum_size = Vector2(140, 18)
-layout_mode = 2
-horizontal_alignment = 1
-
-[node name="BlockLabel" type="Label" parent="Background/PlayerArea" unique_id=1337690169]
-custom_minimum_size = Vector2(140, 18)
-layout_mode = 2
-horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.62352943, 1, 1, 1)
-theme_override_font_sizes/font_size = 14
 
 [node name="HandArea" type="Control" parent="Background" unique_id=403637730]
 custom_minimum_size = Vector2(0, 200)
@@ -103,6 +91,7 @@ grow_horizontal = 2
 grow_vertical = 0
 
 [node name="DeckInfo" type="HBoxContainer" parent="." unique_id=225147002]
+visible = false
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
