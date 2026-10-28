@@ -1,0 +1,1 @@
+9-slice: scroll 16x16 margin=3; lineedit 256x48 margin=4

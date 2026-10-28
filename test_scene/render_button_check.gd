@@ -12,12 +12,12 @@ func _init():
 	root.theme = load("res://ui/theme.tres")
 	get_root().add_child(root)
 	var panel = PanelContainer.new()
-	panel.position = Vector2(420, 160)
-	panel.custom_minimum_size = Vector2(312, 0)
+	panel.position = Vector2(380, 120)
+	panel.custom_minimum_size = Vector2(380, 0)
 	panel.add_theme_constant_override("separation", 0)
 	root.add_child(panel)
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 20)
+	vbox.add_theme_constant_override("separation", 16)
 	vbox.add_theme_constant_override("margin_left", 16)
 	vbox.add_theme_constant_override("margin_right", 16)
 	vbox.add_theme_constant_override("margin_top", 16)
@@ -26,13 +26,28 @@ func _init():
 	for txt in ["开始游戏", "卡组配置", "设置", "退出游戏"]:
 		var b = Button.new()
 		b.text = txt
-		b.custom_minimum_size = Vector2(260, 54)
+		b.custom_minimum_size = Vector2(300, 50)
 		vbox.add_child(b)
 	var pb = ProgressBar.new()
-	pb.custom_minimum_size = Vector2(260, 28)
+	pb.custom_minimum_size = Vector2(300, 24)
 	pb.value = 65
 	pb.max_value = 100
 	vbox.add_child(pb)
+	var le = LineEdit.new()
+	le.text = "输入玩家名字"
+	le.custom_minimum_size = Vector2(300, 40)
+	vbox.add_child(le)
+	var sc = ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(300, 90)
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(sc)
+	var inner = VBoxContainer.new()
+	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(inner)
+	for i in range(12):
+		var l = Label.new()
+		l.text = "卷轴第 %d 行 像素风格测试" % (i + 1)
+		inner.add_child(l)
 	process_frame.connect(_on_frame)
 
 func _on_frame():
