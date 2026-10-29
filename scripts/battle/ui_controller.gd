@@ -687,6 +687,13 @@ func load_card_to_dice(card: CardData, card_node = null) -> bool:
 
 ## B4: 卡牌缩小飞入骰子动画
 func _fly_card_to_dice(card_node: Control, dice_node: Control, dice_index: int) -> void:
+	# reparent 到 root_node，避免 hand_container 变换导致后续定位错位
+	var gp = card_node.global_position
+	var old_parent = card_node.get_parent()
+	if old_parent and old_parent != root_node:
+		old_parent.remove_child(card_node)
+		root_node.add_child(card_node)
+		card_node.global_position = gp
 	card_node.z_index = 100
 	card_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var target_center = dice_node.global_position + dice_node.size / 2
@@ -700,6 +707,7 @@ func _fly_card_to_dice(card_node: Control, dice_node: Control, dice_index: int) 
 	tween.tween_callback(func():
 		if is_instance_valid(card_node):
 			card_node.visible = false
+			card_node.modulate.a = 1.0  # 恢复透明度供悬浮/结算复用
 		_update_dice_display(dice_index, false, -1)
 		var bc = _get_battle_controller()
 		if bc:
@@ -814,6 +822,7 @@ func _on_dice_unhover(index: int = -1, is_enemy: bool = false, enemy_idx: int = 
 ## B4: 显示卡牌节点从骰子位置冒出（从小到大缩放）
 func _show_dice_card_preview(card_node: Control, dice_node: Control) -> void:
 	card_node.visible = true
+	card_node.modulate.a = 1.0  # 恢复透明度（飞入骰子时降到了0.3）
 	card_node.z_index = 500
 	card_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var card_size = card_node.size * 0.72
