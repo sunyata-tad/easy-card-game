@@ -750,7 +750,7 @@ func place_enemy_dice_card(enemy_idx: int, index: int, card: CardData) -> void:
 	bar_data.cards[index] = card
 	_update_dice_display(index, true, enemy_idx)
 
-## B4: 骰子悬浮——显示对应卡牌浮框 + 缩放反馈
+## B4: 骰子悬浮——显示对应卡牌浮框（从骰子冒出）+ 缩放反馈
 func _on_dice_hover(index: int, is_enemy: bool, enemy_idx: int) -> void:
 	var node: Control = null
 	var card: CardData = null
@@ -768,6 +768,8 @@ func _on_dice_hover(index: int, is_enemy: bool, enemy_idx: int) -> void:
 			card = _dice_cards[index]
 	if node is DiceHex:
 		node.set_hover_scale(1.12)
+	if card and node:
+		_show_dice_tooltip(card, node)
 
 ## B4: 骰子取消悬浮
 func _on_dice_unhover(index: int = -1, is_enemy: bool = false, enemy_idx: int = -1) -> void:
@@ -781,9 +783,10 @@ func _on_dice_unhover(index: int = -1, is_enemy: bool = false, enemy_idx: int = 
 			node = _dice_nodes[index]
 	if node is DiceHex:
 		node.set_hover_scale(1.0)
+	_hide_dice_tooltip()
 
 ## B4: 显示骰子卡牌浮框
-func _show_dice_tooltip(card: CardData) -> void:
+func _show_dice_tooltip(card: CardData, dice_node: Control) -> void:
 	_hide_dice_tooltip()
 	_dice_tooltip = PanelContainer.new()
 	var style = StyleBoxFlat.new()
@@ -814,18 +817,30 @@ func _show_dice_tooltip(card: CardData) -> void:
 	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_label.custom_minimum_size = Vector2(160, 0)
 	vbox.add_child(desc_label)
-	# 显示在鼠标附近（z_index 置顶避免被遮挡，边界自动翻转）
-	var mouse_pos = root_node.get_viewport().get_mouse_position()
 	root_node.add_child(_dice_tooltip)
 	_dice_tooltip.z_index = 500
-	var vp_size = root_node.get_viewport_rect().size
+	# 等一帧获取实际尺寸后定位+动画
+	await root_node.get_tree().process_frame
+	if not is_instance_valid(_dice_tooltip):
+		return
 	var tsize = _dice_tooltip.get_combined_minimum_size()
-	var pos = mouse_pos + Vector2(15, 15)
+	# 定位在骰子上方居中
+	var dice_center = dice_node.global_position + dice_node.size / 2
+	var pos = Vector2(dice_center.x - tsize.x / 2, dice_node.global_position.y - tsize.y - 8)
+	var vp_size = root_node.get_viewport_rect().size
+	if pos.x < 0:
+		pos.x = 0
 	if pos.x + tsize.x > vp_size.x:
-		pos.x = mouse_pos.x - tsize.x - 15
-	if pos.y + tsize.y > vp_size.y:
-		pos.y = mouse_pos.y - tsize.y - 15
+		pos.x = vp_size.x - tsize.x
+	if pos.y < 0:
+		pos.y = dice_node.global_position.y + dice_node.size.y + 8
 	_dice_tooltip.global_position = pos
+	_dice_tooltip.pivot_offset = tsize / 2
+	# 从小到大冒出动画
+	_dice_tooltip.scale = Vector2.ZERO
+	var tw = root_node.create_tween()
+	tw.tween_property(_dice_tooltip, "scale", Vector2.ONE, 0.2) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 
 ## B4: 隐藏骰子浮框
 func _hide_dice_tooltip() -> void:
@@ -1857,36 +1872,9 @@ func show_resolve_animation(card: CardData, is_player: bool, sources: Array) -> 
 
 
 ## 显示敌人出牌意图（同时出牌模式下）
+## 已取消底部意图卡牌显示（不适配多个骰子情形），敌人出牌通过骰子装载的卡牌悬浮预览查看
 func show_enemy_intent(enemy_idx: int, plays: Array) -> void:
-	# 在敌人区域显示意图
-	var enemy_node = null
-	if enemy_container and enemy_idx < enemy_container.get_child_count():
-		enemy_node = enemy_container.get_child(enemy_idx)
-	if enemy_node:
-		# 查找或创建意图标签
-		var intent_label = enemy_node.get_node_or_null("IntentLabel")
-		if intent_label == null:
-			intent_label = Label.new()
-			intent_label.name = "IntentLabel"
-			intent_label.add_theme_font_size_override("font_size", 14)
-			intent_label.add_theme_color_override("font_color", Color(1.0, 0.55, 0.2))
-			intent_label.horizontal_alignment = 1
-			# 放在敌人节点内部顶部（EnemySlot 高度220，顶部5px处）
-			intent_label.position = Vector2(0, 5)
-			intent_label.size = Vector2(160, 20)
-			enemy_node.add_child(intent_label)
-		var text = ""
-		for play in plays:
-			var card: CardData = play.card
-			if text != "":
-				text += " | "
-			text += card.name
-		intent_label.text = text
-		intent_label.visible = true
-	# 同时打印调试信息
-	for play in plays:
-		var card: CardData = play.card
-		print("[UI] 敌人%d 槽位%d: %s (cost=%d)" % [enemy_idx, play.slot_index, card.name, card.cost])
+	pass
 
 ## 清除所有敌人意图显示
 func clear_all_enemy_intents() -> void:
@@ -1894,7 +1882,7 @@ func clear_all_enemy_intents() -> void:
 		for enemy_node in enemy_container.get_children():
 			var intent_label = enemy_node.get_node_or_null("IntentLabel")
 			if intent_label:
-				intent_label.text = ""
+				intent_label.queue_free()
 
 ## 更新能量显示（圆点UI：亮=可用, 灰=本回合已用, 暗=不可用）
 func update_energy_display(available: int, maximum: int, used: int = 0) -> void:
