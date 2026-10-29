@@ -739,12 +739,7 @@ func _unload_dice_card(index: int, is_enemy: bool, enemy_idx: int) -> void:
 	var card: CardData = _dice_cards[index]
 	if card == null:
 		return
-	# 释放骰子上的卡牌 UI 节点，避免 add_to_hand 触发 hand_changed 后残留双节点
-	if index < _dice_card_nodes.size():
-		var old_node = _dice_card_nodes[index]
-		if old_node and is_instance_valid(old_node):
-			old_node.queue_free()
-		_dice_card_nodes[index] = null
+	# 不释放节点，让 update_hand_display 中 _reclaim_card_node_from_dice 回收复用
 	# 卡牌回手牌
 	var bc = _get_battle_controller()
 	if bc:
