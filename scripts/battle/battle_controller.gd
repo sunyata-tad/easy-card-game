@@ -321,11 +321,7 @@ func _update_new_flow_hud() -> void:
 		remaining_energy -= p.card.cost
 	var used_energy = player_manager.energy - remaining_energy
 	ui_controller.update_energy_display(remaining_energy, player_manager.max_energy, used_energy)
-	var used_slots = _player_queued_plays.size()
-	ui_controller.update_slots_display(player_manager.slots - used_slots, _player_slot_speeds)
-	# 显示队列信息
-	var queue_text = "已选牌: %d/%d" % [used_slots, player_manager.slots]
-	ui_controller.show_state_message(queue_text, 0.5)
+
 
 ## B4: 玩家确认出牌——收集玩家槽位出牌，进入结算
 func confirm_player_plays(slot_plays: Array = []) -> void:
