@@ -330,13 +330,18 @@ func update_hand_display(hand: Array) -> void:
 		var card = hand[i]
 		var card_node = current_hand_cards.get(card)
 		if card_node == null:
-			card_node = _create_card_node(card)
-			if card_node == null:
-				continue
-			hand_container.add_child(card_node)
-			current_hand_cards[card] = card_node
-			newly_created.append(card)
-			_setup_card_interaction(card_node, card)
+			# 优先从骰子节点池回收复用，避免额外实例化
+			card_node = _reclaim_card_node_from_dice(card)
+			if card_node:
+				current_hand_cards[card] = card_node
+			else:
+				card_node = _create_card_node(card)
+				if card_node == null:
+					continue
+				hand_container.add_child(card_node)
+				current_hand_cards[card] = card_node
+				newly_created.append(card)
+				_setup_card_interaction(card_node, card)
 
 		# 卡牌选择模式中已选中的卡保持在屏幕中央，不参与扇形重排
 		if _card_select_active and card in _card_selected_cards:
@@ -392,6 +397,21 @@ func _create_card_node(card: CardData) -> Control:
 		card_node.setup(card, player_manager)
 		card_node.card_clicked.connect(_on_card_ui_clicked)
 	return card_node
+
+## 从骰子卡牌节点池中回收指定卡牌的 UI 节点，reparent 回手牌区复用（避免额外实例化）
+func _reclaim_card_node_from_dice(card: CardData) -> Control:
+	for i in _dice_card_nodes.size():
+		var node = _dice_card_nodes[i]
+		if node and is_instance_valid(node) and node.get("card_data") == card:
+			_dice_card_nodes[i] = null
+			_dice_cards[i] = null
+			node.reparent(hand_container, false)
+			node.visible = true
+			node.mouse_filter = Control.MOUSE_FILTER_STOP
+			if node.has_method("reset_position"):
+				node.reset_position()
+			return node
+	return null
 
 func _setup_card_interaction(card_node: Control, card: CardData) -> void:
 	if card_node.has_signal("drag_started"):
