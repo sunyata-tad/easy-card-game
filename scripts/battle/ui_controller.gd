@@ -1151,10 +1151,27 @@ func set_interactive(enabled: bool) -> void:
 	for card_node in current_hand_cards.values():
 		card_node.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
 
-## 控制手牌区显隐（点击骰子后才显示）
+## 控制手牌区显隐（点击骰子后才显示）— 带淡入淡出动效
+var _hand_visible: bool = false
+var _hand_tween: Tween = null
 func set_hand_visible(visible: bool) -> void:
-	if hand_container:
-		hand_container.visible = visible
+	if hand_container == null:
+		return
+	if _hand_visible == visible:
+		return
+	_hand_visible = visible
+	if _hand_tween and _hand_tween.is_valid():
+		_hand_tween.kill()
+	if visible:
+		hand_container.visible = true
+		hand_container.modulate.a = 0.0
+		_hand_tween = hand_container.create_tween()
+		_hand_tween.tween_property(hand_container, "modulate:a", 1.0, 0.25).set_ease(Tween.EASE_OUT)
+	else:
+		hand_container.modulate.a = 1.0
+		_hand_tween = hand_container.create_tween()
+		_hand_tween.tween_property(hand_container, "modulate:a", 0.0, 0.2).set_ease(Tween.EASE_IN)
+		_hand_tween.tween_callback(func(): hand_container.visible = false)
 
 func _on_end_turn_pressed() -> void:
 	end_turn_clicked.emit()
@@ -1166,10 +1183,12 @@ func _on_player_area_input(event: InputEvent) -> void:
 			_open_player_detail()
 			player_area.accept_event()
 
-## 点击空白（穿透到根节点）时关闭详细信息框；操作（按钮/手牌/角色）不会到达此处
+## 点击空白（穿透到根节点）时关闭详细信息框+隐藏手牌；操作（按钮/手牌/角色）不会到达此处
 func _on_root_input_close_detail(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		_close_detail_panel()
+		if _hand_visible:
+			set_hand_visible(false)
 
 func _close_detail_panel() -> void:
 	if _detail_panel and is_instance_valid(_detail_panel):
