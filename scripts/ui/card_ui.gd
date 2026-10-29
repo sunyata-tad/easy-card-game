@@ -96,6 +96,11 @@ func setup(card: CardData, pm: PlayerManager = null):
 	if desc_lbl:
 		desc_lbl.text = _get_display_text()
 	
+	var cost_lbl = get_node_or_null("CostLabel")
+	if cost_lbl:
+		cost_lbl.text = str(card.cost)
+		cost_lbl.visible = card.cost > 0
+	
 	# 根据稀有度设置卡面（底色/边框/底角色带/角标）
 	_set_card_color(card.rarity)
 	_set_rarity(card.rarity)

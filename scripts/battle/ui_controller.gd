@@ -654,7 +654,7 @@ func _on_dice_input(event: InputEvent, index: int, is_enemy: bool, enemy_idx: in
 			_active_dice_index = index
 			if node is DiceHex:
 				node.set_hover_scale(1.15)
-			_show_state_hint("请点击手牌装载到骰子 %d" % (index + 1))
+
 	elif event.button_index == MOUSE_BUTTON_RIGHT:
 		_unload_dice_card(index, is_enemy, enemy_idx)
 
@@ -665,14 +665,14 @@ func has_active_dice() -> bool:
 ## B4: 装载卡牌到骰子（由出牌流程调用，含飞入动画）
 func load_card_to_dice(card: CardData, card_node = null) -> bool:
 	if _active_dice_index < 0 or _active_dice_index >= _dice_cards.size():
-		_show_state_hint("请先点击一个骰子")
 		return false
 	if _dice_cards[_active_dice_index] != null:
-		_show_state_hint("该骰子已装载卡牌")
 		return false
 	var bc = _get_battle_controller()
 	if bc and not bc.player_manager.can_afford(card.cost):
-		show_state_message("能量不足", 1.0)
+		show_state_message("能量不足", 0.8)
+		if card_node and is_instance_valid(card_node):
+			_shake_card(card_node)
 		return false
 	var dice_index = _active_dice_index
 	_dice_cards[dice_index] = card
@@ -780,9 +780,6 @@ func _on_dice_hover(index: int, is_enemy: bool, enemy_idx: int) -> void:
 			card = _dice_cards[index]
 	if node is DiceHex:
 		node.set_hover_scale(1.12)
-	if card == null:
-		return
-	_show_dice_tooltip(card)
 
 ## B4: 骰子取消悬浮
 func _on_dice_unhover(index: int = -1, is_enemy: bool = false, enemy_idx: int = -1) -> void:
@@ -796,7 +793,6 @@ func _on_dice_unhover(index: int = -1, is_enemy: bool = false, enemy_idx: int = 
 			node = _dice_nodes[index]
 	if node is DiceHex:
 		node.set_hover_scale(1.0)
-	_hide_dice_tooltip()
 
 ## B4: 显示骰子卡牌浮框
 func _show_dice_tooltip(card: CardData) -> void:
@@ -848,6 +844,18 @@ func _hide_dice_tooltip() -> void:
 	if _dice_tooltip and is_instance_valid(_dice_tooltip):
 		_dice_tooltip.queue_free()
 	_dice_tooltip = null
+
+## B4: 卡牌能量不足反馈——红色闪烁+左右抖动
+func _shake_card(card_node: Control) -> void:
+	if not is_instance_valid(card_node):
+		return
+	var orig_pos = card_node.position
+	var tw = card_node.create_tween()
+	tw.tween_property(card_node, "modulate", Color(1.6, 0.3, 0.3, 1.0), 0.08)
+	tw.tween_property(card_node, "modulate", Color(1, 1, 1, 1.0), 0.15)
+	tw.parallel().tween_property(card_node, "position:x", orig_pos.x + 8, 0.04).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(card_node, "position:x", orig_pos.x - 8, 0.08).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(card_node, "position:x", orig_pos.x, 0.06).set_trans(Tween.TRANS_SINE)
 
 ## B4: 显示状态提示（简化）
 func _show_state_hint(text: String) -> void:
@@ -1302,9 +1310,9 @@ func _buff_detail_text(buff) -> String:
 		line += " (永久)"
 	return line
 
-## 定位详情框在目标节点上方居中；超出屏幕顶部时改放下方
-func _position_detail_panel(target: Control) -> void:
-	if _detail_panel == null or target == null:
+## 定位详情框固定在对应侧（玩家=左侧, 敌人=右侧），垂直居中
+func _position_detail_panel(target: Control, side: String = "player") -> void:
+	if _detail_panel == null:
 		return
 	_detail_panel.z_index = 300
 	await root_node.get_tree().process_frame
@@ -1312,12 +1320,8 @@ func _position_detail_panel(target: Control) -> void:
 		return
 	var ps = _detail_panel.size
 	var vp = root_node.get_viewport_rect().size
-	var trect = target.get_global_rect()
-	var px = trect.position.x + trect.size.x / 2.0 - ps.x / 2.0
-	px = clamp(px, 6.0, vp.x - ps.x - 6.0)
-	var py = trect.position.y - ps.y - 8.0
-	if py < 6.0:
-		py = trect.position.y + trect.size.y + 8.0
+	var px: float = 10.0 if side == "player" else vp.x - ps.x - 10.0
+	var py: float = (vp.y - ps.y) / 2.0
 	_detail_panel.global_position = Vector2(px, py)
 
 func _open_player_detail() -> void:
@@ -1347,7 +1351,7 @@ func _open_player_detail() -> void:
 			var t = _buff_detail_text(buff)
 			if t != "":
 				_add_detail_line(content, t)
-	_position_detail_panel(sprite)
+	_position_detail_panel(sprite, "player")
 
 func _open_enemy_detail(enemy: EnemyUnit, enemy_node: Control) -> void:
 	_close_detail_panel()
@@ -1370,7 +1374,7 @@ func _open_enemy_detail(enemy: EnemyUnit, enemy_node: Control) -> void:
 			var t = _buff_detail_text(buff)
 			if t != "":
 				_add_detail_line(content, t)
-	_position_detail_panel(enemy_node)
+	_position_detail_panel(enemy_node, "enemy")
 
 func highlight_valid_targets(card: CardData) -> void:
 	clear_target_highlights()

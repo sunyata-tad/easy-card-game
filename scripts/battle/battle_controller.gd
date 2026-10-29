@@ -283,7 +283,10 @@ func _queue_player_card(card: CardData, target) -> void:
 	for p in _player_queued_plays:
 		queued_cost += p.card.cost
 	if queued_cost + card.cost > player_manager.energy:
-		ui_controller.show_state_message("能量不足", 1.0)
+		ui_controller.show_state_message("能量不足", 0.8)
+		var cn = ui_controller.current_hand_cards.get(card)
+		if cn and is_instance_valid(cn):
+			ui_controller._shake_card(cn)
 		return
 	# 检查是否已在队列中
 	for p in _player_queued_plays:
