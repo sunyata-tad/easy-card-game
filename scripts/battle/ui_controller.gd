@@ -551,7 +551,8 @@ func _position_bar_above(bar: HBoxContainer, target: Control) -> void:
 		return
 	var t_rect = target.get_global_rect()
 	var bar_w = bar.size.x if bar.size.x > 0 else bar.get_combined_minimum_size().x
-	bar.global_position = Vector2(t_rect.position.x + t_rect.size.x / 2.0 - bar_w / 2.0, t_rect.position.y - bar.size.y - 4)
+	var bar_h = bar.size.y if bar.size.y > 0 else bar.get_combined_minimum_size().y
+	bar.global_position = Vector2(t_rect.position.x + t_rect.size.x / 2.0 - bar_w / 2.0, t_rect.position.y - bar_h - 8)
 
 ## B4: 创建玩家骰子栏（按速度降序排列便于对比）
 func create_dice_bar(slots: int, speeds: Array, unknown: bool = false) -> void:
