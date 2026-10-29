@@ -719,6 +719,12 @@ func _unload_dice_card(index: int, is_enemy: bool, enemy_idx: int) -> void:
 	var card: CardData = _dice_cards[index]
 	if card == null:
 		return
+	# 释放骰子上的卡牌 UI 节点，避免 add_to_hand 触发 hand_changed 后残留双节点
+	if index < _dice_card_nodes.size():
+		var old_node = _dice_card_nodes[index]
+		if old_node and is_instance_valid(old_node):
+			old_node.queue_free()
+		_dice_card_nodes[index] = null
 	# 卡牌回手牌
 	var bc = _get_battle_controller()
 	if bc:
@@ -879,6 +885,9 @@ func clear_dice_ui() -> void:
 	if _dice_bar and is_instance_valid(_dice_bar):
 		_dice_bar.queue_free()
 	_dice_bar = null
+	for node in _dice_card_nodes:
+		if node and is_instance_valid(node):
+			node.queue_free()
 	_dice_cards.clear()
 	_dice_card_nodes.clear()
 	_dice_nodes.clear()
@@ -887,6 +896,9 @@ func clear_dice_ui() -> void:
 		var bar_data = _enemy_dice_bars[enemy_idx]
 		if bar_data.bar and is_instance_valid(bar_data.bar):
 			bar_data.bar.queue_free()
+		for cnode in bar_data.get("card_nodes", []):
+			if cnode and is_instance_valid(cnode):
+				cnode.queue_free()
 	_enemy_dice_bars.clear()
 
 ## B4: 获取BattleController（优先使用注入的引用，否则遍历场景树兜底查找）
