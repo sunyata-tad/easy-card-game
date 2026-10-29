@@ -266,11 +266,11 @@ func _create_deck_card_preview(card: CardData) -> Control:
 
 ## 编辑卡组：进入卡组编辑界面（返回时回到本界面）
 func _on_edit_deck() -> void:
-	GameManager.go_to_deck_config_from_prebattle(_pending_enemies, _test_mode)
+	TransitionManager.transition(GameManager.go_to_deck_config_from_prebattle.bind(_pending_enemies, _test_mode), null)
 
 ## 确认出战
 func _on_confirm() -> void:
-	GameManager.start_battle(_pending_enemies, _test_mode)
+	TransitionManager.transition(GameManager.start_battle.bind(_pending_enemies, _test_mode), _confirm_btn)
 
 ## 返回地图
 func _on_back() -> void:
