@@ -29,6 +29,7 @@ var press_tween: Tween = null         ## 按下动画的 tween 对象
 var mouse_inside: bool = true         ## 鼠标是否在卡牌区域内
 var is_awaiting_target: bool = false  ## 是否在等待选择目标（需要目标的卡牌拖出手牌区后进入箭头瞄准模式）
 var tooltip_panel: PanelContainer = null   ## 悬停提示面板
+var tooltip_panels: Array = []             ## 多个关键词悬浮框列表
 var drag_exited_hand: bool = false    ## 拖拽是否已离开手牌区域
 var is_select_mode: bool = false      ## 是否处于选择模式
 var is_playing_animation: bool = false ## 打出动画播放中（飞向中央/弃牌堆时阻止悬停干扰）
@@ -248,7 +249,7 @@ func _animate_hover(hover: bool):
 	else:
 		z_index = 0
 
-	var target_scale = Vector2(0.88, 0.88) if hover else original_scale
+	var target_scale = Vector2(1.3, 1.3) if hover else original_scale
 	var target_rotation = 0.0 if hover else original_rotation
 	var target_modulate = Color(1.05, 1.05, 1.0, 1.0) if hover else Color.WHITE
 
@@ -743,55 +744,71 @@ func set_original_position(pos: Vector2):
 	original_position = pos
 
 ## 悬浮时在卡牌旁边显示词条/buff解释 + buff/debuff 详情
+## 每个关键词一个独立悬浮框，垂直堆叠在卡牌右侧
 func _show_buff_tooltip() -> void:
 	if card_data == null or is_dragging or is_awaiting_target or is_select_mode:
 		return
 	_hide_buff_tooltip()
 
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 5)
-	var any := false
-
-	if CardInfoBox.fill_info_container(vbox, card_data, 12):
-		any = true
-
-
-	if not any:
+	var infos = CardInfoBox.get_keyword_infos(card_data)
+	if infos.is_empty():
 		return
 
-	tooltip_panel = PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.06, 0.1, 0.96)
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(10)
-	style.border_color = Color(0.5, 0.5, 0.6, 1.0)
-	style.border_width_top = 1
-	style.border_width_bottom = 1
-	style.border_width_left = 1
-	style.border_width_right = 1
-	style.shadow_color = Color(0, 0, 0, 0.4)
-	style.shadow_size = 8
-	style.shadow_offset = Vector2(0, 3)
-	tooltip_panel.add_theme_stylebox_override("panel", style)
-	tooltip_panel.add_child(vbox)
-
 	var canvas := get_tree().root
-	canvas.add_child(tooltip_panel)
-
 	var gp := global_position
-	var ts := tooltip_panel.get_combined_minimum_size()
 	var vp := get_viewport_rect().size
-	# 显示在卡牌右侧（卡牌放大后向右延伸，用放大后的宽度偏移避开）
-	var px := gp.x + size.x * 1.6 + 6
-	if px + ts.x > vp.x:
-		px = gp.x - ts.x - 14
-	var py := gp.y + size.y * 0.35
-	if py + ts.y > vp.y:
-		py = vp.y - ts.y - 6
-	tooltip_panel.position = Vector2(px, py)
-	tooltip_panel.z_index = 120
+
+	var px := gp.x + size.x * 1.4 + 8
+	var py_start := gp.y + size.y * 0.2
+	var panel_width := 200
+
+	for info in infos:
+		var panel := PanelContainer.new()
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color(0.06, 0.06, 0.1, 0.96)
+		style.set_corner_radius_all(8)
+		style.set_content_margin_all(10)
+		style.border_color = Color(0.5, 0.5, 0.6, 1.0)
+		style.border_width_top = 1
+		style.border_width_bottom = 1
+		style.border_width_left = 1
+		style.border_width_right = 1
+		style.shadow_color = Color(0, 0, 0, 0.4)
+		style.shadow_size = 8
+		style.shadow_offset = Vector2(0, 3)
+		panel.add_theme_stylebox_override("panel", style)
+		panel.custom_minimum_size = Vector2(panel_width, 0)
+
+		var rtl := RichTextLabel.new()
+		rtl.bbcode_enabled = true
+		rtl.fit_content = true
+		rtl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		rtl.text = "[b]%s[/b]：%s" % [info.name, info.desc]
+		rtl.add_theme_color_override("default_color", Color(0.85, 0.88, 0.92))
+		rtl.add_theme_font_size_override("normal_font_size", 13)
+		rtl.add_theme_font_size_override("bold_font_size", 13)
+		panel.add_child(rtl)
+
+		canvas.add_child(panel)
+		tooltip_panels.append(panel)
+
+	var py := py_start
+	for panel in tooltip_panels:
+		var ts: Vector2 = panel.get_combined_minimum_size()
+		if px + ts.x > vp.x:
+			panel.position = Vector2(gp.x - panel_width - 14, py)
+		else:
+			panel.position = Vector2(px, py)
+		if panel.position.y + ts.y > vp.y:
+			panel.position.y = vp.y - ts.y - 6
+		panel.z_index = 120
+		py += ts.y + 6
 
 func _hide_buff_tooltip() -> void:
+	for panel in tooltip_panels:
+		if panel and is_instance_valid(panel):
+			panel.queue_free()
+	tooltip_panels.clear()
 	if tooltip_panel and is_instance_valid(tooltip_panel):
 		tooltip_panel.queue_free()
 	tooltip_panel = null

@@ -57,6 +57,32 @@ static func has_info(card: CardData) -> bool:
 			return true
 	return false
 
+static func get_keyword_infos(card: CardData) -> Array:
+	var infos: Array = []
+	for tag in card.tags:
+		if not KEYWORD_TAGS.has(tag):
+			continue
+		var cn_name = TAG_CN.get(tag, tag)
+		var desc = _get_tag_desc(tag)
+		infos.append({"name": cn_name, "desc": desc})
+	var seen_buffs: Dictionary = {}
+	for effect in card.effects:
+		var et = effect.get("effect_type", "")
+		if et not in ["apply_debuff", "apply_buff"]:
+			continue
+		var bid = effect.get("buff_id", "")
+		if bid == "" or seen_buffs.has(bid):
+			continue
+		seen_buffs[bid] = true
+		var binfo = _get_buff_info(bid)
+		if binfo.is_empty():
+			continue
+		var bname: String = binfo.get("name", bid)
+		var bdesc: String = binfo.get("description", "")
+		bdesc = bdesc.replace("{stacks}", str(effect.get("value", effect.get("stacks", 1))))
+		infos.append({"name": bname, "desc": bdesc})
+	return infos
+
 static func fill_info_container(vbox: VBoxContainer, card: CardData, font_size: int = 12) -> bool:
 	var has_content := false
 
