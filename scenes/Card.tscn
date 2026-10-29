@@ -37,11 +37,11 @@ border_width_left = 2
 border_width_right = 2
 
 [node name="Card" type="Control" unique_id=1382513959]
-custom_minimum_size = Vector2(160, 210)
+custom_minimum_size = Vector2(160, 260)
 layout_mode = 3
 anchors_preset = 0
 offset_right = 160.0
-offset_bottom = 210.0
+offset_bottom = 260.0
 mouse_filter = 0
 script = ExtResource("1_yiag5")
 
@@ -71,7 +71,7 @@ layout_mode = 1
 offset_left = 2.0
 offset_top = 104.0
 offset_right = 158.0
-offset_bottom = 196.0
+offset_bottom = 246.0
 theme_override_styles/panel = SubResource("text_bg")
 mouse_filter = 2
 
@@ -92,7 +92,7 @@ layout_mode = 1
 offset_left = 0.0
 offset_top = 0.0
 offset_right = 160.0
-offset_bottom = 210.0
+offset_bottom = 260.0
 expand_mode = 1
 stretch_mode = 5
 mouse_filter = 2
@@ -136,7 +136,7 @@ layout_mode = 1
 offset_left = 24.0
 offset_top = 144.0
 offset_right = 136.0
-offset_bottom = 193.0
+offset_bottom = 240.0
 bbcode_enabled = true
 theme_override_colors/default_color = Color(1, 1, 1, 0.95)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.6)
@@ -149,9 +149,9 @@ mouse_filter = 2
 [node name="RarityLabel" type="Label" parent="." unique_id=2100000002]
 layout_mode = 1
 offset_left = 24.0
-offset_top = 200.0
+offset_top = 248.0
 offset_right = 136.0
-offset_bottom = 210.0
+offset_bottom = 258.0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.7)
 theme_override_constants/outline_size = 2

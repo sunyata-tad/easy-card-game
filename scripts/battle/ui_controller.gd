@@ -35,7 +35,6 @@ var end_turn_button: Button    ## 结束回合按钮
 var deck_info_node: Node       ## 牌堆信息节点
 var state_display_label: Label = null  ## 状态提示文字（淡出效果）
 
-var target_marker: Control = null      ## 目标标记 UI
 
 ## 玩家信息面板
 var _player_stats_panel: HBoxContainer = null  ## 属性统计面板
@@ -102,7 +101,7 @@ func _init(root: Control):
 	_setup_state_display()
 	_setup_drag_arrow()
 
-	_setup_target_marker()
+
 	_setup_hand_scroll()
 
 ## 创建状态显示标签（用于浮动提示文字）
@@ -126,24 +125,9 @@ func _setup_drag_arrow() -> void:
 	root_node.add_child(drag_arrow)
 
 
-## 创建目标标记 UI（使用 target_marker.gd 脚本）
-## set_script 动态给 Control 节点附加脚本（类似 Python 的运行时添加方法）
-func _setup_target_marker() -> void:
-	target_marker = Control.new()
-	target_marker.name = "TargetMarker"
-	target_marker.set_script(load("res://scripts/ui/target_marker.gd"))
-	root_node.add_child(target_marker)
-
-
 ## 更新目标标记位置
 func update_target_marker(enemy: EnemyUnit) -> void:
-	if target_marker == null:
-		return
-	
-	var enemy_node = current_enemy_nodes.get(enemy)
-	if enemy_node:
-		if target_marker.has_method("set_target"):
-			target_marker.call("set_target", enemy_node)
+	pass
 
 
 var _state_tween: Tween = null
@@ -453,10 +437,7 @@ func update_enemy_display(enemies: Array) -> void:
 	
 	if current_target_index >= enemies.size():
 		current_target_index = 0
-	
-	if enemies.size() > 0 and current_target_index < enemies.size():
-		var target_enemy = enemies[current_target_index]
-		update_target_marker(target_enemy)
+
 
 func _clear_enemies() -> void:
 	for enemy_node in current_enemy_nodes.values():
@@ -1354,7 +1335,7 @@ func _position_detail_panel(target: Control, side: String = "player") -> void:
 	var ps = _detail_panel.size
 	var vp = root_node.get_viewport_rect().size
 	var px: float = 10.0 if side == "player" else vp.x - ps.x - 10.0
-	var py: float = (vp.y - ps.y) / 2.0
+	var py: float = 10.0
 	var start_x: float
 	if side == "player":
 		start_x = -ps.x - 20.0
@@ -1441,9 +1422,7 @@ func clear_target_highlights() -> void:
 	
 	if player_area and player_area.has_method("set_highlight_for_target"):
 		player_area.set_highlight_for_target(false)
-	
-	if target_marker and target_marker.has_method("clear"):
-		target_marker.clear()
+
 
 ## 将卡牌节点从手牌映射中摘出（不释放），交给打出动画接管；避免 hand_changed 重排时释放它
 func detach_card_node(card: CardData) -> Control:

@@ -124,7 +124,7 @@ func setup(card: CardData, pm: PlayerManager = null):
 		else:
 			art_rect.visible = false
 	
-	size = Vector2(160, 210)
+	size = Vector2(160, 260)
 	pivot_offset = Vector2(size.x / 2.0, size.y)  # 以底边中点为轴：扇形旋转与悬浮放大都更自然
 	original_position = position
 	original_scale = Vector2(0.72, 0.72)
@@ -796,9 +796,12 @@ func _show_buff_tooltip() -> void:
 		canvas.add_child(panel)
 		tooltip_panels.append(panel)
 
+	await get_tree().process_frame
 	var py := py_start
 	for panel in tooltip_panels:
-		var ts: Vector2 = panel.get_combined_minimum_size()
+		if not is_instance_valid(panel):
+			continue
+		var ts: Vector2 = panel.size
 		if px + ts.x > vp.x:
 			panel.position = Vector2(gp.x - panel_width - 14, py)
 		else:
