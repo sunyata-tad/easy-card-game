@@ -1774,8 +1774,8 @@ func show_end_turn_button(text: String, enabled: bool) -> void:
 		end_turn_button.text = text
 		end_turn_button.disabled = not enabled
 
-## B4: 卡牌结算动画——显示卡牌本体（卡图+名称+描述）+效果文字（敌我）
-func show_resolve_animation(card: CardData, is_player: bool, effect_text: String) -> void:
+## B4: 卡牌结算动画——显示卡牌本体（卡图+名称+描述）+来源效果标注（敌我）
+func show_resolve_animation(card: CardData, is_player: bool, sources: Array) -> void:
 	var container = PanelContainer.new()
 	container.name = "ResolveCard"
 	var style = StyleBoxFlat.new()
@@ -1833,13 +1833,14 @@ func show_resolve_animation(card: CardData, is_player: bool, effect_text: String
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.custom_minimum_size = Vector2(170, 0)
 	vbox.add_child(desc_lbl)
-	# 效果文字（增益情况）
-	var eff_lbl = Label.new()
-	eff_lbl.text = "→ " + effect_text
-	eff_lbl.add_theme_font_size_override("font_size", 14)
-	eff_lbl.add_theme_color_override("font_color", Color(0.5, 1.0, 0.6) if is_player else Color(1.0, 0.6, 0.5))
-	eff_lbl.horizontal_alignment = 1
-	vbox.add_child(eff_lbl)
+	# 来源效果标注（buff/遗物等对该卡牌效果的影响）
+	for src_text in sources:
+		var src_lbl = Label.new()
+		src_lbl.text = src_text
+		src_lbl.add_theme_font_size_override("font_size", 12)
+		src_lbl.add_theme_color_override("font_color", Color(0.9, 0.8, 0.5))
+		src_lbl.horizontal_alignment = 1
+		vbox.add_child(src_lbl)
 	root_node.add_child(container)
 	container.z_index = 500
 	var vp = root_node.get_viewport_rect().size

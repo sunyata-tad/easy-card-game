@@ -828,9 +828,9 @@ func _resolve_all_plays() -> void:
 			continue
 		if target is PlayerManager and target.is_dead:
 			continue
-		# 卡牌结算动画（显示卡牌本体+效果，敌我）
+		# 卡牌结算动画（显示卡牌本体+来源效果标注，敌我）
 		if ui_controller:
-			await ui_controller.show_resolve_animation(card, source is PlayerManager, _get_effect_text(card))
+			await ui_controller.show_resolve_animation(card, source is PlayerManager, _get_effect_sources(card, source, target))
 		# 执行效果
 		effect_resolver.resolve_effects(card.effects, source, target)
 		# 打出的牌回牌库
@@ -864,26 +864,52 @@ func _compare_plays(a: Dictionary, b: Dictionary) -> bool:
 		return a.slot_index < b.slot_index
 	# 同速同方同槽位（敌人）：敌人索引小的在前（从左到右）
 	return a.enemy_index < b.enemy_index
-## B4: 生成卡牌效果文字（用于结算动画显示）
-func _get_effect_text(card: CardData) -> String:
-	var parts: Array = []
+## B4: 获取对该卡牌效果产生影响的来源标注（buff/遗物等）
+## 返回格式：["力量：伤害+2", "易伤：受到伤害×1.5", ...]
+func _get_effect_sources(card: CardData, source, target) -> Array:
+	var sources: Array = []
+	# 判断卡牌效果类型
+	var has_damage := false
+	var has_block := false
 	for effect in card.effects:
 		var et = effect.get("effect_type", "")
-		match et:
-			"damage":
-				parts.append("伤害%d" % effect.get("value", 0))
-			"damage_if_debuff":
-				parts.append("伤害%d" % effect.get("value", 0))
-			"block":
-				parts.append("护甲%d" % effect.get("value", 0))
-			"heal":
-				parts.append("回复%d" % effect.get("value", 0))
-			"apply_debuff", "apply_buff":
-				parts.append("施加%s" % effect.get("buff_id", ""))
-			"draw":
-				parts.append("抽牌%d" % effect.get("value", 0))
-			"pay_life":
-				parts.append("支付生命%d" % effect.get("value", 0))
-			_:
-				pass
-	return ", ".join(parts) if parts.size() > 0 else "生效"
+		if et in ["damage", "damage_if_debuff", "damage_if_kill_max_hp", "damage_and_stun_intent", "contract"]:
+			has_damage = true
+		if et == "block":
+			has_block = true
+	# 检查 source 的 buff（攻击方）
+	var src_bm = _get_buff_manager(source)
+	if src_bm:
+		_add_buff_sources(sources, src_bm, has_damage, has_block, true)
+	# 检查 target 的 buff（受击方）
+	var tgt_bm = _get_buff_manager(target)
+	if tgt_bm:
+		_add_buff_sources(sources, tgt_bm, has_damage, has_block, false)
+	return sources
+
+func _get_buff_manager(unit) -> BuffManager:
+	if unit is PlayerManager: return unit.buff_manager
+	if unit is EnemyUnit: return unit.buff_manager
+	return null
+
+func _add_buff_sources(sources: Array, bm: BuffManager, has_damage: bool, has_block: bool, is_source: bool) -> void:
+	for buff in bm.buffs:
+		match buff.id:
+			"strength":
+				if is_source and has_damage and buff.stacks != 0:
+					sources.append("%s：伤害+%d" % [buff.name, buff.stacks])
+			"weak":
+				if is_source and has_damage:
+					sources.append("%s：伤害×0.75" % buff.name)
+			"dexterity":
+				if is_source and has_block and buff.stacks != 0:
+					sources.append("%s：护甲+%d" % [buff.name, buff.stacks])
+			"vulnerable":
+				if not is_source and has_damage:
+					sources.append("%s：受到伤害×1.5" % buff.name)
+			"ignore_block":
+				if is_source and has_damage:
+					sources.append("%s：无视格挡" % buff.name)
+			"counter_stance":
+				if is_source:
+					sources.append("%s：反击" % buff.name)
