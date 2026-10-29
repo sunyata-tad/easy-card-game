@@ -5,6 +5,7 @@ extends Control
 @onready var hp_bar: ProgressBar = $HPBar
 @onready var hp_label: Label = $HPLabel
 @onready var block_label: Label = $BlockLabel
+@onready var energy_dots: HBoxContainer = $EnergyDots
 
 var enemy_unit: EnemyUnit
 var player_manager: PlayerManager = null
@@ -79,12 +80,14 @@ func setup(enemy: EnemyUnit, pm: PlayerManager = null):
 	_create_buff_bar()
 
 	_connect_enemy_signals()
+	_update_energy_display()
 
 func _connect_enemy_signals():
 	if enemy_unit:
 		enemy_unit.hp_changed.connect(_on_enemy_hp_changed)
 		enemy_unit.block_changed.connect(_on_enemy_block_changed)
 		enemy_unit.enemy_died.connect(_on_enemy_died)
+		enemy_unit.energy_changed.connect(_on_enemy_energy_changed)
 		if enemy_unit.buff_manager:
 			enemy_unit.buff_manager.buffs_changed.connect(_update_buff_bar)
 	if player_manager and player_manager.buff_manager:
@@ -114,6 +117,38 @@ func _on_enemy_hp_changed(current: int, maximum: int):
 
 func _on_enemy_block_changed(amount: int):
 	_update_hp_display()
+
+func _on_enemy_energy_changed(current: int, maximum: int):
+	_update_energy_display()
+
+func _update_energy_display():
+	if energy_dots == null or enemy_unit == null:
+		return
+	for child in energy_dots.get_children():
+		child.queue_free()
+	for i in enemy_unit.energy:
+		energy_dots.add_child(_create_energy_dot("lit"))
+	for i in enemy_unit.max_energy - enemy_unit.energy:
+		energy_dots.add_child(_create_energy_dot("dark"))
+
+func _create_energy_dot(state: String) -> Control:
+	var dot = Panel.new()
+	var style = StyleBoxFlat.new()
+	match state:
+		"lit":
+			style.bg_color = Color(0.95, 0.8, 0.3, 1.0)
+			style.border_color = Color(1.0, 0.9, 0.5, 0.8)
+		"dark":
+			style.bg_color = Color(0.15, 0.15, 0.2, 1.0)
+	style.set_corner_radius_all(2)
+	style.border_width_top = 1
+	style.border_width_bottom = 1
+	style.border_width_left = 1
+	style.border_width_right = 1
+	dot.add_theme_stylebox_override("panel", style)
+	dot.custom_minimum_size = Vector2(5, 5)
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return dot
 
 func _on_enemy_died():
 	_animate_death()
@@ -204,9 +239,9 @@ func _create_buff_bar() -> void:
 	_buff_bar.name = "BuffBar"
 	_buff_bar.add_theme_constant_override("separation", 4)
 	_buff_bar.offset_left = 1.0
-	_buff_bar.offset_top = 99.0
+	_buff_bar.offset_top = 107.0
 	_buff_bar.offset_right = 63.0
-	_buff_bar.offset_bottom = 109.0
+	_buff_bar.offset_bottom = 117.0
 	_buff_bar.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_buff_bar)
 	_update_buff_bar()
