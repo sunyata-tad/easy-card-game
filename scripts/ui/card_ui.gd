@@ -140,10 +140,10 @@ func _get_display_text() -> String:
 		var value = effect.get("value", 0)
 		
 		if effect_type == "temp_damage_boost":
-			return "本回合伤害+%d" % value
+			return CardData.bold_keywords("本回合伤害+%d" % value)
 		
 		if effect_type == "damage_boost":
-			return "伤害永久+%d" % value
+			return CardData.bold_keywords("伤害永久+%d" % value)
 		
 		var base_stat = effect.get("base_stat", "")
 		var multiplier = effect.get("multiplier", 1.0)
@@ -159,11 +159,11 @@ func _get_display_text() -> String:
 			var final_value = int(stat_value * multiplier)
 			
 			if effect_type == "damage":
-				return "造成 %d 点伤害" % final_value
+				return CardData.bold_keywords("造成 %d 点伤害" % final_value)
 			elif effect_type == "block":
-				return "获得 %d 点护甲" % final_value
+				return CardData.bold_keywords("获得 %d 点护甲" % final_value)
 	
-	return card_data.get_description_text()
+	return CardData.bold_keywords(card_data.get_description_text())
 
 ## 设置卡面样式：统一深色底 + 稀有度边框色 + 稀有度色光晕
 func _set_card_color(rarity: String) -> void:

@@ -810,10 +810,12 @@ func _show_dice_tooltip(card: CardData, dice_node: Control) -> void:
 	name_label.add_theme_font_size_override("font_size", 13)
 	name_label.add_theme_color_override("font_color", Color(1, 1, 1))
 	vbox.add_child(name_label)
-	var desc_label = Label.new()
-	desc_label.text = card.description
-	desc_label.add_theme_font_size_override("font_size", 11)
-	desc_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
+	var desc_label = RichTextLabel.new()
+	desc_label.bbcode_enabled = true
+	desc_label.text = CardData.bold_keywords(card.description)
+	desc_label.add_theme_font_size_override("normal_font_size", 11)
+	desc_label.add_theme_font_size_override("bold_font_size", 11)
+	desc_label.add_theme_color_override("default_color", Color(0.8, 0.8, 0.85))
 	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_label.custom_minimum_size = Vector2(160, 0)
 	vbox.add_child(desc_label)
@@ -1841,10 +1843,12 @@ func show_resolve_animation(card: CardData, is_player: bool, sources: Array) -> 
 	name_lbl.horizontal_alignment = 1
 	vbox.add_child(name_lbl)
 	# 描述
-	var desc_lbl = Label.new()
-	desc_lbl.text = card.description
-	desc_lbl.add_theme_font_size_override("font_size", 12)
-	desc_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
+	var desc_lbl = RichTextLabel.new()
+	desc_lbl.bbcode_enabled = true
+	desc_lbl.text = CardData.bold_keywords(card.description)
+	desc_lbl.add_theme_font_size_override("normal_font_size", 12)
+	desc_lbl.add_theme_font_size_override("bold_font_size", 12)
+	desc_lbl.add_theme_color_override("default_color", Color(0.85, 0.85, 0.9))
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.custom_minimum_size = Vector2(170, 0)
 	vbox.add_child(desc_lbl)

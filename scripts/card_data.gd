@@ -54,6 +54,24 @@ func get_description_text() -> String:
 			text = text.replace(placeholder, str(effect.value))
 	return text
 
+## 将描述文本中的关键词用 [b]...[/b] 包裹（已加粗的先去标签再统一处理，避免嵌套）
+static func bold_keywords(text: String) -> String:
+	var keywords := [
+		"永久消耗", "衍生", "保留", "恒常", "独一", "固有", "消耗",
+		"薄葬", "残像", "迷惑", "晕眩", "再生", "中毒", "易伤", "虚弱",
+		"不弃", "招架", "破甲", "敏捷", "力量",
+	]
+	text = text.replace("[b]", "").replace("[/b]", "")
+	keywords.sort_custom(func(a, b): return a.length() > b.length())
+	var placeholders = []
+	for i in range(keywords.size()):
+		var ph = "@@KW%d@@" % i
+		placeholders.append(ph)
+		text = text.replace(keywords[i], ph)
+	for i in range(keywords.size()):
+		text = text.replace(placeholders[i], "[b]%s[/b]" % keywords[i])
+	return text
+
 ## 深拷贝卡牌数据
 func duplicate() -> CardData:
 	var data = {
