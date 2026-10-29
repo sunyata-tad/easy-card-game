@@ -1862,7 +1862,7 @@ func show_enemy_intent(enemy_idx: int, plays: Array) -> void:
 				text += " | "
 			text += card.name
 		intent_label.text = text
-		intent_label.visible = true  ## 新流程：确保意图可见（_update_intent_display 可能设为 false）
+		intent_label.visible = true
 	# 同时打印调试信息
 	for play in plays:
 		var card: CardData = play.card

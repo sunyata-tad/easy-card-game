@@ -24,7 +24,7 @@ signal block_changed(amount: int)                ## 格挡值变化
 signal energy_changed(current: int, maximum: int) ## 能量变化
 signal enemy_died()                              ## 敌人死亡
 signal enemy_damaged(amount: int)                ## 敌人受到伤害（发出实际伤害值）
-signal intent_changed(intent: Dictionary)        ## 意图变化
+
 
 ## 构造函数：从 EnemyData 创建敌人，初始化血量、能量、槽位、速度等
 func _init(enemy_data: EnemyData):
@@ -136,24 +136,13 @@ func regen_energy() -> void:
 func can_afford(cost: int) -> bool:
 	return energy >= cost
 
-## 设置敌人意图（决定下回合的行动）
+## 设置敌人意图（卡牌效果如截除可能使用）
 func set_intent(intent: Dictionary) -> void:
 	current_intent = intent
-	intent_changed.emit(intent)
 
 ## 清除意图
 func clear_intent() -> void:
 	current_intent = {}
-	intent_changed.emit({})
-
-## 随机选择下一个意图（从 EnemyData.actions 中随机抽取）
-func decide_next_intent() -> void:
-	if data.actions.is_empty():
-		clear_intent()
-		return
-	
-	var action = data.actions.pick_random()
-	set_intent(action)
 
 func is_alive() -> bool:
 	return not is_dead and current_hp > 0
