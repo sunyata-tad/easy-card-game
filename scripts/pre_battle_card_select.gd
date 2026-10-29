@@ -274,4 +274,8 @@ func _on_confirm() -> void:
 
 ## 返回地图
 func _on_back() -> void:
-	GameManager.go_to_map()
+	var cached = SaveManager.get_cached_map_state()
+	var map_id = cached.get("map_id", "endless")
+	if map_id == "test_map" or map_id == "test":
+		map_id = "endless"
+	TransitionManager.transition(GameManager.go_to_map.bind(map_id, cached), null)
