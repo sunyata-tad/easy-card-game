@@ -11,10 +11,12 @@ class_name UIController
 
 var root_node: Control              ## 战斗场景的根节点
 var card_scene: PackedScene         ## 卡牌 UI 场景（Card.tscn）
+var actor_slot_scene: PackedScene   ## 统一角色槽位场景（ActorSlot.tscn）
 var player_manager: PlayerManager = null  ## 玩家状态引用
 var battle_controller = null              ## 战斗控制器引用（由 setup_battle 注入，避免每次遍历场景树查找）
 var screen_shake: Node = null             ## 屏幕震动器（由 battle.gd 注入）
 var _player_flash_tween: Tween = null     ## 玩家受击闪红 tween（防止叠加）
+var _player_slot: Control = null          ## 玩家 ActorSlot 实例
 
 ## B4: 骰子UI（玩家）
 var _dice_bar: HBoxContainer = null        ## 玩家骰子栏
@@ -38,8 +40,7 @@ var state_display_label: Label = null  ## 状态提示文字（淡出效果）
 
 
 ## 玩家信息面板
-var _player_stats_panel: HBoxContainer = null  ## 属性统计面板
-var _player_buff_bar: HBoxContainer = null     ## buff 图标栏
+
 var drag_arrow: DragArrow = null               ## 拖拽箭头
 
 ## 详细信息框（点击角色弹出，半透明，含完整属性+buff详情，可滚动）
@@ -47,8 +48,6 @@ var _detail_panel: PanelContainer = null
 var _detail_panel_side: String = ""
 var _detail_tween: Tween = null
 
-## 全局 buff 数据库缓存（从 JSON 加载一次，所有 UIController 实例共享）
-static var _buff_db: Dictionary = {}
 
 ## 卡牌选择模式相关（用于"选择 X 张卡牌"类型的效果）
 var _card_select_active: bool = false        ## 是否处于卡牌选择模式
@@ -187,8 +186,7 @@ func _find_ui_nodes() -> void:
 	deck_info_node = root_node.get_node_or_null("DeckInfo")
 	
 	if player_area:
-		player_area.gui_input.connect(_on_player_area_input)
-		_create_player_info_panels()
+		pass
 	
 	root_node.gui_input.connect(_on_root_input_close_detail)
 
@@ -199,6 +197,7 @@ func _setup_signals() -> void:
 
 func _load_card_scene() -> void:
 	card_scene = load("res://scenes/Card.tscn")
+	actor_slot_scene = load("res://scenes/ActorSlot.tscn")
 
 func _get_hand_container_width() -> float:
 	if hand_container:
@@ -446,60 +445,57 @@ func _clear_enemies() -> void:
 	current_enemy_nodes.clear()
 
 func _create_enemy_node(enemy: EnemyUnit) -> Control:
-	var enemy_scene_path = "res://scenes/EnemyUI.tscn"
-	if not ResourceLoader.exists(enemy_scene_path):
+	if actor_slot_scene == null:
 		return null
-	var enemy_node = load(enemy_scene_path).instantiate() as Control
-	if enemy_node.has_method("setup"):
-		enemy_node.setup(enemy, player_manager)
-		enemy_node.enemy_selected.connect(_on_enemy_ui_selected)
-	enemy_node.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	enemy_node.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	return enemy_node
+	var node = actor_slot_scene.instantiate() as Control
+	if node.has_method("setup"):
+		node.setup(enemy, false)
+		node.actor_clicked.connect(_on_actor_clicked)
+	node.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	node.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	return node
 
-func _on_enemy_ui_selected(enemy: EnemyUnit) -> void:
-	selected_target = enemy
-	enemy_selected.emit(enemy)
-	if is_dragging and dragging_card:
-		if drag_card_node and drag_card_node.has_method("clear_interaction_state"):
-			drag_card_node.clear_interaction_state()
-		card_dropped.emit(dragging_card, enemy)
-		_clear_drag_state()
-	else:
-		var node = current_enemy_nodes.get(enemy)
-		if node and is_instance_valid(node):
-			_open_enemy_detail(enemy, node)
+func _on_actor_clicked(actor) -> void:
+	if actor is EnemyUnit:
+		selected_target = actor
+		enemy_selected.emit(actor)
+		if is_dragging and dragging_card:
+			if drag_card_node and drag_card_node.has_method("clear_interaction_state"):
+				drag_card_node.clear_interaction_state()
+			card_dropped.emit(dragging_card, actor)
+			_clear_drag_state()
+		else:
+			var node = current_enemy_nodes.get(actor)
+			if node and is_instance_valid(node):
+				_open_actor_detail(actor, node, false)
+	elif actor is PlayerManager:
+		_open_actor_detail(actor, _player_slot, true)
 
 func update_single_enemy(enemy: EnemyUnit) -> void:
 	if current_enemy_nodes.has(enemy):
 		var node = current_enemy_nodes[enemy]
-		var hp_label = node.get_node_or_null("HPLabel")
-		var hp_bar = node.get_node_or_null("HPBar")
-		
-		if hp_label:
-			hp_label.text = "%d/%d" % [enemy.current_hp, enemy.max_hp]
-		if hp_bar:
-			hp_bar.value = enemy.current_hp
-		
-		if node.has_method("_update_buff_bar"):
+		if node and is_instance_valid(node) and node.has_method("_update_buff_bar"):
 			node._update_buff_bar()
 
 
-func update_player_display(hp: int, max_hp: int, block: int) -> void:
-	if player_area == null:
+func _ensure_player_slot() -> void:
+	if _player_slot != null and is_instance_valid(_player_slot):
 		return
-	
-	var hp_label = player_area.get_node_or_null("HPLabel")
-	var hp_bar = player_area.get_node_or_null("HPBar")
-	var block_label = player_area.get_node_or_null("BlockLabel")
-	
-	if hp_label:
-		hp_label.text = "%d/%d" % [hp, max_hp]
-	if hp_bar:
-		hp_bar.max_value = max_hp
-		hp_bar.value = hp
-	if block_label:
-		block_label.text = "护甲: %d" % block
+	if player_area == null or player_manager == null or actor_slot_scene == null:
+		return
+	_player_slot = actor_slot_scene.instantiate() as Control
+	_player_slot.setup(player_manager, true)
+	_player_slot.actor_clicked.connect(_on_actor_clicked)
+	player_area.add_child(_player_slot)
+
+func update_player_display(hp: int, max_hp: int, block: int) -> void:
+	_ensure_player_slot()
+	if _player_slot == null:
+		return
+	# ActorSlot 内部通过信号自动更新血条，这里兜底首次设置
+	if _player_slot.hp_bar:
+		_player_slot.hp_bar.max_value = max_hp
+		_player_slot.hp_bar.value = hp
 
 func update_deck_info(draw_count: int, discard_count: int) -> void:
 	if deck_info_node == null:
@@ -514,17 +510,13 @@ func update_deck_info(draw_count: int, discard_count: int) -> void:
 		# 新流程只有手牌+牌库，隐藏弃牌堆显示
 		discard_label.visible = false
 
-func _create_player_info_panels() -> void:
-	if player_area == null:
-		return
-	_player_buff_bar = HBoxContainer.new()
-	_player_buff_bar.name = "PlayerBuffBar"
-	_player_buff_bar.add_theme_constant_override("separation", 4)
-	player_area.add_child(_player_buff_bar)
+func update_player_stats_info(pm: PlayerManager) -> void:
+	pass
 
-func _reposition_info_panel(panel: VBoxContainer) -> void:
-	if player_area and is_instance_valid(panel):
-		panel.size_flags_horizontal = Control.SIZE_FILL
+func update_player_buff_bar(pm: PlayerManager) -> void:
+	_ensure_player_slot()
+	if _player_slot and is_instance_valid(_player_slot):
+		_player_slot._update_buff_bar()
 
 func _position_bar_above(bar: HBoxContainer, target: Control) -> void:
 	if not is_instance_valid(bar) or not is_instance_valid(target):
@@ -555,10 +547,10 @@ func create_dice_bar(slots: int, speeds: Array, unknown: bool = false) -> void:
 		var dice = _create_dice_node(i, _dice_speeds[i] if i < _dice_speeds.size() else 1, false, -1, unknown)
 		_dice_nodes.append(dice)
 		_dice_bar.add_child(dice)
-	if player_area and is_instance_valid(player_area):
-		player_area.add_child(_dice_bar)
-		player_area.move_child(_dice_bar, 0)
-		_dice_bar.z_index = 40
+	root_node.add_child(_dice_bar)
+	_dice_bar.z_index = 40
+	if _player_slot and is_instance_valid(_player_slot):
+		_position_bar_above.call_deferred(_dice_bar, _player_slot)
 
 ## 揭示玩家骰子速度（回合准备后调用，按速度降序排列）
 func reveal_player_dice(speeds: Array = []) -> void:
@@ -908,185 +900,7 @@ func _get_battle_controller():
 			return battle_controller
 	return null
 
-func update_player_stats_info(pm: PlayerManager) -> void:
-	if _player_stats_panel == null:
-		return
-	for child in _player_stats_panel.get_children():
-		child.queue_free()
 
-func update_player_buff_bar(pm: PlayerManager) -> void:
-	if _player_buff_bar == null:
-		return
-	
-	for child in _player_buff_bar.get_children():
-		child.queue_free()
-	
-	if not pm.buff_manager:
-		return
-	
-	for buff in pm.buff_manager.buffs:
-		var buff_info = _extract_buff_info(buff)
-		if buff_info.is_empty():
-			continue
-		var lbl = _create_buff_label(buff_info)
-		_player_buff_bar.add_child(lbl)
-
-func _extract_buff_info(buff) -> Dictionary:
-	var stacks: int = 1
-	var duration: int = 0
-	var buff_id: String = ""
-	var buff_name: String = ""
-	var buff_type: String = "buff"
-	if buff is BuffData:
-		stacks = buff.stacks
-		duration = buff.duration
-		buff_id = buff.id
-		buff_name = buff.name
-		buff_type = buff.buff_type
-	elif buff is Dictionary:
-		stacks = buff.get("stacks", 1)
-		duration = buff.get("duration", 0)
-		buff_id = buff.get("id", buff.get("buff_id", ""))
-		buff_name = buff.get("name", "")
-		buff_type = buff.get("buff_type", "buff")
-	else:
-		return {}
-	return {"id": buff_id, "name": buff_name, "stacks": stacks, "duration": duration, "buff_type": buff_type}
-
-var _buff_tooltip_panel: PanelContainer = null
-
-const NO_STACK_BUFFS: Array = ["ignore_block", "counter_stance", "no_discard"]
-
-func _create_buff_label(info: Dictionary) -> Control:
-	var buff_id: String = info.get("id", "")
-	var stacks: int = info.get("stacks", 1)
-	var duration: int = info.get("duration", 0)
-	
-	var symbol = _get_buff_symbol(buff_id)
-	var color = _get_buff_color(buff_id)
-	var show_stacks = not NO_STACK_BUFFS.has(buff_id)
-	
-	var btn = Button.new()
-	if show_stacks:
-		btn.text = "%s%d" % [symbol, stacks]
-	else:
-		btn.text = symbol
-	if duration > 0:
-		btn.text += "(%d)" % duration
-	btn.add_theme_font_size_override("font_size", 9)
-	btn.add_theme_color_override("font_color", color)
-	btn.add_theme_color_override("font_hover_color", color)
-	btn.flat = true
-	if UIStyle:
-		UIStyle.strip_button_box(btn)
-	btn.custom_minimum_size = Vector2(0, 10)
-	btn.focus_mode = Control.FOCUS_NONE
-	
-	var tooltip_text = _get_buff_tooltip(buff_id, stacks, duration)
-	if not tooltip_text.is_empty():
-		btn.mouse_entered.connect(_on_buff_label_hovered.bind(tooltip_text, btn))
-		btn.mouse_exited.connect(_on_buff_label_unhovered)
-	
-	return btn
-
-func _on_buff_label_hovered(text: String, source: Control) -> void:
-	_hide_buff_tooltip()
-	
-	_buff_tooltip_panel = PanelContainer.new()
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.06, 0.1, 0.95)
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(10)
-	style.border_color = Color(0.5, 0.5, 0.6, 1.0)
-	style.border_width_top = 1
-	style.border_width_bottom = 1
-	style.border_width_left = 1
-	style.border_width_right = 1
-	_buff_tooltip_panel.add_theme_stylebox_override("panel", style)
-	
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 4)
-	
-	var lines = text.split("\n")
-	for line in lines:
-		var lbl = Label.new()
-		lbl.text = line
-		lbl.add_theme_font_size_override("font_size", 13)
-		if line == lines[0]:
-			lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
-		else:
-			lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
-		vbox.add_child(lbl)
-	
-	_buff_tooltip_panel.add_child(vbox)
-	
-	var canvas = root_node.get_tree().root
-	canvas.add_child(_buff_tooltip_panel)
-	
-	var gp = source.global_position
-	var ts = _buff_tooltip_panel.get_combined_minimum_size()
-	var vp_size = source.get_viewport_rect().size
-	var px = gp.x + source.size.x + 6
-	if px + ts.x > vp_size.x:
-		px = gp.x - ts.x - 6
-	var py = gp.y - 5
-	if py + ts.y > vp_size.y:
-		py = vp_size.y - ts.y - 5
-	_buff_tooltip_panel.position = Vector2(px, py)
-	_buff_tooltip_panel.z_index = 100
-
-func _on_buff_label_unhovered() -> void:
-	_hide_buff_tooltip()
-
-func _hide_buff_tooltip() -> void:
-	if _buff_tooltip_panel and is_instance_valid(_buff_tooltip_panel):
-		_buff_tooltip_panel.queue_free()
-	_buff_tooltip_panel = null
-
-func _get_buff_tooltip(buff_id: String, stacks: int, duration: int) -> String:
-	var desc = _get_buff_description(buff_id, stacks)
-	if desc.is_empty():
-		return ""
-	var result = desc
-	if duration > 0:
-		result += "\n剩余 %d 回合" % duration
-	elif duration == -1:
-		result += "\n永久"
-	return result
-
-func _load_buff_db() -> void:
-	if not _buff_db.is_empty():
-		return
-	var file = FileAccess.open("res://data/buffs.json", FileAccess.READ)
-	if file:
-		var json = JSON.parse_string(file.get_as_text())
-		if json and json.has("buffs"):
-			_buff_db = json["buffs"]
-		file.close()
-
-func _get_buff_data(buff_id: String) -> Dictionary:
-	_load_buff_db()
-	return _buff_db.get(buff_id, {})
-
-func _get_buff_description(buff_id: String, stacks: int) -> String:
-	var data = _get_buff_data(buff_id)
-	if data.is_empty():
-		return ""
-	var name = data.get("name", buff_id)
-	var desc_template = data.get("description", "")
-	var desc = desc_template.replace("{stacks}", str(stacks))
-	var buff_type = data.get("buff_type", "buff")
-	var type_label = "[增益]" if buff_type == "buff" else "[减益]" if buff_type == "debuff" else ""
-	return "%s %s\n%s" % [type_label, name, desc] if type_label != "" else "%s\n%s" % [name, desc]
-
-func _get_buff_symbol(buff_id: String) -> String:
-	var data = _get_buff_data(buff_id)
-	return data.get("symbol", "●")
-
-func _get_buff_color(buff_id: String) -> Color:
-	var data = _get_buff_data(buff_id)
-	var hex = data.get("color", "#B3B3B3")
-	return Color(hex)
 
 ## 弹出飘字：kind = "damage"(红) / "heal"(绿) / "block"(蓝)
 func show_damage_number(target, amount: int, kind: String = "damage") -> void:
@@ -1104,8 +918,11 @@ func show_damage_number(target, amount: int, kind: String = "damage") -> void:
 		if target_node.has_method("show_damage_number"):
 			target_node.show_damage_number(amount, kind)
 			return
-	elif target is PlayerManager and player_area:
-		target_node = player_area
+	elif target is PlayerManager and _player_slot and is_instance_valid(_player_slot):
+		target_node = _player_slot
+		if target_node.has_method("show_damage_number"):
+			target_node.show_damage_number(amount, kind)
+			return
 	
 	if target_node == null:
 		return
@@ -1137,18 +954,18 @@ func show_damage_number(target, amount: int, kind: String = "damage") -> void:
 	tween.parallel().tween_property(damage_label, "modulate:a", 0.0, 0.3).set_delay(1.5)
 	tween.tween_callback(damage_label.queue_free)
 
-## 玩家受击闪红：按伤害分档决定闪红强度，叠加在 player_area 上
+## 玩家受击闪红：按伤害分档决定闪红强度，叠加在 _player_slot 上
 func flash_player_area(amount: int) -> void:
-	if player_area == null or not is_instance_valid(player_area):
+	if _player_slot == null or not is_instance_valid(_player_slot):
 		return
 	if _player_flash_tween and _player_flash_tween.is_valid():
 		_player_flash_tween.kill()
 	var params := ImpactConfig.get_params(amount)
 	var red_intensity := clampf((params.scale_peak - 1.0) * 2.0, 0.3, 1.0)
 	var flash_color := Color(1.0 + red_intensity * 0.5, 1.0 - red_intensity * 0.7, 1.0 - red_intensity * 0.7)
-	_player_flash_tween = player_area.create_tween()
-	_player_flash_tween.tween_property(player_area, "modulate", flash_color, 0.05)
-	_player_flash_tween.tween_property(player_area, "modulate", Color.WHITE, 0.15)
+	_player_flash_tween = _player_slot.create_tween()
+	_player_flash_tween.tween_property(_player_slot, "modulate", flash_color, 0.05)
+	_player_flash_tween.tween_property(_player_slot, "modulate", Color.WHITE, 0.15)
 
 func remove_card_from_hand(card: CardData) -> void:
 	if current_hand_cards.has(card):
@@ -1188,12 +1005,6 @@ func set_hand_visible(vis: bool) -> void:
 func _on_end_turn_pressed() -> void:
 	end_turn_clicked.emit()
 
-func _on_player_area_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var sprite = player_area.get_node_or_null("PlayerSprite")
-		if sprite and sprite.get_global_rect().has_point(event.global_position):
-			_open_player_detail()
-			player_area.accept_event()
 
 ## 点击空白（穿透到根节点）时关闭详细信息框+解除骰子选中→手牌消失
 func _on_root_input_close_detail(event: InputEvent) -> void:
@@ -1368,57 +1179,36 @@ func _position_detail_panel(target: Control, side: String = "player") -> void:
 	_detail_tween.tween_property(_detail_panel, "global_position:x", px, 0.35) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 
-func _open_player_detail() -> void:
+func _open_actor_detail(actor, node: Control, is_player: bool) -> void:
 	_close_detail_panel()
-	if player_manager == null:
+	if actor == null:
 		return
 	var content = _build_detail_panel()
 	root_node.add_child(_detail_panel)
-	_add_detail_line(content, "玩家", Color(1, 0.9, 0.5), 16)
-	var sprite = player_area.get_node_or_null("PlayerSprite")
-	if sprite:
+	var title = "玩家" if is_player else actor.get_name()
+	_add_detail_line(content, title, Color(1, 0.9, 0.5), 16)
+	var sprite = node.get_node_or_null("Sprite") if node else null
+	if sprite and sprite.texture:
 		_add_detail_sprite(content, sprite.texture)
-	_add_detail_hp_bar(content, player_manager.current_hp, player_manager.max_hp)
-	_add_detail_line(content, "护甲: %d" % player_manager.block, Color(0.45, 0.75, 1.0))
-	_add_detail_energy_dots(content, player_manager.energy, player_manager.max_energy)
-	_add_detail_line(content, "槽位: %d" % player_manager.slots)
-	_add_detail_line(content, "速度: %d" % player_manager.speed)
-	if player_manager.has_method("get_strength"):
-		_add_detail_line(content, "力量: %d" % player_manager.get_strength())
-	if player_manager.has_method("get_dexterity"):
-		_add_detail_line(content, "敏捷: %d" % player_manager.get_dexterity())
-	if player_manager.buff_manager:
+	_add_detail_hp_bar(content, actor.current_hp, actor.max_hp)
+	_add_detail_line(content, "护甲: %d" % actor.block, Color(0.45, 0.75, 1.0))
+	_add_detail_energy_dots(content, actor.energy, actor.max_energy)
+	_add_detail_line(content, "槽位: %d" % actor.slots)
+	_add_detail_line(content, "速度: %d" % actor.speed)
+	if is_player and actor.has_method("get_strength"):
+		_add_detail_line(content, "力量: %d" % actor.get_strength())
+	if is_player and actor.has_method("get_dexterity"):
+		_add_detail_line(content, "敏捷: %d" % actor.get_dexterity())
+	if actor.buff_manager:
 		_add_detail_line(content, "—— 增益/减益 ——", Color(0.75, 0.75, 0.82), 12)
-		if player_manager.buff_manager.buffs.is_empty():
+		if actor.buff_manager.buffs.is_empty():
 			_add_detail_line(content, "（无）", Color(0.6, 0.6, 0.6), 12)
-		for buff in player_manager.buff_manager.buffs:
+		for buff in actor.buff_manager.buffs:
 			var t = _buff_detail_text(buff)
 			if t != "":
 				_add_detail_line(content, t)
-	_position_detail_panel(sprite, "player")
-
-func _open_enemy_detail(enemy: EnemyUnit, enemy_node: Control) -> void:
-	_close_detail_panel()
-	if enemy == null:
-		return
-	var content = _build_detail_panel()
-	root_node.add_child(_detail_panel)
-	_add_detail_line(content, enemy.get_name(), Color(1, 0.8, 0.5), 16)
-	var esprite = enemy_node.get_node_or_null("EnemySprite")
-	if esprite:
-		_add_detail_sprite(content, esprite.texture, 100, 68)
-	_add_detail_hp_bar(content, enemy.current_hp, enemy.max_hp)
-	_add_detail_line(content, "护甲: %d" % enemy.block, Color(0.45, 0.75, 1.0))
-	_add_detail_line(content, "速度: %d" % enemy.speed)
-	if enemy.buff_manager:
-		_add_detail_line(content, "—— 增益/减益 ——", Color(0.75, 0.75, 0.82), 12)
-		if enemy.buff_manager.buffs.is_empty():
-			_add_detail_line(content, "（无）", Color(0.6, 0.6, 0.6), 12)
-		for buff in enemy.buff_manager.buffs:
-			var t = _buff_detail_text(buff)
-			if t != "":
-				_add_detail_line(content, t)
-	_position_detail_panel(enemy_node, "enemy")
+	var side = "player" if is_player else "enemy"
+	_position_detail_panel(node, side)
 
 func highlight_valid_targets(card: CardData) -> void:
 	clear_target_highlights()
@@ -1442,8 +1232,8 @@ func clear_target_highlights() -> void:
 		if enemy_node.has_method("set_highlight_for_target"):
 			enemy_node.set_highlight_for_target(false)
 	
-	if player_area and player_area.has_method("set_highlight_for_target"):
-		player_area.set_highlight_for_target(false)
+	if _player_slot and _player_slot.has_method("set_highlight_for_target"):
+		_player_slot.set_highlight_for_target(false)
 
 
 ## 将卡牌节点从手牌映射中摘出（不释放），交给打出动画接管；避免 hand_changed 重排时释放它
@@ -1524,8 +1314,8 @@ func _get_target_at_position(pos: Vector2):
 		if rect.has_point(pos):
 			return enemy
 	
-	if player_area:
-		var player_rect = Rect2(player_area.global_position, player_area.size)
+	if _player_slot and is_instance_valid(_player_slot):
+		var player_rect = Rect2(_player_slot.global_position, _player_slot.size)
 		if player_rect.has_point(pos):
 			return player_manager
 	
@@ -1537,8 +1327,8 @@ func _update_hover_highlight(hover_target) -> void:
 		if enemy_node.has_method("set_highlight_for_target"):
 			enemy_node.set_highlight_for_target(enemy == hover_target)
 	
-	if player_area and player_area.has_method("set_highlight_for_target"):
-		player_area.set_highlight_for_target(hover_target == player_manager)
+	if _player_slot and _player_slot.has_method("set_highlight_for_target"):
+		_player_slot.set_highlight_for_target(hover_target == player_manager)
 
 
 func _on_card_cancelled(card: CardData) -> void:
@@ -1892,20 +1682,9 @@ func clear_all_enemy_intents() -> void:
 
 ## 更新能量显示（圆点UI：亮=可用, 灰=本回合已用, 暗=不可用）
 func update_energy_display(available: int, maximum: int, used: int = 0) -> void:
-	if player_area == null:
-		return
-	var dots_container = player_area.get_node_or_null("EnergyDots")
-	if dots_container == null:
-		return
-	for child in dots_container.get_children():
-		child.queue_free()
-	var unavailable = maxi(maximum - available - used, 0)
-	for i in available:
-		dots_container.add_child(_create_energy_dot("lit"))
-	for i in used:
-		dots_container.add_child(_create_energy_dot("used"))
-	for i in unavailable:
-		dots_container.add_child(_create_energy_dot("dark"))
+	_ensure_player_slot()
+	if _player_slot and is_instance_valid(_player_slot):
+		_player_slot.update_energy(available, maximum, used)
 
 func _create_energy_dot(state: String) -> Control:
 	var dot = Panel.new()
