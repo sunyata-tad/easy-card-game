@@ -193,6 +193,7 @@ func _find_ui_nodes() -> void:
 		hand_container.gui_input.connect(_on_hand_area_input)
 		hand_container.visible = false
 		_hand_visible = false
+		_hand_original_pos = hand_container.position
 	enemy_container = root_node.get_node_or_null("Background/EnemyArea")
 	player_area = root_node.get_node_or_null("Background/PlayerArea")
 	end_turn_button = root_node.get_node_or_null("EndTurnButton")
@@ -1153,26 +1154,29 @@ func set_interactive(enabled: bool) -> void:
 	for card_node in current_hand_cards.values():
 		card_node.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
 
-## 控制手牌区显隐（点击骰子后才显示）— 带淡入淡出动效
+## 控制手牌区显隐（点击骰子后才显示）— 带滑入滑出动效
 var _hand_visible: bool = false
 var _hand_tween: Tween = null
-func set_hand_visible(visible: bool) -> void:
+var _hand_original_pos: Vector2 = Vector2.ZERO
+func set_hand_visible(vis: bool) -> void:
 	if hand_container == null:
 		return
-	if _hand_visible == visible:
+	if _hand_visible == vis:
 		return
-	_hand_visible = visible
+	_hand_visible = vis
 	if _hand_tween and _hand_tween.is_valid():
 		_hand_tween.kill()
-	if visible:
+	var slide_offset := 280.0
+	if vis:
 		hand_container.visible = true
-		hand_container.modulate.a = 0.0
+		hand_container.position = _hand_original_pos + Vector2(0, slide_offset)
 		_hand_tween = hand_container.create_tween()
-		_hand_tween.tween_property(hand_container, "modulate:a", 1.0, 0.25).set_ease(Tween.EASE_OUT)
+		_hand_tween.tween_property(hand_container, "position", _hand_original_pos, 0.4) \
+			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	else:
-		hand_container.modulate.a = 1.0
 		_hand_tween = hand_container.create_tween()
-		_hand_tween.tween_property(hand_container, "modulate:a", 0.0, 0.2).set_ease(Tween.EASE_IN)
+		_hand_tween.tween_property(hand_container, "position", _hand_original_pos + Vector2(0, slide_offset), 0.35) \
+			.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
 		_hand_tween.tween_callback(func(): hand_container.visible = false)
 
 func _on_end_turn_pressed() -> void:
