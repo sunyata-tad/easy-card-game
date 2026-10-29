@@ -42,6 +42,9 @@ var _player_stats_panel: HBoxContainer = null  ## 属性统计面板
 var _player_buff_bar: HBoxContainer = null     ## buff 图标栏
 var drag_arrow: DragArrow = null               ## 拖拽箭头
 
+## 详细信息框（点击角色弹出，半透明，含完整属性+buff详情，可滚动）
+var _detail_panel: PanelContainer = null
+
 ## 全局 buff 数据库缓存（从 JSON 加载一次，所有 UIController 实例共享）
 static var _buff_db: Dictionary = {}
 
@@ -196,6 +199,8 @@ func _find_ui_nodes() -> void:
 	if player_area:
 		player_area.gui_input.connect(_on_player_area_input)
 		_create_player_info_panels()
+	
+	root_node.gui_input.connect(_on_root_input_close_detail)
 
 func _setup_signals() -> void:
 	if end_turn_button:
@@ -473,6 +478,10 @@ func _on_enemy_ui_selected(enemy: EnemyUnit) -> void:
 			drag_card_node.clear_interaction_state()
 		card_dropped.emit(dragging_card, enemy)
 		_clear_drag_state()
+	else:
+		var node = current_enemy_nodes.get(enemy)
+		if node and is_instance_valid(node):
+			_open_enemy_detail(enemy, node)
 
 func update_single_enemy(enemy: EnemyUnit) -> void:
 	if current_enemy_nodes.has(enemy):
@@ -1158,26 +1167,165 @@ func _on_end_turn_pressed() -> void:
 
 func _on_player_area_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_show_player_stats_popup()
+		var sprite = player_area.get_node_or_null("PlayerSprite")
+		if sprite and sprite.get_global_rect().has_point(event.global_position):
+			_open_player_detail()
+			player_area.accept_event()
 
-func _show_player_stats_popup() -> void:
+## 点击空白（穿透到根节点）时关闭详细信息框；操作（按钮/手牌/角色）不会到达此处
+func _on_root_input_close_detail(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_close_detail_panel()
+
+func _close_detail_panel() -> void:
+	if _detail_panel and is_instance_valid(_detail_panel):
+		_detail_panel.queue_free()
+		_detail_panel = null
+
+## 构建半透明可滚动的详细信息框，返回内容容器（VBox）
+func _build_detail_panel() -> VBoxContainer:
+	var panel = PanelContainer.new()
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.04, 0.05, 0.1, 0.92)
+	style.set_corner_radius_all(8)
+	style.set_content_margin_all(10)
+	style.border_color = Color(0.5, 0.5, 0.65, 0.9)
+	style.border_width_top = 1
+	style.border_width_bottom = 1
+	style.border_width_left = 1
+	style.border_width_right = 1
+	panel.add_theme_stylebox_override("panel", style)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	
+	var scroll = ScrollContainer.new()
+	scroll.name = "Scroll"
+	scroll.custom_minimum_size = Vector2(190, 220)
+	scroll.size_flags_vertical = Control.SIZE_FILL
+	panel.add_child(scroll)
+	
+	var vbox = VBoxContainer.new()
+	vbox.name = "VBox"
+	vbox.add_theme_constant_override("separation", 5)
+	vbox.size_flags_horizontal = Control.SIZE_FILL
+	scroll.add_child(vbox)
+	
+	_detail_panel = panel
+	return vbox
+
+func _add_detail_line(container: VBoxContainer, text: String, color: Color = Color(0.88, 0.88, 0.92), size: int = 13) -> void:
+	var lbl = Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", size)
+	lbl.add_theme_color_override("font_color", color)
+	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
+	lbl.add_theme_constant_override("outline_size", 2)
+	container.add_child(lbl)
+
+func _add_detail_sprite(container: VBoxContainer, texture: Texture2D, w: int = 80, h: int = 64) -> void:
+	if texture == null:
+		return
+	var tex = TextureRect.new()
+	tex.texture = texture
+	tex.custom_minimum_size = Vector2(w, h)
+	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	container.add_child(tex)
+
+func _buff_detail_text(buff) -> String:
+	var stacks := 1
+	var duration := 0
+	var buff_name := ""
+	var buff_id := ""
+	if buff is BuffData:
+		stacks = buff.stacks
+		duration = buff.duration
+		buff_name = buff.name
+		buff_id = buff.id
+	elif buff is Dictionary:
+		stacks = buff.get("stacks", 1)
+		duration = buff.get("duration", 0)
+		buff_name = buff.get("name", "")
+		buff_id = buff.get("id", buff.get("buff_id", ""))
+	else:
+		return ""
+	var line = buff_name if buff_name != "" else buff_id
+	if stacks > 1:
+		line += " x%d" % stacks
+	if duration > 0:
+		line += " (%d回合)" % duration
+	elif duration == -1:
+		line += " (永久)"
+	return line
+
+## 定位详情框在目标节点上方居中；超出屏幕顶部时改放下方
+func _position_detail_panel(target: Control) -> void:
+	if _detail_panel == null or target == null:
+		return
+	_detail_panel.z_index = 300
+	await root_node.get_tree().process_frame
+	if not is_instance_valid(_detail_panel):
+		return
+	var ps = _detail_panel.size
+	var vp = root_node.get_viewport_rect().size
+	var trect = target.get_global_rect()
+	var px = trect.position.x + trect.size.x / 2.0 - ps.x / 2.0
+	px = clamp(px, 6.0, vp.x - ps.x - 6.0)
+	var py = trect.position.y - ps.y - 8.0
+	if py < 6.0:
+		py = trect.position.y + trect.size.y + 8.0
+	_detail_panel.global_position = Vector2(px, py)
+
+func _open_player_detail() -> void:
+	_close_detail_panel()
 	if player_manager == null:
 		return
-	
-	var popup = AcceptDialog.new()
-	popup.title = "角色属性"
-	popup.ok_button_text = "关闭"
-	
-	var stats_text = "生命值: %d / %d\n" % [player_manager.current_hp, player_manager.max_hp]
-	stats_text += "护甲: %d\n" % player_manager.block
-	stats_text += "力量: %d\n" % player_manager.get_strength()
-	stats_text += "敏捷: %d" % player_manager.get_dexterity()
-	
-	popup.dialog_text = stats_text
-	root_node.add_child(popup)
-	popup.popup_centered()
-	popup.confirmed.connect(popup.queue_free)
-	popup.close_requested.connect(popup.queue_free)
+	var content = _build_detail_panel()
+	root_node.add_child(_detail_panel)
+	_add_detail_line(content, "玩家", Color(1, 0.9, 0.5), 16)
+	var sprite = player_area.get_node_or_null("PlayerSprite")
+	if sprite:
+		_add_detail_sprite(content, sprite.texture)
+	_add_detail_line(content, "生命: %d / %d" % [player_manager.current_hp, player_manager.max_hp], Color(1, 0.5, 0.5))
+	_add_detail_line(content, "护甲: %d" % player_manager.block, Color(0.45, 0.75, 1.0))
+	_add_detail_line(content, "能量: %d / %d" % [player_manager.energy, player_manager.max_energy], Color(0.4, 0.6, 1.0))
+	_add_detail_line(content, "槽位: %d" % player_manager.slots)
+	_add_detail_line(content, "速度: %d" % player_manager.speed)
+	if player_manager.has_method("get_strength"):
+		_add_detail_line(content, "力量: %d" % player_manager.get_strength())
+	if player_manager.has_method("get_dexterity"):
+		_add_detail_line(content, "敏捷: %d" % player_manager.get_dexterity())
+	if player_manager.buff_manager:
+		_add_detail_line(content, "—— 增益/减益 ——", Color(0.75, 0.75, 0.82), 12)
+		if player_manager.buff_manager.buffs.is_empty():
+			_add_detail_line(content, "（无）", Color(0.6, 0.6, 0.6), 12)
+		for buff in player_manager.buff_manager.buffs:
+			var t = _buff_detail_text(buff)
+			if t != "":
+				_add_detail_line(content, t)
+	_position_detail_panel(sprite)
+
+func _open_enemy_detail(enemy: EnemyUnit, enemy_node: Control) -> void:
+	_close_detail_panel()
+	if enemy == null:
+		return
+	var content = _build_detail_panel()
+	root_node.add_child(_detail_panel)
+	_add_detail_line(content, enemy.get_name(), Color(1, 0.8, 0.5), 16)
+	var esprite = enemy_node.get_node_or_null("EnemySprite")
+	if esprite:
+		_add_detail_sprite(content, esprite.texture, 100, 68)
+	_add_detail_line(content, "生命: %d / %d" % [enemy.current_hp, enemy.max_hp], Color(1, 0.5, 0.5))
+	_add_detail_line(content, "护甲: %d" % enemy.block, Color(0.45, 0.75, 1.0))
+	_add_detail_line(content, "速度: %d" % enemy.speed)
+	if enemy.buff_manager:
+		_add_detail_line(content, "—— 增益/减益 ——", Color(0.75, 0.75, 0.82), 12)
+		if enemy.buff_manager.buffs.is_empty():
+			_add_detail_line(content, "（无）", Color(0.6, 0.6, 0.6), 12)
+		for buff in enemy.buff_manager.buffs:
+			var t = _buff_detail_text(buff)
+			if t != "":
+				_add_detail_line(content, t)
+	_position_detail_panel(enemy_node)
 
 func highlight_valid_targets(card: CardData) -> void:
 	clear_target_highlights()
@@ -1672,9 +1820,14 @@ func clear_all_enemy_intents() -> void:
 			if intent_label:
 				intent_label.text = ""
 
-## 更新能量显示（常态不显示，仅详细信息框使用）
+## 更新能量显示（图形化能量条）
 func update_energy_display(current: int, maximum: int) -> void:
-	pass
+	if player_area == null:
+		return
+	var energy_bar = player_area.get_node_or_null("EnergyBar")
+	if energy_bar:
+		energy_bar.max_value = maximum
+		energy_bar.value = current
 
 ## 更新槽位/速度显示（常态不显示，仅详细信息框使用）
 func update_slots_display(slots: int, speeds: Array) -> void:

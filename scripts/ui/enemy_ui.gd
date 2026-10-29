@@ -257,10 +257,10 @@ func _create_buff_bar() -> void:
 	_buff_bar = HBoxContainer.new()
 	_buff_bar.name = "BuffBar"
 	_buff_bar.add_theme_constant_override("separation", 4)
-	_buff_bar.offset_left = 5.0
-	_buff_bar.offset_top = 196.0
-	_buff_bar.offset_right = 145.0
-	_buff_bar.offset_bottom = 210.0
+	_buff_bar.offset_left = 4.0
+	_buff_bar.offset_top = 150.0
+	_buff_bar.offset_right = 116.0
+	_buff_bar.offset_bottom = 165.0
 	_buff_bar.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_buff_bar)
 	_update_buff_bar()
