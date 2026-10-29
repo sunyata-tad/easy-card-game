@@ -1231,6 +1231,51 @@ func _add_detail_sprite(container: VBoxContainer, texture: Texture2D, w: int = 8
 	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	container.add_child(tex)
 
+## 详情框内加血条+数字
+func _add_detail_hp_bar(container: VBoxContainer, current: int, maximum: int) -> void:
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 6)
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	var bar = ProgressBar.new()
+	bar.custom_minimum_size = Vector2(120, 14)
+	bar.max_value = maximum
+	bar.value = current
+	bar.show_percentage = false
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.85, 0.25, 0.25, 1)
+	style.set_corner_radius_all(3)
+	bar.add_theme_stylebox_override("fill", style)
+	hbox.add_child(bar)
+	var lbl = Label.new()
+	lbl.text = "%d / %d" % [current, maximum]
+	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.add_theme_color_override("font_color", Color(1, 0.5, 0.5))
+	hbox.add_child(lbl)
+	container.add_child(hbox)
+
+## 详情框内加能量圆点+数字
+func _add_detail_energy_dots(container: VBoxContainer, available: int, maximum: int, used: int = 0) -> void:
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 3)
+	var dots = HBoxContainer.new()
+	dots.add_theme_constant_override("separation", 4)
+	dots.alignment = BoxContainer.ALIGNMENT_CENTER
+	var unavailable = maxi(maximum - available - used, 0)
+	for i in available:
+		dots.add_child(_create_energy_dot("lit"))
+	for i in used:
+		dots.add_child(_create_energy_dot("used"))
+	for i in unavailable:
+		dots.add_child(_create_energy_dot("dark"))
+	vbox.add_child(dots)
+	var lbl = Label.new()
+	lbl.text = "能量 %d / %d" % [available, maximum]
+	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_color_override("font_color", Color(0.4, 0.6, 1.0))
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(lbl)
+	container.add_child(vbox)
+
 func _buff_detail_text(buff) -> String:
 	var stacks := 1
 	var duration := 0
@@ -1285,9 +1330,9 @@ func _open_player_detail() -> void:
 	var sprite = player_area.get_node_or_null("PlayerSprite")
 	if sprite:
 		_add_detail_sprite(content, sprite.texture)
-	_add_detail_line(content, "生命: %d / %d" % [player_manager.current_hp, player_manager.max_hp], Color(1, 0.5, 0.5))
+	_add_detail_hp_bar(content, player_manager.current_hp, player_manager.max_hp)
 	_add_detail_line(content, "护甲: %d" % player_manager.block, Color(0.45, 0.75, 1.0))
-	_add_detail_line(content, "能量: %d / %d" % [player_manager.energy, player_manager.max_energy], Color(0.4, 0.6, 1.0))
+	_add_detail_energy_dots(content, player_manager.energy, player_manager.max_energy)
 	_add_detail_line(content, "槽位: %d" % player_manager.slots)
 	_add_detail_line(content, "速度: %d" % player_manager.speed)
 	if player_manager.has_method("get_strength"):
@@ -1314,7 +1359,7 @@ func _open_enemy_detail(enemy: EnemyUnit, enemy_node: Control) -> void:
 	var esprite = enemy_node.get_node_or_null("EnemySprite")
 	if esprite:
 		_add_detail_sprite(content, esprite.texture, 100, 68)
-	_add_detail_line(content, "生命: %d / %d" % [enemy.current_hp, enemy.max_hp], Color(1, 0.5, 0.5))
+	_add_detail_hp_bar(content, enemy.current_hp, enemy.max_hp)
 	_add_detail_line(content, "护甲: %d" % enemy.block, Color(0.45, 0.75, 1.0))
 	_add_detail_line(content, "速度: %d" % enemy.speed)
 	if enemy.buff_manager:
@@ -1820,14 +1865,43 @@ func clear_all_enemy_intents() -> void:
 			if intent_label:
 				intent_label.text = ""
 
-## 更新能量显示（图形化能量条）
-func update_energy_display(current: int, maximum: int) -> void:
+## 更新能量显示（圆点UI：亮=可用, 灰=本回合已用, 暗=不可用）
+func update_energy_display(available: int, maximum: int, used: int = 0) -> void:
 	if player_area == null:
 		return
-	var energy_bar = player_area.get_node_or_null("EnergyBar")
-	if energy_bar:
-		energy_bar.max_value = maximum
-		energy_bar.value = current
+	var dots_container = player_area.get_node_or_null("EnergyDots")
+	if dots_container == null:
+		return
+	for child in dots_container.get_children():
+		child.queue_free()
+	var unavailable = maxi(maximum - available - used, 0)
+	for i in available:
+		dots_container.add_child(_create_energy_dot("lit"))
+	for i in used:
+		dots_container.add_child(_create_energy_dot("used"))
+	for i in unavailable:
+		dots_container.add_child(_create_energy_dot("dark"))
+
+func _create_energy_dot(state: String) -> Control:
+	var dot = Panel.new()
+	var style = StyleBoxFlat.new()
+	match state:
+		"lit":
+			style.bg_color = Color(0.95, 0.8, 0.3, 1.0)
+			style.border_color = Color(1.0, 0.9, 0.5, 0.8)
+		"used":
+			style.bg_color = Color(0.4, 0.4, 0.45, 1.0)
+		"dark":
+			style.bg_color = Color(0.15, 0.15, 0.2, 1.0)
+	style.set_corner_radius_all(5)
+	style.border_width_top = 1
+	style.border_width_bottom = 1
+	style.border_width_left = 1
+	style.border_width_right = 1
+	dot.add_theme_stylebox_override("panel", style)
+	dot.custom_minimum_size = Vector2(10, 10)
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return dot
 
 ## 更新槽位/速度显示（常态不显示，仅详细信息框使用）
 func update_slots_display(slots: int, speeds: Array) -> void:

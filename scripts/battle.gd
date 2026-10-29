@@ -35,8 +35,8 @@ func _setup_kill_enemies_button():
 	var kill_btn := Button.new()
 	kill_btn.name = "KillEnemiesButton"
 	kill_btn.text = "秒杀敌人"
-	kill_btn.position = Vector2(20, 40)
-	kill_btn.custom_minimum_size = Vector2(110, 34)
+	kill_btn.position = Vector2(10, 10)
+	kill_btn.custom_minimum_size = Vector2(100, 30)
 	kill_btn.pressed.connect(_on_kill_enemies_pressed)
 	add_child(kill_btn)
 	UIStyle.attach_button_anim(kill_btn)
@@ -51,8 +51,8 @@ func _setup_relic_button():
 	var relic_btn := Button.new()
 	relic_btn.name = "RelicButton"
 	relic_btn.text = "遗物"
-	relic_btn.position = Vector2(20, 80)
-	relic_btn.custom_minimum_size = Vector2(90, 34)
+	relic_btn.position = Vector2(10, 46)
+	relic_btn.custom_minimum_size = Vector2(100, 30)
 	relic_btn.pressed.connect(_show_relic_popup)
 	add_child(relic_btn)
 	UIStyle.attach_button_anim(relic_btn)

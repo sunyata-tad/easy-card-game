@@ -92,24 +92,22 @@ layout_mode = 2
 show_percentage = false
 theme_override_styles/fill = SubResource("StyleBoxFlat_hp")
 
-[node name="EnergyBar" type="ProgressBar" parent="Background/PlayerArea"]
-custom_minimum_size = Vector2(80, 8)
+[node name="EnergyDots" type="HBoxContainer" parent="Background/PlayerArea"]
+custom_minimum_size = Vector2(80, 12)
 layout_mode = 2
-max_value = 5
-value = 5
-show_percentage = false
-theme_override_styles/fill = SubResource("StyleBoxFlat_energy")
+theme_override_constants/separation = 4
+alignment = 1
 
 [node name="HandArea" type="Control" parent="Background" unique_id=403637730]
-custom_minimum_size = Vector2(0, 180)
+custom_minimum_size = Vector2(0, 170)
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 140.0
-offset_top = -180.0
-offset_right = -160.0
+offset_left = 20.0
+offset_top = -170.0
+offset_right = -20.0
 grow_horizontal = 2
 grow_vertical = 0
 

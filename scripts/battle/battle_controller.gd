@@ -317,7 +317,8 @@ func _update_new_flow_hud() -> void:
 	var remaining_energy = player_manager.energy
 	for p in _player_queued_plays:
 		remaining_energy -= p.card.cost
-	ui_controller.update_energy_display(remaining_energy, player_manager.max_energy)
+	var used_energy = player_manager.energy - remaining_energy
+	ui_controller.update_energy_display(remaining_energy, player_manager.max_energy, used_energy)
 	var used_slots = _player_queued_plays.size()
 	ui_controller.update_slots_display(player_manager.slots - used_slots, _player_slot_speeds)
 	# 显示队列信息
