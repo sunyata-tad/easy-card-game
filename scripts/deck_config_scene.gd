@@ -137,8 +137,26 @@ func _build_ui():
 	filter_tag.item_selected.connect(_on_filter_changed)
 	search_input.text_changed.connect(_on_search_changed)
 	filter_unlocked_only.toggled.connect(_on_filter_changed)
+	_fix_checkbox_style(filter_unlocked_only)
 	_deck_scroll.resized.connect(_on_scroll_resized)
 	_lib_scroll.resized.connect(_on_scroll_resized)
+
+func _fix_checkbox_style(cb: CheckBox) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.12, 0.13, 0.18, 0.9)
+	style.set_corner_radius_all(4)
+	style.set_content_margin_all(4)
+	style.border_color = Color(0.5, 0.5, 0.6, 0.6)
+	style.border_width_top = 1
+	style.border_width_bottom = 1
+	style.border_width_left = 1
+	style.border_width_right = 1
+	cb.add_theme_stylebox_override("normal", style)
+	cb.add_theme_stylebox_override("hover", style)
+	cb.add_theme_stylebox_override("pressed", style)
+	cb.add_theme_stylebox_override("hover_pressed", style)
+	cb.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
+	cb.add_theme_color_override("font_hover_color", Color(0.95, 0.95, 1.0))
 
 func _refresh_deck_dropdown():
 	deck_name_dropdown.clear()
