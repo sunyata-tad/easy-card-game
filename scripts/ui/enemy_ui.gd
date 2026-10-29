@@ -77,7 +77,7 @@ func setup(enemy: EnemyUnit, pm: PlayerManager = null):
 			sprite.visible = false
 	
 	_create_buff_bar()
-	_update_intent_display()
+
 	_connect_enemy_signals()
 
 func _connect_enemy_signals():
@@ -85,10 +85,8 @@ func _connect_enemy_signals():
 		enemy_unit.hp_changed.connect(_on_enemy_hp_changed)
 		enemy_unit.block_changed.connect(_on_enemy_block_changed)
 		enemy_unit.enemy_died.connect(_on_enemy_died)
-		enemy_unit.intent_changed.connect(_on_intent_changed)
 		if enemy_unit.buff_manager:
 			enemy_unit.buff_manager.buffs_changed.connect(_update_buff_bar)
-			enemy_unit.buff_manager.buffs_changed.connect(_update_intent_display)
 	if player_manager and player_manager.buff_manager:
 		player_manager.buff_manager.buffs_changed.connect(_on_player_buffs_changed)
 
@@ -120,61 +118,9 @@ func _on_enemy_block_changed(amount: int):
 func _on_enemy_died():
 	_animate_death()
 
-func _on_intent_changed(_intent: Dictionary):
-	_update_intent_display()
 
 func _on_player_buffs_changed():
-	_update_intent_display()
-
-func _update_intent_display():
-	if enemy_unit == null:
-		return
-	
-	var intent_lbl = get_node_or_null("IntentLabel")
-	if intent_lbl == null:
-		return
-	
-	var intent = enemy_unit.current_intent
-	if intent.is_empty():
-		intent_lbl.visible = false
-		return
-	
-	intent_lbl.visible = true
-	var intent_type = intent.get("type", "")
-	var intent_text = intent.get("intent_text", "")
-	
-	match intent_type:
-		"attack":
-			var damage = intent.get("damage", 0)
-			var mult = enemy_unit.buff_manager.get_mult("damage")
-			var add = int(enemy_unit.buff_manager.get_flat_add("damage"))
-			var effective = int((damage + add) * mult)
-			if player_manager:
-				var damage_taken_mult = player_manager.buff_manager.get_mult("damage_taken")
-				effective = int(effective * damage_taken_mult)
-			if intent_text != "":
-				intent_lbl.text = "%s %d" % [intent_text, effective]
-			else:
-				intent_lbl.text = "攻击 %d" % effective
-			intent_lbl.add_theme_color_override("font_color", Color(1, 0.3, 0.3, 1))
-		"defend":
-			var block = intent.get("block", 0)
-			var mult = enemy_unit.buff_manager.get_mult("block")
-			var effective = int(block * mult)
-			if intent_text != "":
-				intent_lbl.text = "%s %d" % [intent_text, effective]
-			else:
-				intent_lbl.text = "防御 %d" % effective
-			intent_lbl.add_theme_color_override("font_color", Color(0.4, 0.8, 1, 1))
-		"buff":
-			intent_lbl.text = "↑ %s" % (intent_text if intent_text != "" else "强化")
-			intent_lbl.add_theme_color_override("font_color", Color(0.3, 0.9, 0.4, 1))
-		"debuff":
-			intent_lbl.text = "↓ %s" % (intent_text if intent_text != "" else "削弱")
-			intent_lbl.add_theme_color_override("font_color", Color(0.8, 0.4, 0.9, 1))
-		_:
-			intent_lbl.text = intent_text if intent_text != "" else ""
-			intent_lbl.visible = intent_text != ""
+	pass
 
 func _on_mouse_entered():
 	if enemy_unit and enemy_unit.is_alive():

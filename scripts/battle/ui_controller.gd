@@ -496,14 +496,7 @@ func update_single_enemy(enemy: EnemyUnit) -> void:
 		
 		if node.has_method("_update_buff_bar"):
 			node._update_buff_bar()
-		if node.has_method("_update_intent_display"):
-			node._update_intent_display()
 
-func update_all_enemy_intents() -> void:
-	for enemy in current_enemy_nodes:
-		var node = current_enemy_nodes[enemy]
-		if node and is_instance_valid(node) and node.has_method("_update_intent_display"):
-			node._update_intent_display()
 
 func update_player_display(hp: int, max_hp: int, block: int) -> void:
 	if player_area == null:
@@ -909,22 +902,8 @@ func _get_battle_controller():
 func update_player_stats_info(pm: PlayerManager) -> void:
 	if _player_stats_panel == null:
 		return
-	
 	for child in _player_stats_panel.get_children():
 		child.queue_free()
-	
-	# 新流程不需要弃牌攻击显示（卡牌自带伤害值）
-	var bc = _get_battle_controller()
-	if bc and bc.use_new_flow:
-		return
-	
-	var effective = pm.get_expected_attack_damage()
-	
-	var a_lbl = Label.new()
-	a_lbl.text = "弃牌攻击:%d" % effective
-	a_lbl.add_theme_font_size_override("font_size", 13)
-	a_lbl.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
-	_player_stats_panel.add_child(a_lbl)
 
 func update_player_buff_bar(pm: PlayerManager) -> void:
 	if _player_buff_bar == null:

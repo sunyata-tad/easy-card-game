@@ -182,11 +182,7 @@ func _on_draw_phase() -> void:
 			ui_controller.clear_all_enemy_intents()
 		if not _check_battle_end_state():
 			state_machine.change_state(StateMachine.BattleState.TURN_PREPARE)
-	else:
-		_decide_all_enemy_intents()
-		if not _check_battle_end_state():
-			turn_manager.start_new_turn(true)
-			state_machine.change_state(StateMachine.BattleState.PLAYER_TURN)
+
 
 func _on_player_turn_phase() -> void:
 	ui_controller.set_interactive(true)
@@ -459,24 +455,11 @@ func _process_turn_end_effects() -> void:
 	_execute_player_auto_block()
 	if _check_battle_end_state():
 		return
-	# 旧流程：回合结束执行敌人攻击
-	# 新流程：敌人在结算阶段已出牌，跳过
-	if not use_new_flow:
-		await _execute_enemy_attacks()
-		if _check_battle_end_state():
-			return
 	player_manager.buff_manager.decrease_durations()
 	player_manager.buff_manager.remove_at_turn_end()
 	for enemy in enemy_system.get_alive_enemies():
 		enemy.buff_manager.decrease_durations()
 		enemy.buff_manager.remove_at_turn_end()
-
-func _execute_enemy_attacks() -> void:
-	for enemy in enemy_system.get_alive_enemies():
-		_execute_single_enemy_turn(enemy)
-		if not player_manager.is_alive():
-			break
-	await get_tree().create_timer(0.2).timeout
 
 ## 回合结束阶段：玩家自动获取敏捷护甲（base_dexterity 自动护甲保留；攻击改为主动弃牌攻击）
 func _execute_player_auto_block() -> void:
@@ -528,41 +511,9 @@ func _tick_buffs_on_turn_end(target) -> void:
 		for effect in target.buff_manager.tick_buffs("on_turn_end"):
 			_apply_tick_effect(target, effect)
 
-func _decide_all_enemy_intents() -> void:
-	for enemy in enemy_system.get_alive_enemies():
-		enemy.decide_next_intent()
-
 func _execute_enemy_turns() -> void:
 	await get_tree().create_timer(0.3).timeout
 	state_machine.change_state(StateMachine.BattleState.TURN_END)
-
-func _execute_single_enemy_turn(enemy: EnemyUnit) -> void:
-	if not enemy.is_alive() or enemy.current_intent.is_empty() or not player_manager.is_alive():
-		return
-	# 迷惑：本回合无法行动（回合结束层数-1）
-	if enemy.buff_manager and enemy.buff_manager.has_buff("stun"):
-		ui_controller.show_state_message("%s 被迷惑，无法行动" % enemy.get_name(), 0.8)
-		return
-	_execute_enemy_action(enemy, enemy.current_intent)
-
-func _execute_enemy_action(enemy: EnemyUnit, action: Dictionary) -> void:
-	if not player_manager.is_alive():
-		return
-	match action.get("type", ""):
-		"attack":
-			_perform_attack(enemy, player_manager, action.get("damage", 5))
-			_update_player_ui()
-		"defend":
-			var final_block = int(action.get("block", 5) * enemy.buff_manager.get_mult("block"))
-			if final_block > 0:
-				enemy.gain_block(final_block)
-				ui_controller.update_single_enemy(enemy)
-		"buff":
-			effect_resolver.apply_buff({"buff_id": action.get("buff_id", ""), "value": action.get("stacks", 1)}, enemy)
-			ui_controller.update_single_enemy(enemy)
-		"debuff":
-			effect_resolver.apply_buff({"buff_id": action.get("buff_id", ""), "value": action.get("stacks", 1)}, player_manager)
-			_update_player_ui()
 
 func _on_player_turn_start() -> void:
 
@@ -693,9 +644,7 @@ func _update_player_ui() -> void:
 	ui_controller.update_player_display(player_manager.current_hp, player_manager.max_hp, player_manager.block)
 	ui_controller.update_player_stats_info(player_manager)
 	ui_controller.update_player_buff_bar(player_manager)
-	# 新流程：敌人意图由 show_enemy_intent 管理，不调用旧意图更新（避免覆盖）
-	if not use_new_flow:
-		ui_controller.update_all_enemy_intents()
+
 
 func _update_initial_ui() -> void:
 	ui_controller.update_enemy_display(enemy_system.get_all_enemies())
