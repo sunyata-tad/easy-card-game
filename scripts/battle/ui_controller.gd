@@ -622,19 +622,13 @@ func _on_dice_input(event: InputEvent, index: int, is_enemy: bool, enemy_idx: in
 		if is_enemy:
 			return
 		var node = _dice_nodes[index]
-		if _active_dice_index == index:
-			# 取消激活
-			_apply_dice_style(node, false, _dice_cards[index] != null)
-			_active_dice_index = -1
-		else:
-			# 激活该骰子，显示对应手牌
-			if _active_dice_index >= 0 and _active_dice_index < _dice_nodes.size():
-				_apply_dice_style(_dice_nodes[_active_dice_index], false, _dice_cards[_active_dice_index] != null)
-			_apply_dice_style(node, true, _dice_cards[index] != null)
-			_active_dice_index = index
-			if node is DiceHex:
-				node.set_hover_scale(1.15)
-			set_hand_visible(true)
+		if _active_dice_index >= 0 and _active_dice_index < _dice_nodes.size() and _active_dice_index != index:
+			_apply_dice_style(_dice_nodes[_active_dice_index], false, _dice_cards[_active_dice_index] != null)
+		_apply_dice_style(node, true, _dice_cards[index] != null)
+		_active_dice_index = index
+		if node is DiceHex:
+			node.set_hover_scale(1.15)
+		set_hand_visible(true)
 
 	elif event.button_index == MOUSE_BUTTON_RIGHT:
 		_unload_dice_card(index, is_enemy, enemy_idx)
@@ -1178,6 +1172,9 @@ func _on_root_input_close_detail(event: InputEvent) -> void:
 		_close_detail_panel()
 		if _hand_visible:
 			set_hand_visible(false)
+		if _active_dice_index >= 0 and _active_dice_index < _dice_nodes.size():
+			_apply_dice_style(_dice_nodes[_active_dice_index], false, _dice_cards[_active_dice_index] != null)
+			_active_dice_index = -1
 
 func _close_detail_panel() -> void:
 	if _detail_panel == null or not is_instance_valid(_detail_panel):
