@@ -30,6 +30,7 @@ var mouse_inside: bool = true         ## 鼠标是否在卡牌区域内
 var is_awaiting_target: bool = false  ## 是否在等待选择目标（需要目标的卡牌拖出手牌区后进入箭头瞄准模式）
 var tooltip_panel: PanelContainer = null   ## 悬停提示面板
 var tooltip_panels: Array = []             ## 多个关键词悬浮框列表
+var _desc_tooltip_panel: PanelContainer = null  ## 卡牌完整描述悬浮面板
 var drag_exited_hand: bool = false    ## 拖拽是否已离开手牌区域
 var is_select_mode: bool = false      ## 是否处于选择模式
 var is_playing_animation: bool = false ## 打出动画播放中（飞向中央/弃牌堆时阻止悬停干扰）
@@ -491,6 +492,7 @@ func _on_mouse_entered():
 	_animate_hover(true)
 
 	_show_buff_tooltip()
+	_show_desc_tooltip()
 
 func _on_mouse_exited():
 	is_hovered = false
@@ -501,6 +503,7 @@ func _on_mouse_exited():
 	_animate_hover(false)
 
 	_hide_buff_tooltip()
+	_hide_desc_tooltip()
 
 ## 判断卡牌是否需要选择目标（single_enemy 或 single_ally 类型）
 func _needs_target() -> bool:
@@ -642,6 +645,7 @@ func _parabola_pos(t: float, node: Control, start: Vector2, end: Vector2, arc_h:
 
 func reset_position():
 	_hide_buff_tooltip()
+	_hide_desc_tooltip()
 	position = original_position
 	scale = original_scale
 	rotation_degrees = original_rotation
@@ -812,6 +816,75 @@ func _hide_buff_tooltip() -> void:
 	if tooltip_panel and is_instance_valid(tooltip_panel):
 		tooltip_panel.queue_free()
 	tooltip_panel = null
+
+func _show_desc_tooltip() -> void:
+	if card_data == null or is_dragging or is_awaiting_target or is_select_mode:
+		return
+	_hide_desc_tooltip()
+	var desc_text := _get_display_text()
+	if desc_text.is_empty():
+		return
+	var canvas := get_tree().root
+	var gp := global_position
+	var vp := get_viewport_rect().size
+	var panel := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.06, 0.1, 0.97)
+	style.set_corner_radius_all(8)
+	style.set_content_margin_all(12)
+	style.border_color = Color(0.5, 0.5, 0.6, 1.0)
+	style.border_width_top = 1
+	style.border_width_bottom = 1
+	style.border_width_left = 1
+	style.border_width_right = 1
+	style.shadow_color = Color(0, 0, 0, 0.4)
+	style.shadow_size = 8
+	style.shadow_offset = Vector2(0, 3)
+	panel.add_theme_stylebox_override("panel", style)
+	panel.custom_minimum_size = Vector2(240, 0)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	var name_lbl := Label.new()
+	name_lbl.text = card_data.name
+	name_lbl.add_theme_font_size_override("font_size", 17)
+	name_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
+	name_lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
+	name_lbl.add_theme_constant_override("outline_size", 2)
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(name_lbl)
+	var rtl := RichTextLabel.new()
+	rtl.bbcode_enabled = true
+	rtl.fit_content = true
+	rtl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rtl.text = desc_text
+	rtl.add_theme_color_override("default_color", Color(0.88, 0.9, 0.94))
+	rtl.add_theme_font_size_override("normal_font_size", 16)
+	rtl.add_theme_font_size_override("bold_font_size", 16)
+	rtl.custom_minimum_size = Vector2(216, 0)
+	vbox.add_child(rtl)
+	panel.add_child(vbox)
+	canvas.add_child(panel)
+	_desc_tooltip_panel = panel
+	await get_tree().process_frame
+	if not is_instance_valid(panel):
+		return
+	var ts: Vector2 = panel.size
+	var card_w := size.x * scale.x
+	var px := gp.x + (card_w - ts.x) / 2.0
+	var py := gp.y - ts.y - 12
+	if px < 5:
+		px = 5
+	if px + ts.x > vp.x - 5:
+		px = vp.x - ts.x - 5
+	if py < 5:
+		py = gp.y + size.y * scale.y + 12
+	panel.position = Vector2(px, py)
+	panel.z_index = 130
+
+func _hide_desc_tooltip() -> void:
+	if _desc_tooltip_panel and is_instance_valid(_desc_tooltip_panel):
+		_desc_tooltip_panel.queue_free()
+	_desc_tooltip_panel = null
 
 func _get_rarity_color(rarity: String) -> Color:
 	match rarity:
