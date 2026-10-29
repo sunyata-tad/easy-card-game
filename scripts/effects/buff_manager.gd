@@ -48,7 +48,7 @@ func _register_buff_hook(buff: BuffData) -> void:
 			hook_chain.register(HookRegistry.HOOK_CALC_ADD, func(v, _c): return v + buff.stacks, 10, _hook_id("strength"))
 			_register_source_annotation(buff, func(has_dmg, _has_blk, is_src): return "伤害+%d" % buff.stacks if is_src and has_dmg and buff.stacks != 0 else null)
 		"dexterity":
-			hook_chain.register(HookRegistry.HOOK_CALC_BLOCK, func(v, _c): return v + buff.stacks, 10, _hook_id("dexterity"))
+
 			_register_source_annotation(buff, func(_has_dmg, has_blk, is_src): return "护甲+%d" % buff.stacks if is_src and has_blk and buff.stacks != 0 else null)
 		"weak":
 			hook_chain.register(HookRegistry.HOOK_CALC_FINAL, func(v, _c): return maxi(1, int(v * 0.75)), 20, _hook_id("weak"))
@@ -87,7 +87,7 @@ func _unregister_buff_hook(buff_id: String) -> void:
 	if hook_chain == null: return
 	hook_chain.unregister(HookRegistry.HOOK_CALC_BASE, _hook_id(buff_id))
 	hook_chain.unregister(HookRegistry.HOOK_CALC_ADD, _hook_id(buff_id))
-	hook_chain.unregister(HookRegistry.HOOK_CALC_BLOCK, _hook_id(buff_id))
+
 	hook_chain.unregister(HookRegistry.HOOK_CALC_MULT, _hook_id(buff_id))
 	hook_chain.unregister(HookRegistry.HOOK_CALC_FINAL, _hook_id(buff_id))
 	hook_chain.unregister(HookRegistry.HOOK_ON_DAMAGE_TAKEN, _hook_id(buff_id))
