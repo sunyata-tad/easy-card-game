@@ -582,6 +582,8 @@ func end_player_turn() -> void:
 func _on_card_played(card: CardData, _target) -> void:
 	if not ui_controller.is_card_select_active():
 		ui_controller.remove_card_from_hand(card)
+	if GameData:
+		GameData.record_card_played()
 
 func _on_hand_changed(hand: Array) -> void:
 	ui_controller.update_hand_display(hand)
@@ -595,6 +597,8 @@ func _on_enemy_died(_enemy: EnemyUnit) -> void:
 func _on_enemy_damaged(enemy: EnemyUnit, amount: int) -> void:
 	ui_controller.update_single_enemy(enemy)
 	ui_controller.show_damage_number(enemy, amount)
+	if GameData:
+		GameData.record_damage_dealt(amount)
 
 ## 治疗结算 → 绿色飘字
 func _on_healing_done(target, amount: int) -> void:

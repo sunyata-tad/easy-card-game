@@ -34,8 +34,7 @@ func _setup_ui():
 	if stats_label:
 		var stats_text = "游戏统计:\n"
 		stats_text += "胜利场次: %d\n" % game_stats.get("battles_won", 0)
-		stats_text += "总伤害: %d\n" % game_stats.get("total_damage", 0)
-		stats_text += "使用卡牌: %d\n" % game_stats.get("cards_played", 0)
+
 		stats_text += "最终HP: %d / %d" % [game_stats.get("final_hp", 0), game_stats.get("max_hp", 80)]
 		stats_label.text = stats_text
 
