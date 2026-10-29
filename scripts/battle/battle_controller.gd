@@ -12,7 +12,7 @@ var card_database: CardDatabase
 var enemy_database: EnemyDatabase
 var rules: BattleRules
 
-var pending_card: CardData = null
+
 var is_first_turn: bool = true
 var is_discard_phase: bool = false
 var use_new_flow: bool = true   ## B4: 使用同时出牌新流程
@@ -272,53 +272,13 @@ func on_turn_start_clicked() -> void:
 		return
 	confirm_player_plays()
 
-## B4: 队列一张玩家卡牌（选牌阶段）
-func _queue_player_card(card: CardData, target) -> void:
-	# 检查槽位
-	if _player_queued_plays.size() >= player_manager.slots:
-		ui_controller.show_state_message("槽位已满", 1.0)
-		return
-	# 检查能量
-	var queued_cost: int = 0
-	for p in _player_queued_plays:
-		queued_cost += p.card.cost
-	if queued_cost + card.cost > player_manager.energy:
-		ui_controller.show_state_message("能量不足", 0.8)
-		var cn = ui_controller.current_hand_cards.get(card)
-		if cn and is_instance_valid(cn):
-			ui_controller._shake_card(cn)
-		return
-	# 检查是否已在队列中
-	for p in _player_queued_plays:
-		if p.card == card:
-			return
-	# 确定目标
-	var target_to_use = target
-	if card.target_type == "self":
-		target_to_use = player_manager
-	elif card.target_type == "single_enemy" and target == null:
-		# 自动选择第一个存活敌人
-		for e in enemy_system.get_alive_enemies():
-			target_to_use = e
-			break
-		if target_to_use == null:
-			return
-	_player_queued_plays.append({"card": card, "target": target_to_use})
-	# 更新UI
-	_update_new_flow_hud()
-	# 卡牌视觉反馈：上移表示已队列
-	if ui_controller:
-		var card_node = ui_controller.get_card_node(card)
-		if card_node and card_node.has_method("set_queued"):
-			card_node.set_queued(true)
 
-
-## B4: 更新新流程HUD
+## B4: 更新新流程HUD（基于骰子已装载卡牌计算剩余能量）
 func _update_new_flow_hud() -> void:
 	if not ui_controller:
 		return
 	var remaining_energy = player_manager.energy
-	for p in _player_queued_plays:
+	for p in ui_controller.get_loaded_plays():
 		remaining_energy -= p.card.cost
 	var used_energy = player_manager.energy - remaining_energy
 	ui_controller.update_energy_display(remaining_energy, player_manager.max_energy, used_energy)
@@ -554,7 +514,7 @@ func play_card(card: CardData, target = null) -> bool:
 	if card.target_type == "self":
 		target_to_use = player_manager
 	elif card.target_type == "single_enemy" and target == null:
-		pending_card = card
+
 		return false
 	if card.target_type == "single_enemy" and target_to_use == null:
 		return false
@@ -679,8 +639,7 @@ func _on_ui_card_played(card: CardData, target) -> void:
 	play_card_with_animation(card, target, node)
 
 func _on_ui_card_cancelled(card: CardData) -> void:
-	if pending_card == card:
-		pending_card = null
+
 	ui_controller.clear_target_highlights()
 
 func _on_ui_card_dropped(card: CardData, target) -> void:
@@ -714,7 +673,7 @@ func _on_ui_card_dropped(card: CardData, target) -> void:
 			card_node.reset_position()
 
 func play_card_with_animation(card: CardData, target, card_node: Control) -> void:
-	# 未显式传入节点时从手牌映射查找（如短按选目标后的 pending_card 流程）
+	# 未显式传入节点时从手牌映射查找
 	if card_node == null and ui_controller:
 		card_node = ui_controller.get_card_node(card)
 	# 从手牌映射摘出节点（不释放），避免结算触发的 hand_changed 重排释放它，节点改由动画接管
@@ -740,15 +699,7 @@ func play_card_with_animation(card: CardData, target, card_node: Control) -> voi
 
 func _on_ui_enemy_selected(enemy: EnemyUnit) -> void:
 	player_manager.selected_target = enemy
-	# 新流程：在PLAYER_SELECT阶段，如果有pending_card，将其队列
-	if use_new_flow and state_machine.is_player_select() and pending_card != null:
-		_queue_player_card(pending_card, enemy)
-		pending_card = null
-		ui_controller.clear_target_highlights()
-		return
-	if pending_card != null:
-		play_card_with_animation(pending_card, enemy, null)
-		pending_card = null
+	if ui_controller:
 		ui_controller.clear_target_highlights()
 
 func _on_ui_end_turn_clicked() -> void:
@@ -771,8 +722,6 @@ func get_tree():
 ## 槽位出牌列表（每回合收集双方所有槽位的出牌）
 var _pending_plays: Array = []
 
-## 玩家已队列出牌（PLAYER_SELECT阶段）
-var _player_queued_plays: Array = []
 
 ## 玩家槽位速度（回合开始掷骰分配）
 var _player_slot_speeds: Array = []
