@@ -191,6 +191,8 @@ func _find_ui_nodes() -> void:
 	hand_container = root_node.get_node_or_null("Background/HandArea")
 	if hand_container:
 		hand_container.gui_input.connect(_on_hand_area_input)
+		hand_container.visible = false
+		_hand_visible = false
 	enemy_container = root_node.get_node_or_null("Background/EnemyArea")
 	player_area = root_node.get_node_or_null("Background/PlayerArea")
 	end_turn_button = root_node.get_node_or_null("EndTurnButton")
