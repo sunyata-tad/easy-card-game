@@ -670,6 +670,8 @@ func load_card_to_dice(card: CardData, card_node = null) -> bool:
 	# 从手牌移除
 	if bc:
 		bc.card_system.hand.erase(card)
+	# 从current_hand_cards移除引用但不释放节点（节点保留在_dice_card_nodes中供骰子悬浮/结算复用）
+	current_hand_cards.erase(card)
 	# 卡牌飞入骰子动画
 	var dice_node = _dice_nodes[dice_index]
 	if card_node and is_instance_valid(card_node) and dice_node:
