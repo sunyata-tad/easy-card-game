@@ -760,11 +760,16 @@ func _show_buff_tooltip() -> void:
 	var gp := global_position
 	var vp := get_viewport_rect().size
 
-	var px := gp.x + size.x * 1.4 + 8
-	var py_start := gp.y + size.y * 0.2
 	var panel_width := 170
+	var px := gp.x + size.x * 1.4 + 8
+	var py := gp.y + size.y * 0.2
 
 	for info in infos:
+		var full_text := "%s：%s" % [info.name, info.desc]
+		var chars_per_line := int((panel_width - 16) / 12.0)
+		var line_count := maxi(1, ceili(float(full_text.length()) / chars_per_line))
+		var panel_height := line_count * 16 + 16
+
 		var panel := PanelContainer.new()
 		var style := StyleBoxFlat.new()
 		style.bg_color = Color(0.06, 0.06, 0.1, 0.96)
@@ -779,7 +784,7 @@ func _show_buff_tooltip() -> void:
 		style.shadow_size = 4
 		style.shadow_offset = Vector2(0, 2)
 		panel.add_theme_stylebox_override("panel", style)
-		panel.custom_minimum_size = Vector2(panel_width, 0)
+		panel.custom_minimum_size = Vector2(panel_width, panel_height)
 
 		var rtl := RichTextLabel.new()
 		rtl.bbcode_enabled = true
@@ -794,20 +799,14 @@ func _show_buff_tooltip() -> void:
 		canvas.add_child(panel)
 		tooltip_panels.append(panel)
 
-	await get_tree().process_frame
-	var py := py_start
-	for panel in tooltip_panels:
-		if not is_instance_valid(panel):
-			continue
-		var ts: Vector2 = panel.get_combined_minimum_size()
-		if px + ts.x > vp.x:
+		if px + panel_width > vp.x:
 			panel.position = Vector2(gp.x - panel_width - 14, py)
 		else:
 			panel.position = Vector2(px, py)
-		if panel.position.y + ts.y > vp.y:
-			panel.position.y = vp.y - ts.y - 6
+		if panel.position.y + panel_height > vp.y:
+			panel.position.y = vp.y - panel_height - 6
 		panel.z_index = 120
-		py += ts.y + 4
+		py += panel_height + 4
 
 func _hide_buff_tooltip() -> void:
 	for panel in tooltip_panels:
