@@ -6,7 +6,7 @@ var dice_value: String = "?" : set = set_value
 var bg_color: Color = Color(0.16, 0.17, 0.21)      ## 背景色
 var border_color: Color = Color(0.4, 0.42, 0.48)   ## 边框色
 var text_color: Color = Color(0.5, 0.5, 0.55)      ## 文字色
-var _value_font_size: int = 30
+var _value_font_size: int = 18
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -49,7 +49,7 @@ func _draw() -> void:
 	draw_colored_polygon(pts, bg_color)
 	# 边框
 	for i in pts.size():
-		draw_line(pts[i], pts[(i + 1) % pts.size()], border_color, 3.0)
+		draw_line(pts[i], pts[(i + 1) % pts.size()], border_color, 2.0)
 	# 文字
 	var font := ThemeDB.fallback_font
 	if font:

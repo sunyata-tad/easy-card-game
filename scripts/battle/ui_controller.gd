@@ -568,7 +568,7 @@ func create_dice_bar(slots: int, speeds: Array, unknown: bool = false) -> void:
 		_dice_bar.queue_free()
 	_dice_bar = HBoxContainer.new()
 	_dice_bar.name = "DiceBar"
-	_dice_bar.add_theme_constant_override("separation", 10)
+	_dice_bar.add_theme_constant_override("separation", 4)
 	for i in slots:
 		var dice = _create_dice_node(i, _dice_speeds[i] if i < _dice_speeds.size() else 1, false, -1, unknown)
 		_dice_nodes.append(dice)
@@ -620,7 +620,7 @@ func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array, unknown: b
 ## B4: 创建单个骰子节点（六边形，只显示速度）
 func _create_dice_node(index: int, speed: int, is_enemy: bool, enemy_idx: int, unknown: bool = false) -> DiceHex:
 	var dice = DiceHex.new()
-	dice.custom_minimum_size = Vector2(60, 66)
+	dice.custom_minimum_size = Vector2(38, 42)
 	dice.name = "Dice_%s_%d" % ["E" if is_enemy else "P", index]
 	dice.dice_value = "?" if unknown else "%d" % speed
 	dice.set_state_colors(false, false)
@@ -984,13 +984,13 @@ func _create_buff_label(info: Dictionary) -> Control:
 		btn.text = symbol
 	if duration > 0:
 		btn.text += "(%d)" % duration
-	btn.add_theme_font_size_override("font_size", 12)
+	btn.add_theme_font_size_override("font_size", 9)
 	btn.add_theme_color_override("font_color", color)
 	btn.add_theme_color_override("font_hover_color", color)
 	btn.flat = true
 	if UIStyle:
 		UIStyle.strip_button_box(btn)
-	btn.custom_minimum_size = Vector2(0, 18)
+	btn.custom_minimum_size = Vector2(0, 10)
 	btn.focus_mode = Control.FOCUS_NONE
 	
 	var tooltip_text = _get_buff_tooltip(buff_id, stacks, duration)
@@ -1898,13 +1898,13 @@ func _create_energy_dot(state: String) -> Control:
 			style.bg_color = Color(0.4, 0.4, 0.45, 1.0)
 		"dark":
 			style.bg_color = Color(0.15, 0.15, 0.2, 1.0)
-	style.set_corner_radius_all(5)
+	style.set_corner_radius_all(3)
 	style.border_width_top = 1
 	style.border_width_bottom = 1
 	style.border_width_left = 1
 	style.border_width_right = 1
 	dot.add_theme_stylebox_override("panel", style)
-	dot.custom_minimum_size = Vector2(10, 10)
+	dot.custom_minimum_size = Vector2(7, 7)
 	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return dot
 

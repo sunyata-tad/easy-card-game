@@ -242,7 +242,7 @@ func show_damage_number(amount: int, kind: String = "damage"):
 	damage_label.add_theme_color_override("font_color", color)
 	damage_label.add_theme_font_size_override("font_size", 28)
 	damage_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	damage_label.position = Vector2(60, 0)
+	damage_label.position = Vector2(32, 0)
 	add_child(damage_label)
 
 	ImpactConfig.apply_text_effect(damage_label, amount, self)
@@ -257,10 +257,10 @@ func _create_buff_bar() -> void:
 	_buff_bar = HBoxContainer.new()
 	_buff_bar.name = "BuffBar"
 	_buff_bar.add_theme_constant_override("separation", 4)
-	_buff_bar.offset_left = 4.0
-	_buff_bar.offset_top = 150.0
-	_buff_bar.offset_right = 116.0
-	_buff_bar.offset_bottom = 165.0
+	_buff_bar.offset_left = 1.0
+	_buff_bar.offset_top = 99.0
+	_buff_bar.offset_right = 63.0
+	_buff_bar.offset_bottom = 109.0
 	_buff_bar.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_buff_bar)
 	_update_buff_bar()
@@ -324,13 +324,13 @@ func _create_buff_label(info: Dictionary) -> Control:
 		btn.text = symbol
 	if duration > 0:
 		btn.text += "(%d)" % duration
-	btn.add_theme_font_size_override("font_size", 11)
+	btn.add_theme_font_size_override("font_size", 9)
 	btn.add_theme_color_override("font_color", color)
 	btn.add_theme_color_override("font_hover_color", color)
 	btn.flat = true
 	if UIStyle:
 		UIStyle.strip_button_box(btn)
-	btn.custom_minimum_size = Vector2(0, 16)
+	btn.custom_minimum_size = Vector2(0, 10)
 	btn.focus_mode = Control.FOCUS_NONE
 	
 	var tooltip_text = _get_buff_tooltip(buff_id, stacks, duration)
