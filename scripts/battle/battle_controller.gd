@@ -193,7 +193,7 @@ func _on_player_turn_phase() -> void:
 func _on_resolving_phase() -> void:
 	ui_controller.set_interactive(false)
 	if use_new_flow:
-		ui_controller.set_hand_visible(false)
+		ui_controller.deactivate_dice_and_hide_hand()
 		# 结算中：按钮灰色不可用
 		ui_controller.show_end_turn_button("回合开始", false)
 
@@ -209,7 +209,7 @@ func _on_turn_prepare_phase() -> void:
 	is_turn_ready = false
 	if ui_controller:
 		ui_controller.set_interactive(false)
-		ui_controller.set_hand_visible(false)
+		ui_controller.deactivate_dice_and_hide_hand()
 		ui_controller.create_dice_bar(player_manager.slots, _player_slot_speeds, true)
 		ui_controller.update_energy_display(player_manager.energy, player_manager.max_energy)
 		ui_controller.update_slots_display(player_manager.slots, _player_slot_speeds)
@@ -256,7 +256,7 @@ func _on_enemy_select_phase() -> void:
 func _on_player_select_phase() -> void:
 	if ui_controller:
 		ui_controller.set_interactive(true)
-		ui_controller.set_hand_visible(false)
+		ui_controller.deactivate_dice_and_hide_hand()
 		ui_controller.show_turn_banner("你的回合")
 		ui_controller.reveal_player_dice()
 		ui_controller.show_end_turn_button("回合开始", true)

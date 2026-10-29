@@ -28,7 +28,7 @@ var is_pressed: bool = false          ## 是否被按下
 var press_tween: Tween = null         ## 按下动画的 tween 对象
 var mouse_inside: bool = true         ## 鼠标是否在卡牌区域内
 var is_awaiting_target: bool = false  ## 是否在等待选择目标（需要目标的卡牌拖出手牌区后进入箭头瞄准模式）
-var tooltip_panel: PanelContainer = null   ## 悬停提示面板
+
 var tooltip_panels: Array = []             ## 多个关键词悬浮框列表
 
 var drag_exited_hand: bool = false    ## 拖拽是否已离开手牌区域
@@ -813,9 +813,7 @@ func _hide_buff_tooltip() -> void:
 		if panel and is_instance_valid(panel):
 			panel.queue_free()
 	tooltip_panels.clear()
-	if tooltip_panel and is_instance_valid(tooltip_panel):
-		tooltip_panel.queue_free()
-	tooltip_panel = null
+
 
 
 func _get_rarity_color(rarity: String) -> Color:

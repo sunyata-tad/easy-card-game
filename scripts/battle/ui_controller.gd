@@ -622,16 +622,29 @@ func _on_dice_input(event: InputEvent, index: int, is_enemy: bool, enemy_idx: in
 		if is_enemy:
 			return
 		var node = _dice_nodes[index]
-		if _active_dice_index >= 0 and _active_dice_index < _dice_nodes.size() and _active_dice_index != index:
-			_apply_dice_style(_dice_nodes[_active_dice_index], false, _dice_cards[_active_dice_index] != null)
-		_apply_dice_style(node, true, _dice_cards[index] != null)
-		_active_dice_index = index
-		if node is DiceHex:
-			node.set_hover_scale(1.15)
-		set_hand_visible(true)
+		if _active_dice_index == index:
+			# 再次点击同一骰子：取消选中 → 手牌消失
+			deactivate_dice_and_hide_hand()
+		else:
+			# 激活该骰子，显示对应手牌
+			if _active_dice_index >= 0 and _active_dice_index < _dice_nodes.size():
+				_apply_dice_style(_dice_nodes[_active_dice_index], false, _dice_cards[_active_dice_index] != null)
+			_apply_dice_style(node, true, _dice_cards[index] != null)
+			_active_dice_index = index
+			if node is DiceHex:
+				node.set_hover_scale(1.15)
+			set_hand_visible(true)
 
 	elif event.button_index == MOUSE_BUTTON_RIGHT:
 		_unload_dice_card(index, is_enemy, enemy_idx)
+
+## B4: 取消骰子选中并隐藏手牌（点击空白/再次点击骰子/阶段切换时调用）
+## 设计意图：解除骰子选中是原因，手牌消失是结果
+func deactivate_dice_and_hide_hand() -> void:
+	if _active_dice_index >= 0 and _active_dice_index < _dice_nodes.size():
+		_apply_dice_style(_dice_nodes[_active_dice_index], false, _dice_cards[_active_dice_index] != null)
+	_active_dice_index = -1
+	set_hand_visible(false)
 
 ## B4: 是否有激活的骰子（等待装载）
 func has_active_dice() -> bool:
@@ -1166,15 +1179,11 @@ func _on_player_area_input(event: InputEvent) -> void:
 			_open_player_detail()
 			player_area.accept_event()
 
-## 点击空白（穿透到根节点）时关闭详细信息框+隐藏手牌；操作（按钮/手牌/角色）不会到达此处
+## 点击空白（穿透到根节点）时关闭详细信息框+解除骰子选中→手牌消失
 func _on_root_input_close_detail(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		_close_detail_panel()
-		if _hand_visible:
-			set_hand_visible(false)
-		if _active_dice_index >= 0 and _active_dice_index < _dice_nodes.size():
-			_apply_dice_style(_dice_nodes[_active_dice_index], false, _dice_cards[_active_dice_index] != null)
-			_active_dice_index = -1
+		deactivate_dice_and_hide_hand()
 
 func _close_detail_panel() -> void:
 	if _detail_panel == null or not is_instance_valid(_detail_panel):
