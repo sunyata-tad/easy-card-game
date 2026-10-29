@@ -900,26 +900,36 @@ func get_loaded_plays() -> Array:
 			plays.append({"card": card, "target": target, "slot_index": i, "speed": _dice_speeds[i] if i < _dice_speeds.size() else 1})
 	return plays
 
-## B4: 清理骰子UI
-func clear_dice_ui() -> void:
+## B4: 隐藏骰子栏（结算前调用，保留卡牌节点供结算动画复用）
+func hide_dice_bar_ui() -> void:
 	if _dice_bar and is_instance_valid(_dice_bar):
 		_dice_bar.queue_free()
 	_dice_bar = null
-	for node in _dice_card_nodes:
-		if node and is_instance_valid(node):
-			node.queue_free()
-	_dice_cards.clear()
-	_dice_card_nodes.clear()
 	_dice_nodes.clear()
 	_active_dice_index = -1
 	for enemy_idx in _enemy_dice_bars.keys():
 		var bar_data = _enemy_dice_bars[enemy_idx]
 		if bar_data.bar and is_instance_valid(bar_data.bar):
 			bar_data.bar.queue_free()
+
+## B4: 释放骰子卡牌节点并清空数据（结算后调用）
+func clear_dice_card_nodes() -> void:
+	for node in _dice_card_nodes:
+		if node and is_instance_valid(node):
+			node.queue_free()
+	_dice_cards.clear()
+	_dice_card_nodes.clear()
+	for enemy_idx in _enemy_dice_bars.keys():
+		var bar_data = _enemy_dice_bars[enemy_idx]
 		for cnode in bar_data.get("card_nodes", []):
 			if cnode and is_instance_valid(cnode):
 				cnode.queue_free()
 	_enemy_dice_bars.clear()
+
+## B4: 清理骰子UI（隐藏骰子栏+释放卡牌节点）
+func clear_dice_ui() -> void:
+	hide_dice_bar_ui()
+	clear_dice_card_nodes()
 
 ## B4: 获取BattleController（优先使用注入的引用，否则遍历场景树兜底查找）
 func _get_battle_controller():

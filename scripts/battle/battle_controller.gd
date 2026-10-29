@@ -306,11 +306,14 @@ func confirm_player_plays(slot_plays: Array = []) -> void:
 		for play in _pending_plays:
 			if not play.is_player and play.enemy_index == enemy_idx:
 				enemy.spend_energy(play.card.cost)
-	# 清理骰子UI
+	# 隐藏骰子栏（保留卡牌节点供结算动画复用）
 	if ui_controller:
-		ui_controller.clear_dice_ui()
+		ui_controller.hide_dice_bar_ui()
 	state_machine.change_state(StateMachine.BattleState.RESOLVING)
 	await _resolve_all_plays()
+	# 结算后释放骰子卡牌节点
+	if ui_controller:
+		ui_controller.clear_dice_card_nodes()
 	if not _check_battle_end_state():
 		state_machine.change_state(StateMachine.BattleState.TURN_END)
 
