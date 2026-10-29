@@ -59,6 +59,7 @@ func _connect_signals() -> void:
 
 func _on_player_damaged(amount: int) -> void:
 	if ui_controller:
+		ui_controller.show_damage_number(player_manager, amount)
 		ui_controller.flash_player_area(amount)
 
 func setup_battle(root_node: Control, initial_deck: Array = [], enemies: Array = []) -> void:
