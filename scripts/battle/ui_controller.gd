@@ -825,21 +825,28 @@ func _show_dice_card_preview(card_node: Control, dice_node: Control) -> void:
 	card_node.modulate.a = 1.0  # 恢复透明度（飞入骰子时降到了0.3）
 	card_node.z_index = 500
 	card_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var card_size = card_node.size * 0.72
+	# pivot_offset=ZERO: global_position 即渲染左上角，不受 scale 影响
+	card_node.pivot_offset = Vector2.ZERO
 	var dice_center = dice_node.global_position + dice_node.size / 2
-	var pos = Vector2(dice_center.x - card_size.x / 2, dice_node.global_position.y - card_size.y - 8)
-	var vp_size = root_node.get_viewport_rect().size
-	if pos.x < 0:
-		pos.x = 0
-	if pos.x + card_size.x > vp_size.x:
-		pos.x = vp_size.x - card_size.x
-	if pos.y < 0:
-		pos.y = dice_node.global_position.y + dice_node.size.y + 8
-	card_node.global_position = pos
-	card_node.pivot_offset = Vector2(card_node.size.x / 2, card_node.size.y)
+	# 起始：scale=0, 位置=骰子中心（从骰子冒出）
 	card_node.scale = Vector2.ZERO
+	card_node.global_position = dice_center
+	# 结束：scale=0.72, 位置=骰子上方居中
+	var card_w = card_node.size.x * 0.72
+	var card_h = card_node.size.y * 0.72
+	var target_pos = Vector2(dice_center.x - card_w / 2, dice_node.global_position.y - card_h - 8)
+	var vp_size = root_node.get_viewport_rect().size
+	if target_pos.x < 0:
+		target_pos.x = 0
+	if target_pos.x + card_w > vp_size.x:
+		target_pos.x = vp_size.x - card_w
+	if target_pos.y < 0:
+		target_pos.y = dice_node.global_position.y + dice_node.size.y + 8
 	var tw = root_node.create_tween()
+	tw.set_parallel(true)
 	tw.tween_property(card_node, "scale", Vector2(0.72, 0.72), 0.2) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tw.tween_property(card_node, "global_position", target_pos, 0.2) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 
 ## B4: 卡牌能量不足反馈——红色闪烁+左右抖动
