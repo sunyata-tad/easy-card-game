@@ -51,7 +51,7 @@ func _setup_relic_button():
 	var relic_btn := Button.new()
 	relic_btn.name = "RelicButton"
 	relic_btn.text = "遗物"
-	relic_btn.position = Vector2(10, 46)
+	relic_btn.position = Vector2(120, 10)
 	relic_btn.custom_minimum_size = Vector2(100, 30)
 	relic_btn.pressed.connect(_show_relic_popup)
 	add_child(relic_btn)

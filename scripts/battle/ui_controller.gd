@@ -211,10 +211,10 @@ func _load_card_scene() -> void:
 	card_scene = load("res://scenes/Card.tscn")
 
 func _get_hand_container_width() -> float:
-	if hand_container and hand_container.get_parent():
-		var parent_width: float = hand_container.get_parent().size.x
-		if parent_width > 0:
-			return maxf(parent_width - hand_container.position.x - 40.0, 200.0)
+	if hand_container:
+		var w: float = hand_container.size.x
+		if w > 0:
+			return maxf(w, 200.0)
 	return 800.0
 
 ## 建立手牌边缘滚动计时器与左右提示箭头
@@ -648,13 +648,14 @@ func _on_dice_input(event: InputEvent, index: int, is_enemy: bool, enemy_idx: in
 			_apply_dice_style(node, false, _dice_cards[index] != null)
 			_active_dice_index = -1
 		else:
-			# 激活该骰子
+			# 激活该骰子，显示对应手牌
 			if _active_dice_index >= 0 and _active_dice_index < _dice_nodes.size():
 				_apply_dice_style(_dice_nodes[_active_dice_index], false, _dice_cards[_active_dice_index] != null)
 			_apply_dice_style(node, true, _dice_cards[index] != null)
 			_active_dice_index = index
 			if node is DiceHex:
 				node.set_hover_scale(1.15)
+			set_hand_visible(true)
 
 	elif event.button_index == MOUSE_BUTTON_RIGHT:
 		_unload_dice_card(index, is_enemy, enemy_idx)
@@ -1170,6 +1171,11 @@ func remove_card_from_hand(card: CardData) -> void:
 func set_interactive(enabled: bool) -> void:
 	for card_node in current_hand_cards.values():
 		card_node.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+
+## 控制手牌区显隐（点击骰子后才显示）
+func set_hand_visible(visible: bool) -> void:
+	if hand_container:
+		hand_container.visible = visible
 
 func _on_end_turn_pressed() -> void:
 	end_turn_clicked.emit()
