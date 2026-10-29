@@ -831,7 +831,7 @@ func _resolve_all_plays() -> void:
 			continue
 		# 卡牌结算动画（显示卡牌本体+来源效果标注，敌我）
 		if ui_controller:
-			await ui_controller.show_resolve_animation(card, source is PlayerManager, _get_effect_sources(card, source, target))
+			await ui_controller.show_resolve_animation(card, source is PlayerManager, _get_effect_sources(card, source, target), play.slot_index, play.get("enemy_index", -1))
 		# 执行效果
 		effect_resolver.resolve_effects(card.effects, source, target)
 		# 打出的牌回牌库

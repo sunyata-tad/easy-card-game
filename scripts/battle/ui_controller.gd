@@ -19,10 +19,11 @@ var _player_flash_tween: Tween = null     ## 玩家受击闪红 tween（防止�
 ## B4: 骰子UI（玩家）
 var _dice_bar: HBoxContainer = null        ## 玩家骰子栏
 var _dice_nodes: Array = []                ## 玩家骰子节点数组
-var _dice_cards: Array = []                ## 骰子装载的卡牌数组
+var _dice_cards: Array = []                ## 骰子装载的卡牌数据数组
+var _dice_card_nodes: Array = []           ## 骰子装载的卡牌UI节点数组（保留同一对象）
 var _dice_speeds: Array = []               ## 骰子速度值数组
 var _active_dice_index: int = -1           ## 当前激活的骰子索引（等待装载）
-var _dice_tooltip: PanelContainer = null   ## 骰子悬浮浮框
+
 
 ## 敌人骰子栏 {enemy_idx: {"bar":Node, "nodes":Array, "cards":Array, "speeds":Array}}
 var _enemy_dice_bars: Dictionary = {}
@@ -540,6 +541,8 @@ func create_dice_bar(slots: int, speeds: Array, unknown: bool = false) -> void:
 	_dice_speeds.reverse()
 	_dice_cards.clear()
 	_dice_cards.resize(slots)
+	_dice_card_nodes.clear()
+	_dice_card_nodes.resize(slots)
 	_dice_nodes.clear()
 	_active_dice_index = -1
 
@@ -594,7 +597,7 @@ func create_enemy_dice_bar(enemy_idx: int, slots: int, speeds: Array, unknown: b
 	if enemy_container and enemy_container.get_child_count() > enemy_idx:
 		var enemy_node = enemy_container.get_child(enemy_idx)
 		_position_bar_above.call_deferred(bar, enemy_node)
-	_enemy_dice_bars[enemy_idx] = {"bar": bar, "nodes": nodes, "cards": cards, "speeds": sorted_speeds}
+	_enemy_dice_bars[enemy_idx] = {"bar": bar, "nodes": nodes, "cards": cards, "card_nodes": [], "speeds": sorted_speeds}
 
 ## B4: 创建单个骰子节点（六边形，只显示速度）
 func _create_dice_node(index: int, speed: int, is_enemy: bool, enemy_idx: int, unknown: bool = false) -> DiceHex:
@@ -670,6 +673,7 @@ func load_card_to_dice(card: CardData, card_node = null) -> bool:
 	# 卡牌飞入骰子动画
 	var dice_node = _dice_nodes[dice_index]
 	if card_node and is_instance_valid(card_node) and dice_node:
+		_dice_card_nodes[dice_index] = card_node
 		_fly_card_to_dice(card_node, dice_node, dice_index)
 	else:
 		_update_dice_display(dice_index, false, -1)
@@ -693,7 +697,7 @@ func _fly_card_to_dice(card_node: Control, dice_node: Control, dice_index: int) 
 	tween.set_parallel(false)
 	tween.tween_callback(func():
 		if is_instance_valid(card_node):
-			card_node.queue_free()
+			card_node.visible = false
 		_update_dice_display(dice_index, false, -1)
 		var bc = _get_battle_controller()
 		if bc:
@@ -750,10 +754,11 @@ func place_enemy_dice_card(enemy_idx: int, index: int, card: CardData) -> void:
 	bar_data.cards[index] = card
 	_update_dice_display(index, true, enemy_idx)
 
-## B4: 骰子悬浮——显示对应卡牌浮框（从骰子冒出）+ 缩放反馈
+## B4: 骰子悬浮——显示对应卡牌（从骰子冒出）+ 缩放反馈
 func _on_dice_hover(index: int, is_enemy: bool, enemy_idx: int) -> void:
 	var node: Control = null
 	var card: CardData = null
+	var card_node: Control = null
 	if is_enemy:
 		var bar_data = _enemy_dice_bars.get(enemy_idx)
 		if bar_data:
@@ -761,94 +766,70 @@ func _on_dice_hover(index: int, is_enemy: bool, enemy_idx: int) -> void:
 				node = bar_data.nodes[index]
 			if index < bar_data.cards.size():
 				card = bar_data.cards[index]
+			if card and node:
+				# 敌人卡牌：复用已存储的节点或实例化
+				if index < bar_data.card_nodes.size() and bar_data.card_nodes[index] and is_instance_valid(bar_data.card_nodes[index]):
+					card_node = bar_data.card_nodes[index]
+				else:
+					card_node = _create_card_node(card)
+					if card_node:
+						root_node.add_child(card_node)
+						while index >= bar_data.card_nodes.size():
+							bar_data.card_nodes.append(null)
+						bar_data.card_nodes[index] = card_node
 	else:
 		if index < _dice_nodes.size():
 			node = _dice_nodes[index]
 		if index < _dice_cards.size():
 			card = _dice_cards[index]
+		if index < _dice_card_nodes.size():
+			card_node = _dice_card_nodes[index]
 	if node is DiceHex:
 		node.set_hover_scale(1.12)
-	if card and node:
-		_show_dice_tooltip(card, node)
+	if card_node and is_instance_valid(card_node) and node:
+		_show_dice_card_preview(card_node, node)
 
 ## B4: 骰子取消悬浮
 func _on_dice_unhover(index: int = -1, is_enemy: bool = false, enemy_idx: int = -1) -> void:
 	var node: Control = null
+	var card_node: Control = null
 	if is_enemy:
 		var bar_data = _enemy_dice_bars.get(enemy_idx)
 		if bar_data and index >= 0 and index < bar_data.nodes.size():
 			node = bar_data.nodes[index]
+		if bar_data and index >= 0 and index < bar_data.card_nodes.size():
+			card_node = bar_data.card_nodes[index]
 	else:
 		if index >= 0 and index < _dice_nodes.size():
 			node = _dice_nodes[index]
+		if index >= 0 and index < _dice_card_nodes.size():
+			card_node = _dice_card_nodes[index]
 	if node is DiceHex:
 		node.set_hover_scale(1.0)
-	_hide_dice_tooltip()
+	if card_node and is_instance_valid(card_node):
+		card_node.visible = false
 
-## B4: 显示骰子卡牌浮框
-func _show_dice_tooltip(card: CardData, dice_node: Control) -> void:
-	_hide_dice_tooltip()
-	_dice_tooltip = PanelContainer.new()
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.06, 0.1, 0.96)
-	style.border_width_left = 1
-	style.border_width_top = 1
-	style.border_width_right = 1
-	style.border_width_bottom = 1
-	style.border_color = Color(0.5, 0.6, 0.8, 0.8)
-	style.set_corner_radius_all(6)
-	style.content_margin_left = 8
-	style.content_margin_top = 6
-	style.content_margin_right = 8
-	style.content_margin_bottom = 6
-	_dice_tooltip.add_theme_stylebox_override("panel", style)
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 3)
-	_dice_tooltip.add_child(vbox)
-	var name_label = Label.new()
-	name_label.text = "%s (cost %d)" % [card.name, card.cost]
-	name_label.add_theme_font_size_override("font_size", 13)
-	name_label.add_theme_color_override("font_color", Color(1, 1, 1))
-	vbox.add_child(name_label)
-	var desc_label = RichTextLabel.new()
-	desc_label.bbcode_enabled = true
-	desc_label.text = CardData.bold_keywords(card.description)
-	desc_label.add_theme_font_size_override("normal_font_size", 11)
-	desc_label.add_theme_font_size_override("bold_font_size", 11)
-	desc_label.add_theme_color_override("default_color", Color(0.8, 0.8, 0.85))
-	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_label.custom_minimum_size = Vector2(160, 0)
-	vbox.add_child(desc_label)
-	root_node.add_child(_dice_tooltip)
-	_dice_tooltip.z_index = 500
-	# 等一帧获取实际尺寸后定位+动画
-	await root_node.get_tree().process_frame
-	if not is_instance_valid(_dice_tooltip):
-		return
-	var tsize = _dice_tooltip.get_combined_minimum_size()
-	# 定位在骰子上方居中
+## B4: 显示卡牌节点从骰子位置冒出（从小到大缩放）
+func _show_dice_card_preview(card_node: Control, dice_node: Control) -> void:
+	card_node.visible = true
+	card_node.z_index = 500
+	card_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var card_size = card_node.size * 0.72
 	var dice_center = dice_node.global_position + dice_node.size / 2
-	var pos = Vector2(dice_center.x - tsize.x / 2, dice_node.global_position.y - tsize.y - 8)
+	var pos = Vector2(dice_center.x - card_size.x / 2, dice_node.global_position.y - card_size.y - 8)
 	var vp_size = root_node.get_viewport_rect().size
 	if pos.x < 0:
 		pos.x = 0
-	if pos.x + tsize.x > vp_size.x:
-		pos.x = vp_size.x - tsize.x
+	if pos.x + card_size.x > vp_size.x:
+		pos.x = vp_size.x - card_size.x
 	if pos.y < 0:
 		pos.y = dice_node.global_position.y + dice_node.size.y + 8
-	_dice_tooltip.global_position = pos
-	_dice_tooltip.pivot_offset = tsize / 2
-	# 从小到大冒出动画
-	_dice_tooltip.scale = Vector2.ZERO
+	card_node.global_position = pos
+	card_node.pivot_offset = Vector2(card_node.size.x / 2, card_node.size.y)
+	card_node.scale = Vector2.ZERO
 	var tw = root_node.create_tween()
-	tw.tween_property(_dice_tooltip, "scale", Vector2.ONE, 0.2) \
+	tw.tween_property(card_node, "scale", Vector2(0.72, 0.72), 0.2) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-
-## B4: 隐藏骰子浮框
-func _hide_dice_tooltip() -> void:
-	if _dice_tooltip and is_instance_valid(_dice_tooltip):
-		_dice_tooltip.queue_free()
-	_dice_tooltip = null
 
 ## B4: 卡牌能量不足反馈——红色闪烁+左右抖动
 func _shake_card(card_node: Control) -> void:
@@ -889,6 +870,7 @@ func clear_dice_ui() -> void:
 		_dice_bar.queue_free()
 	_dice_bar = null
 	_dice_cards.clear()
+	_dice_card_nodes.clear()
 	_dice_nodes.clear()
 	_active_dice_index = -1
 	for enemy_idx in _enemy_dice_bars.keys():
@@ -896,7 +878,6 @@ func clear_dice_ui() -> void:
 		if bar_data.bar and is_instance_valid(bar_data.bar):
 			bar_data.bar.queue_free()
 	_enemy_dice_bars.clear()
-	_hide_dice_tooltip()
 
 ## B4: 获取BattleController（优先使用注入的引用，否则遍历场景树兜底查找）
 func _get_battle_controller():
@@ -1791,88 +1772,91 @@ func show_end_turn_button(text: String, enabled: bool) -> void:
 		end_turn_button.text = text
 		end_turn_button.disabled = not enabled
 
-## B4: 卡牌结算动画——显示卡牌本体（卡图+名称+描述）+来源效果标注（敌我）
-func show_resolve_animation(card: CardData, is_player: bool, sources: Array) -> void:
-	var container = PanelContainer.new()
-	container.name = "ResolveCard"
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.09, 0.13, 0.98)
-	style.border_width_left = 3
-	style.border_width_top = 3
-	style.border_width_right = 3
-	style.border_width_bottom = 3
-	style.border_color = Color(0.4, 0.8, 0.5, 0.95) if is_player else Color(0.9, 0.4, 0.4, 0.95)
-	style.set_corner_radius_all(8)
-	style.content_margin_left = 10
-	style.content_margin_top = 10
-	style.content_margin_right = 10
-	style.content_margin_bottom = 10
-	container.add_theme_stylebox_override("panel", style)
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 5)
-	container.add_child(vbox)
-	# 归属标签
-	var side_lbl = Label.new()
-	side_lbl.text = "我方出牌" if is_player else "敌方出牌"
-	side_lbl.add_theme_font_size_override("font_size", 12)
-	side_lbl.add_theme_color_override("font_color", Color(0.6, 0.95, 0.6) if is_player else Color(0.95, 0.6, 0.6))
-	side_lbl.horizontal_alignment = 1
-	vbox.add_child(side_lbl)
-	# 卡图
-	var art_panel = PanelContainer.new()
-	art_panel.custom_minimum_size = Vector2(150, 90)
-	var astyle = StyleBoxFlat.new()
-	astyle.bg_color = Color(0.05, 0.05, 0.08, 1)
-	astyle.set_corner_radius_all(5)
-	art_panel.clip_contents = true
-	art_panel.add_theme_stylebox_override("panel", astyle)
-	if card.art != "":
-		var tex = TextureRect.new()
-		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		var t = load(card.art)
-		if t:
-			tex.texture = t
-		art_panel.add_child(tex)
-	vbox.add_child(art_panel)
-	# 名称+费用
-	var name_lbl = Label.new()
-	name_lbl.text = "%s  [%d费]" % [card.name, card.cost]
-	name_lbl.add_theme_font_size_override("font_size", 17)
-	name_lbl.add_theme_color_override("font_color", Color(1.0, 0.95, 0.8))
-	name_lbl.horizontal_alignment = 1
-	vbox.add_child(name_lbl)
-	# 描述
-	var desc_lbl = RichTextLabel.new()
-	desc_lbl.bbcode_enabled = true
-	desc_lbl.text = CardData.bold_keywords(card.description)
-	desc_lbl.add_theme_font_size_override("normal_font_size", 12)
-	desc_lbl.add_theme_font_size_override("bold_font_size", 12)
-	desc_lbl.add_theme_color_override("default_color", Color(0.85, 0.85, 0.9))
-	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_lbl.custom_minimum_size = Vector2(170, 0)
-	vbox.add_child(desc_lbl)
-	# 来源效果标注（buff/遗物等对该卡牌效果的影响）
-	for src_text in sources:
-		var src_lbl = Label.new()
-		src_lbl.text = src_text
-		src_lbl.add_theme_font_size_override("font_size", 12)
-		src_lbl.add_theme_color_override("font_color", Color(0.9, 0.8, 0.5))
-		src_lbl.horizontal_alignment = 1
-		vbox.add_child(src_lbl)
-	root_node.add_child(container)
-	container.z_index = 500
+## B4: 卡牌结算动画——显示卡牌本体（真实Card节点）+旁边来源效果标注
+func show_resolve_animation(card: CardData, is_player: bool, sources: Array, slot_index: int, enemy_index: int = -1) -> void:
+	# 获取卡牌节点：玩家从_dice_card_nodes, 敌人从_enemy_dice_bars
+	var card_node: Control = null
+	var is_temp = false
+	if is_player and slot_index >= 0 and slot_index < _dice_card_nodes.size():
+		card_node = _dice_card_nodes[slot_index]
+	if card_node == null or not is_instance_valid(card_node):
+		if not is_player and enemy_index >= 0:
+			var bar_data = _enemy_dice_bars.get(enemy_index)
+			if bar_data and slot_index >= 0 and slot_index < bar_data.card_nodes.size():
+				card_node = bar_data.card_nodes[slot_index]
+	if card_node == null or not is_instance_valid(card_node):
+		# 兜底：实例化临时卡牌节点
+		card_node = _create_card_node(card)
+		if card_node:
+			root_node.add_child(card_node)
+			is_temp = true
+	if card_node == null or not is_instance_valid(card_node):
+		return
+
+	# 显示卡牌节点在屏幕中央
+	card_node.visible = true
+	card_node.z_index = 500
+	card_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var vp = root_node.get_viewport_rect().size
-	container.global_position = Vector2(vp.x * 0.5 - 100, 110) if is_player else Vector2(vp.x * 0.5 - 100, 360)
-	container.modulate.a = 0.0
-	container.pivot_offset = Vector2(100, 100)
+	var card_size = card_node.size * 0.72
+	var card_pos = Vector2(vp.x * 0.5 - card_size.x / 2, 110 if is_player else 360)
+	card_node.global_position = card_pos
+	card_node.pivot_offset = Vector2(card_node.size.x / 2, card_node.size.y / 2)
+	card_node.scale = Vector2(0.72, 0.72)
+	card_node.modulate.a = 0.0
+
+	# 旁边来源效果标注面板
+	var src_panel: PanelContainer = null
+	if sources.size() > 0:
+		src_panel = PanelContainer.new()
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(0.08, 0.09, 0.13, 0.95)
+		style.border_width_left = 2
+		style.border_width_top = 2
+		style.border_width_right = 2
+		style.border_width_bottom = 2
+		style.border_color = Color(0.7, 0.6, 0.3, 0.9)
+		style.set_corner_radius_all(6)
+		style.content_margin_left = 8
+		style.content_margin_top = 6
+		style.content_margin_right = 8
+		style.content_margin_bottom = 6
+		src_panel.add_theme_stylebox_override("panel", style)
+		var src_vbox = VBoxContainer.new()
+		src_vbox.add_theme_constant_override("separation", 4)
+		src_panel.add_child(src_vbox)
+		for src_text in sources:
+			var src_lbl = Label.new()
+			src_lbl.text = src_text
+			src_lbl.add_theme_font_size_override("font_size", 13)
+			src_lbl.add_theme_color_override("font_color", Color(0.9, 0.8, 0.5))
+			src_vbox.add_child(src_lbl)
+		root_node.add_child(src_panel)
+		src_panel.z_index = 501
+		src_panel.modulate.a = 0.0
+		await root_node.get_tree().process_frame
+		if is_instance_valid(src_panel):
+			var src_size = src_panel.get_combined_minimum_size()
+			src_panel.global_position = Vector2(card_pos.x + card_size.x + 12, card_pos.y)
+			src_panel.size = src_size
+
+	# 淡入显示
 	var tw = root_node.create_tween()
-	tw.tween_property(container, "modulate:a", 1.0, 0.15)
+	tw.tween_property(card_node, "modulate:a", 1.0, 0.15)
+	if src_panel and is_instance_valid(src_panel):
+		tw.parallel().tween_property(src_panel, "modulate:a", 1.0, 0.15)
 	tw.tween_interval(0.9)
-	tw.tween_property(container, "modulate:a", 0.0, 0.15)
+	tw.tween_property(card_node, "modulate:a", 0.0, 0.15)
+	if src_panel and is_instance_valid(src_panel):
+		tw.parallel().tween_property(src_panel, "modulate:a", 0.0, 0.15)
 	await tw.finished
-	if is_instance_valid(container):
-		container.queue_free()
+	# 清理
+	if is_temp and is_instance_valid(card_node):
+		card_node.queue_free()
+	elif is_instance_valid(card_node):
+		card_node.visible = false
+	if src_panel and is_instance_valid(src_panel):
+		src_panel.queue_free()
 
 
 ## 显示敌人出牌意图（同时出牌模式下）
