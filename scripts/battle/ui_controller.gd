@@ -44,6 +44,8 @@ var drag_arrow: DragArrow = null               ## 拖拽箭头
 
 ## 详细信息框（点击角色弹出，半透明，含完整属性+buff详情，可滚动）
 var _detail_panel: PanelContainer = null
+var _detail_panel_side: String = ""
+var _detail_tween: Tween = null
 
 ## 全局 buff 数据库缓存（从 JSON 加载一次，所有 UIController 实例共享）
 static var _buff_db: Dictionary = {}
@@ -1197,9 +1199,26 @@ func _on_root_input_close_detail(event: InputEvent) -> void:
 			set_hand_visible(false)
 
 func _close_detail_panel() -> void:
-	if _detail_panel and is_instance_valid(_detail_panel):
-		_detail_panel.queue_free()
+	if _detail_panel == null or not is_instance_valid(_detail_panel):
 		_detail_panel = null
+		_detail_panel_side = ""
+		return
+	if _detail_tween and _detail_tween.is_valid():
+		_detail_tween.kill()
+	var panel = _detail_panel
+	var side = _detail_panel_side
+	_detail_panel = null
+	_detail_panel_side = ""
+	var vp = root_node.get_viewport_rect().size
+	var slide_x: float
+	if side == "player":
+		slide_x = -panel.size.x - 20.0
+	else:
+		slide_x = vp.x + 20.0
+	_detail_tween = panel.create_tween()
+	_detail_tween.tween_property(panel, "global_position:x", slide_x, 0.3) \
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+	_detail_tween.tween_callback(panel.queue_free)
 
 ## 构建半透明可滚动的详细信息框，返回内容容器（VBox）
 func _build_detail_panel() -> VBoxContainer:
@@ -1321,19 +1340,30 @@ func _buff_detail_text(buff) -> String:
 		line += " (永久)"
 	return line
 
-## 定位详情框固定在对应侧（玩家=左侧, 敌人=右侧），垂直居中
+## 定位详情框并滑入（玩家=左侧, 敌人=右侧），垂直居中
 func _position_detail_panel(target: Control, side: String = "player") -> void:
 	if _detail_panel == null:
 		return
+	_detail_panel_side = side
 	_detail_panel.z_index = 300
 	await root_node.get_tree().process_frame
 	if not is_instance_valid(_detail_panel):
 		return
+	if _detail_tween and _detail_tween.is_valid():
+		_detail_tween.kill()
 	var ps = _detail_panel.size
 	var vp = root_node.get_viewport_rect().size
 	var px: float = 10.0 if side == "player" else vp.x - ps.x - 10.0
 	var py: float = (vp.y - ps.y) / 2.0
-	_detail_panel.global_position = Vector2(px, py)
+	var start_x: float
+	if side == "player":
+		start_x = -ps.x - 20.0
+	else:
+		start_x = vp.x + 20.0
+	_detail_panel.global_position = Vector2(start_x, py)
+	_detail_tween = _detail_panel.create_tween()
+	_detail_tween.tween_property(_detail_panel, "global_position:x", px, 0.35) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 
 func _open_player_detail() -> void:
 	_close_detail_panel()
