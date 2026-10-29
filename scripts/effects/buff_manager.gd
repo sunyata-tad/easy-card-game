@@ -28,6 +28,10 @@ signal buffs_changed()               ## 任何 buff 变化时触发
 ## 这些 buff 重复施加时会延长持续时间而不是增加层数
 var DURATION_STACK_BUFFS: Array = ["weak", "vulnerable"]
 
+## 来源标注回调列表：[{buff_id, generator}]
+## generator 接收 (has_damage, has_block, is_source) 返回标注文本或 null
+var _source_annotations: Array = []
+
 func _init(target_hook_chain: HookChain = null):
 	hook_chain = target_hook_chain
 
@@ -41,26 +45,41 @@ func _register_buff_hook(buff: BuffData) -> void:
 	if hook_chain == null: return
 	match buff.id:
 		"strength":
-			# 力量：在加算阶段增加伤害，增加量 = 层数
 			hook_chain.register(HookRegistry.HOOK_CALC_ADD, func(v, _c): return v + buff.stacks, 10, _hook_id("strength"))
+			_register_source_annotation(buff, func(has_dmg, _has_blk, is_src): return "伤害+%d" % buff.stacks if is_src and has_dmg and buff.stacks != 0 else null)
 		"dexterity":
-			# 敏捷：在格挡计算阶段增加格挡值，增加量 = 层数
 			hook_chain.register(HookRegistry.HOOK_CALC_BLOCK, func(v, _c): return v + buff.stacks, 10, _hook_id("dexterity"))
+			_register_source_annotation(buff, func(_has_dmg, has_blk, is_src): return "护甲+%d" % buff.stacks if is_src and has_blk and buff.stacks != 0 else null)
 		"weak":
-			# 虚弱：最终伤害 × 0.75，至少为 1
 			hook_chain.register(HookRegistry.HOOK_CALC_FINAL, func(v, _c): return maxi(1, int(v * 0.75)), 20, _hook_id("weak"))
+			_register_source_annotation(buff, func(has_dmg, _has_blk, is_src): return "伤害×0.75" if is_src and has_dmg else null)
 		"vulnerable":
-			# 易伤：受到伤害 × 1.5，至少为 1
 			hook_chain.register(HookRegistry.HOOK_ON_DAMAGE_TAKEN, func(v, _c): return maxi(1, int(v * 1.5)), 20, _hook_id("vulnerable"))
+			_register_source_annotation(buff, func(has_dmg, _has_blk, is_src): return "受到伤害×1.5" if not is_src and has_dmg else null)
 		"ignore_block":
-			# 无视格挡：在攻击开始时设置上下文的 ignore_block 标记
 			hook_chain.register(HookRegistry.HOOK_ON_ATTACK_START, func(v, c): c["ignore_block"] = true; return v, 50, _hook_id("ignore_block"))
+			_register_source_annotation(buff, func(has_dmg, _has_blk, is_src): return "无视格挡" if is_src and has_dmg else null)
 		"counter_stance":
-			# 反击架势：攻击命中时在上下文中记录反击伤害值
 			hook_chain.register(HookRegistry.HOOK_ON_ATTACK_HIT, func(v, c): if v is int and v > 0: c["counter_damage"] = v; return v, 50, _hook_id("counter_stance"))
+			_register_source_annotation(buff, func(_has_dmg, _has_blk, is_src): return "反击" if is_src else null)
 		"no_discard":
-			# 本场不弃牌：在弃牌规则门阶段设置 block_discard 标记，阻止回合末弃牌与卡牌弃牌效果
 			hook_chain.register(HookRegistry.HOOK_CHECK_DISCARD, func(v, c): c["block_discard"] = true; return v, 100, _hook_id("no_discard"))
+
+## 注册来源标注回调（与数值钩子分离，新buff注册时一并注册标注）
+func _register_source_annotation(buff: BuffData, generator: Callable) -> void:
+	_source_annotations.append({"buff_id": buff.id, "generator": generator})
+
+## 获取所有来源标注：遍历已注册的标注回调，调用 generator 生成标注文本
+func get_source_annotations(has_damage: bool, has_block: bool, is_source: bool) -> Array:
+	var result: Array = []
+	for ann in _source_annotations:
+		var buff = get_buff_by_id(ann.buff_id)
+		if buff == null:
+			continue
+		var text = ann.generator.call(has_damage, has_block, is_source)
+		if text != null:
+			result.append("%s：%s" % [buff.name, text])
+	return result
 
 ## 注销指定 buff 在所有钩子阶段注册的回调
 ## 不知道 buff 注册了哪个阶段，所以一次性注销所有可能的阶段（多余的 unregister 会安全忽略）
@@ -75,6 +94,7 @@ func _unregister_buff_hook(buff_id: String) -> void:
 	hook_chain.unregister(HookRegistry.HOOK_ON_ATTACK_START, _hook_id(buff_id))
 	hook_chain.unregister(HookRegistry.HOOK_ON_ATTACK_HIT, _hook_id(buff_id))
 	hook_chain.unregister(HookRegistry.HOOK_CHECK_DISCARD, _hook_id(buff_id))
+	_source_annotations = _source_annotations.filter(func(ann): return ann.buff_id != buff_id)
 
 ## 更新力量 buff 的钩子（层数变化时需要重建回调，因为回调闭包捕获了旧层数）
 func _update_strength_hook(new_stacks: int) -> void:

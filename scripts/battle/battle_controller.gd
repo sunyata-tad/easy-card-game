@@ -833,36 +833,14 @@ func _get_effect_sources(card: CardData, source, target) -> Array:
 	# 检查 source 的 buff（攻击方）
 	var src_bm = _get_buff_manager(source)
 	if src_bm:
-		_add_buff_sources(sources, src_bm, has_damage, has_block, true)
+		sources.append_array(src_bm.get_source_annotations(has_damage, has_block, true))
 	# 检查 target 的 buff（受击方）
 	var tgt_bm = _get_buff_manager(target)
 	if tgt_bm:
-		_add_buff_sources(sources, tgt_bm, has_damage, has_block, false)
+		sources.append_array(tgt_bm.get_source_annotations(has_damage, has_block, false))
 	return sources
 
 func _get_buff_manager(unit) -> BuffManager:
 	if unit is PlayerManager: return unit.buff_manager
 	if unit is EnemyUnit: return unit.buff_manager
 	return null
-
-func _add_buff_sources(sources: Array, bm: BuffManager, has_damage: bool, has_block: bool, is_source: bool) -> void:
-	for buff in bm.buffs:
-		match buff.id:
-			"strength":
-				if is_source and has_damage and buff.stacks != 0:
-					sources.append("%s：伤害+%d" % [buff.name, buff.stacks])
-			"weak":
-				if is_source and has_damage:
-					sources.append("%s：伤害×0.75" % buff.name)
-			"dexterity":
-				if is_source and has_block and buff.stacks != 0:
-					sources.append("%s：护甲+%d" % [buff.name, buff.stacks])
-			"vulnerable":
-				if not is_source and has_damage:
-					sources.append("%s：受到伤害×1.5" % buff.name)
-			"ignore_block":
-				if is_source and has_damage:
-					sources.append("%s：无视格挡" % buff.name)
-			"counter_stance":
-				if is_source:
-					sources.append("%s：反击" % buff.name)
