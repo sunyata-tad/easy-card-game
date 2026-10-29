@@ -82,6 +82,9 @@ func setup(enemy: EnemyUnit, pm: PlayerManager = null):
 	_connect_enemy_signals()
 	_update_energy_display()
 
+func _get_energy_dots() -> HBoxContainer:
+	return get_node_or_null("EnergyDots") as HBoxContainer
+
 func _connect_enemy_signals():
 	if enemy_unit:
 		enemy_unit.hp_changed.connect(_on_enemy_hp_changed)
@@ -122,14 +125,15 @@ func _on_enemy_energy_changed(current: int, maximum: int):
 	_update_energy_display()
 
 func _update_energy_display():
-	if energy_dots == null or enemy_unit == null:
+	var dots = _get_energy_dots()
+	if dots == null or enemy_unit == null:
 		return
-	for child in energy_dots.get_children():
+	for child in dots.get_children():
 		child.queue_free()
 	for i in enemy_unit.energy:
-		energy_dots.add_child(_create_energy_dot("lit"))
+		dots.add_child(_create_energy_dot("lit"))
 	for i in enemy_unit.max_energy - enemy_unit.energy:
-		energy_dots.add_child(_create_energy_dot("dark"))
+		dots.add_child(_create_energy_dot("dark"))
 
 func _create_energy_dot(state: String) -> Control:
 	var dot = Panel.new()
