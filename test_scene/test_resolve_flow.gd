@@ -128,6 +128,23 @@ func _run_test() -> void:
 	if bc.enemy_system.enemies.size() > 0:
 		var e = bc.enemy_system.enemies[0]
 		_log("敌人血量: %d/%d" % [e.current_hp, e.max_hp])
+	# ===== regen buff on_turn_start 验证 =====
+	_log("--- regen buff on_turn_start 验证 ---")
+	var regen_buff = load("res://scripts/effects/buff_data.gd").new({
+		"id": "regen", "name": "再生", "stacks": 3, "duration": -1,
+		"trigger_timing": "on_turn_start", "tick_effect": {"type": "heal", "value": 1}
+	})
+	bc.player_manager.buff_manager.apply_buff(regen_buff)
+	bc.player_manager.current_hp = maxi(bc.player_manager.current_hp - 10, 1)
+	var hp_before_regen = bc.player_manager.current_hp
+	_log("regen buff添加, HP扣减至: %d" % hp_before_regen)
+	bc._tick_buffs_on_turn_start(bc.player_manager)
+	var hp_after_regen = bc.player_manager.current_hp
+	_log("on_turn_start tick后 HP: %d (恢复%d)" % [hp_after_regen, hp_after_regen - hp_before_regen])
+	if hp_after_regen > hp_before_regen:
+		_log("PASS: regen buff on_turn_start 生效")
+	else:
+		_log("FAIL: regen buff on_turn_start 未生效 (HP不变)")
 	_finish()
 
 func _get_bc():
