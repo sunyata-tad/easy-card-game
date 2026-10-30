@@ -672,11 +672,15 @@ func load_card_to_dice(card: CardData, card_node = null) -> bool:
 	if _dice_cards[_active_dice_index] != null:
 		return false
 	var bc = _get_battle_controller()
-	if bc and not bc.player_manager.can_afford(card.cost):
-		show_state_message("能量不足", 0.8)
-		if card_node and is_instance_valid(card_node):
-			_shake_card(card_node)
-		return false
+	if bc:
+		var remaining_energy = bc.player_manager.energy
+		for p in get_loaded_plays():
+			remaining_energy -= p.card.cost
+		if remaining_energy < card.cost:
+			show_state_message("能量不足", 0.8)
+			if card_node and is_instance_valid(card_node):
+				_shake_card(card_node)
+			return false
 	var dice_index = _active_dice_index
 	_dice_cards[dice_index] = card
 	# 从手牌移除
