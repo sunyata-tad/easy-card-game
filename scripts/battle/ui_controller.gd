@@ -1711,11 +1711,7 @@ func show_enemy_intent(enemy_idx: int, plays: Array) -> void:
 
 ## 清除所有敌人意图显示
 func clear_all_enemy_intents() -> void:
-	if enemy_container:
-		for enemy_node in enemy_container.get_children():
-			var intent_label = enemy_node.get_node_or_null("IntentLabel")
-			if intent_label:
-				intent_label.queue_free()
+	pass
 
 ## 更新能量显示（圆点UI：亮=可用, 灰=本回合已用, 暗=不可用）
 func update_energy_display(available: int, maximum: int, used: int = 0) -> void:

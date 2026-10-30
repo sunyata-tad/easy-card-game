@@ -1,26 +1,26 @@
 [gd_resource type="Theme" format=3 uid="uid://b5w6v7pyhshqa"]
 
-[ext_resource type="Texture2D" uid="uid://dngjk645hnm5q" path="res://art_assets/pixel/ui_concepts/button_normal.png" id="btn_n"]
 [ext_resource type="Texture2D" uid="uid://r15eckxsten5" path="res://art_assets/pixel/ui_concepts/button_hover.png" id="btn_h"]
+[ext_resource type="Texture2D" uid="uid://dngjk645hnm5q" path="res://art_assets/pixel/ui_concepts/button_normal.png" id="btn_n"]
 [ext_resource type="Texture2D" uid="uid://bnan64fdd3ppu" path="res://art_assets/pixel/ui_concepts/button_pressed.png" id="btn_p"]
+[ext_resource type="Texture2D" uid="uid://cmajry341kn0x" path="res://art_assets/pixel/ui_concepts/lineedit_focus.png" id="le_f"]
+[ext_resource type="Texture2D" uid="uid://boadnw0x4eds1" path="res://art_assets/pixel/ui_concepts/lineedit_normal.png" id="le_n"]
+[ext_resource type="Texture2D" uid="uid://dlmpbqpb0k3j6" path="res://art_assets/pixel/ui_concepts/lineedit_readonly.png" id="le_r"]
 [ext_resource type="Texture2D" uid="uid://cchn71vljsfy6" path="res://art_assets/pixel/ui_concepts/panel_border.png" id="panel_tex"]
 [ext_resource type="Texture2D" uid="uid://cjh48wtfvrvqo" path="res://art_assets/pixel/ui_concepts/progress_bg.png" id="pbg"]
 [ext_resource type="Texture2D" uid="uid://bo06s2pxpipcv" path="res://art_assets/pixel/ui_concepts/progress_fill.png" id="pfill"]
-[ext_resource type="FontFile" uid="uid://bc7x0lb2437mk" path="res://assets/fonts/zpix.ttf" id="zpix"]
-[ext_resource type="Texture2D" uid="uid://b8roytgx0b8x" path="res://art_assets/pixel/ui_concepts/scroll_grabber_normal.png" id="sg_n"]
-[ext_resource type="Texture2D" uid="uid://cov0up7grtdu3" path="res://art_assets/pixel/ui_concepts/scroll_grabber_hover.png" id="sg_h"]
-[ext_resource type="Texture2D" uid="uid://dqwl8m24lhepm" path="res://art_assets/pixel/ui_concepts/scroll_grabber_pressed.png" id="sg_p"]
 [ext_resource type="Texture2D" uid="uid://b423lbbc67cfj" path="res://art_assets/pixel/ui_concepts/scroll_bg.png" id="sb_tex"]
-[ext_resource type="Texture2D" uid="uid://boadnw0x4eds1" path="res://art_assets/pixel/ui_concepts/lineedit_normal.png" id="le_n"]
-[ext_resource type="Texture2D" uid="uid://cmajry341kn0x" path="res://art_assets/pixel/ui_concepts/lineedit_focus.png" id="le_f"]
-[ext_resource type="Texture2D" uid="uid://dlmpbqpb0k3j6" path="res://art_assets/pixel/ui_concepts/lineedit_readonly.png" id="le_r"]
+[ext_resource type="Texture2D" uid="uid://cov0up7grtdu3" path="res://art_assets/pixel/ui_concepts/scroll_grabber_hover.png" id="sg_h"]
+[ext_resource type="Texture2D" uid="uid://b8roytgx0b8x" path="res://art_assets/pixel/ui_concepts/scroll_grabber_normal.png" id="sg_n"]
+[ext_resource type="Texture2D" uid="uid://dqwl8m24lhepm" path="res://art_assets/pixel/ui_concepts/scroll_grabber_pressed.png" id="sg_p"]
+[ext_resource type="FontFile" uid="uid://bc7x0lb2437mk" path="res://assets/fonts/zpix.ttf" id="zpix"]
 
 [sub_resource type="StyleBoxTexture" id="panel"]
-texture = ExtResource("panel_tex")
 content_margin_left = 12.0
 content_margin_top = 12.0
 content_margin_right = 12.0
 content_margin_bottom = 12.0
+texture = ExtResource("panel_tex")
 texture_margin_left = 6.0
 texture_margin_top = 6.0
 texture_margin_right = 6.0
@@ -63,11 +63,11 @@ expand_margin_right = 2.0
 expand_margin_bottom = 2.0
 
 [sub_resource type="StyleBoxTexture" id="btn_hover"]
-texture = ExtResource("btn_h")
 content_margin_left = 14.0
 content_margin_top = 8.0
 content_margin_right = 14.0
 content_margin_bottom = 8.0
+texture = ExtResource("btn_h")
 texture_margin_left = 4.0
 texture_margin_top = 4.0
 texture_margin_right = 4.0
@@ -78,11 +78,11 @@ expand_margin_right = 1.0
 expand_margin_bottom = 1.0
 
 [sub_resource type="StyleBoxTexture" id="btn_normal"]
-texture = ExtResource("btn_n")
 content_margin_left = 14.0
 content_margin_top = 8.0
 content_margin_right = 14.0
 content_margin_bottom = 8.0
+texture = ExtResource("btn_n")
 texture_margin_left = 4.0
 texture_margin_top = 4.0
 texture_margin_right = 4.0
@@ -93,11 +93,11 @@ expand_margin_right = 1.0
 expand_margin_bottom = 1.0
 
 [sub_resource type="StyleBoxTexture" id="btn_pressed"]
-texture = ExtResource("btn_p")
 content_margin_left = 14.0
 content_margin_top = 8.0
 content_margin_right = 14.0
 content_margin_bottom = 8.0
+texture = ExtResource("btn_p")
 texture_margin_left = 4.0
 texture_margin_top = 4.0
 texture_margin_right = 4.0
@@ -152,11 +152,11 @@ expand_margin_right = 1.0
 expand_margin_bottom = 1.0
 
 [sub_resource type="StyleBoxTexture" id="lineedit_focus"]
-texture = ExtResource("le_f")
 content_margin_left = 10.0
 content_margin_top = 8.0
 content_margin_right = 10.0
 content_margin_bottom = 8.0
+texture = ExtResource("le_f")
 texture_margin_left = 4.0
 texture_margin_top = 4.0
 texture_margin_right = 4.0
@@ -167,11 +167,11 @@ expand_margin_right = 1.0
 expand_margin_bottom = 1.0
 
 [sub_resource type="StyleBoxTexture" id="lineedit_normal"]
-texture = ExtResource("le_n")
 content_margin_left = 10.0
 content_margin_top = 8.0
 content_margin_right = 10.0
 content_margin_bottom = 8.0
+texture = ExtResource("le_n")
 texture_margin_left = 4.0
 texture_margin_top = 4.0
 texture_margin_right = 4.0
@@ -182,11 +182,11 @@ expand_margin_right = 1.0
 expand_margin_bottom = 1.0
 
 [sub_resource type="StyleBoxTexture" id="lineedit_readonly"]
-texture = ExtResource("le_r")
 content_margin_left = 10.0
 content_margin_top = 8.0
 content_margin_right = 10.0
 content_margin_bottom = 8.0
+texture = ExtResource("le_r")
 texture_margin_left = 4.0
 texture_margin_top = 4.0
 texture_margin_right = 4.0

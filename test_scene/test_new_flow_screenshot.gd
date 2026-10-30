@@ -37,21 +37,8 @@ func _process(delta: float) -> void:
 				if bc and bc.state_machine.is_player_select():
 					_log("进入PLAYER_SELECT状态")
 					_log("玩家速度: %s" % str(bc._player_slot_speeds))
-					_log("敌人速度: %s" % str(bc._enemy_slot_speeds))
-					# 调试：检查敌人意图标签状态
-					var ec = bc.ui_controller.enemy_container
-					if ec:
-						_log("enemy_container 子节点数: %d" % ec.get_child_count())
-						for i in ec.get_child_count():
-							var en = ec.get_child(i)
-							var il = en.get_node_or_null("IntentLabel") if en else null
-							if il:
-								_log("  敌人%d IntentLabel: visible=%s text='%s' pos=%s size=%s" % [i, str(il.visible), il.text, str(il.position), str(il.size)])
-							else:
-								_log("  敌人%d 无 IntentLabel" % i)
-					else:
-						_log("enemy_container 为 null")
-					_take_screenshot("new_flow_player_select")
+				_log("敌人速度: %s" % str(bc._enemy_slot_speeds))
+				_take_screenshot("new_flow_player_select")
 					_phase = 2
 					_elapsed = 0.0
 				else:
