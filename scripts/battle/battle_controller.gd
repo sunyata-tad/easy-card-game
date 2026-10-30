@@ -41,7 +41,7 @@ func _initialize_systems() -> void:
 
 func _connect_signals() -> void:
 	state_machine.state_enter.connect(_on_state_enter)
-	turn_manager.player_turn_start.connect(_on_player_turn_start)
+
 	card_system.card_played.connect(_on_card_played)
 	card_system.hand_changed.connect(_on_hand_changed)
 	card_system.deck_count_changed.connect(_on_deck_count_changed)
@@ -155,7 +155,10 @@ func _on_draw_phase() -> void:
 		if use_new_flow:
 			for enemy in enemy_system.get_alive_enemies():
 				enemy.regen_energy()
-	player_manager.buff_manager.remove_at_turn_end()
+	# on_turn_start buff tick（再生等）：能量恢复后、抽牌前触发
+	_tick_buffs_on_turn_start(player_manager)
+	for enemy in enemy_system.get_alive_enemies():
+		_tick_buffs_on_turn_start(enemy)
 	effect_resolver.clear_all_temp_hooks(player_manager)
 	var draw_count = rules.initial_draw_count if is_first_turn else rules.turn_draw_count
 	# 遗物"终末轮回"效果②生效后：每回合开始抽卡直到手卡≥10
@@ -475,11 +478,6 @@ func _execute_enemy_turns() -> void:
 	await get_tree().create_timer(0.3).timeout
 	state_machine.change_state(StateMachine.BattleState.TURN_END)
 
-func _on_player_turn_start() -> void:
-
-	_tick_buffs_on_turn_start(player_manager)
-	for enemy in enemy_system.get_alive_enemies():
-		_tick_buffs_on_turn_start(enemy)
 
 func _tick_buffs_on_turn_start(target) -> void:
 	if target.has_method("get") and target.get("buff_manager"):
