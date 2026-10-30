@@ -86,15 +86,6 @@ func play_card(card: CardData, target = null) -> bool:
 	_emit_deck_count()
 	return true
 
-## 消耗手牌中的一张卡牌（从手牌移到消耗堆，本场战斗不再出现）
-## [未调用] 消耗卡牌。若已实现调用方，请删除此标记注释。
-func exhaust_card(card: CardData) -> void:
-	if hand.has(card):
-		hand.erase(card)
-		exhaust_pile.append(card)
-		card_exhausted.emit(card)
-		hand_changed.emit(hand)
-		_emit_deck_count()
 
 ## 弃置全部手牌（回牌库底部）
 func discard_hand() -> void:
@@ -113,20 +104,6 @@ func add_to_hand(card: CardData) -> void:
 	card_drawn.emit(card)
 	hand_changed.emit(hand)
 
-## 将卡牌加入抽牌堆
-## @param to_top: true 则放在牌堆顶部（下次先抽到），false 放在底部
-## [未调用] 加入抽牌堆。若已实现调用方，请删除此标记注释。
-func add_to_draw_pile(card: CardData, to_top: bool = false) -> void:
-	if to_top:
-		draw_pile.push_front(card.duplicate())
-	else:
-		draw_pile.append(card.duplicate())
-	_emit_deck_count()
-
-## 将卡牌加入弃牌堆（回牌库底部）
-func add_to_discard(card: CardData) -> void:
-	draw_pile.append(card.duplicate())
-	_emit_deck_count()
 
 ## 将手牌中的一张牌移回抽牌堆（用于"回到牌库"类效果）
 func move_hand_to_draw_pile(card: CardData, to_top: bool = false) -> void:
@@ -242,17 +219,6 @@ func search_discard_and_draw_by_tag(tag: String) -> CardData:
 		return card
 	return null
 
-## 消耗手牌中的指定卡牌
-## [未调用] 消耗手牌中的卡。若已实现调用方，请删除此标记注释。
-func exhaust_hand_card(card: CardData) -> bool:
-	if hand.has(card):
-		hand.erase(card)
-		exhaust_pile.append(card)
-		card_exhausted.emit(card)
-		hand_changed.emit(hand)
-		_emit_deck_count()
-		return true
-	return false
 
 ## 随机消耗一张手牌
 func exhaust_random_hand_card() -> CardData:
@@ -289,23 +255,6 @@ func discard_specific_card(card: CardData) -> bool:
 	_emit_deck_count()
 	return true
 
-## 获取手牌中所有带有指定标签的卡牌
-## [未调用] 按标签筛选手牌。若已实现调用方，请删除此标记注释。
-func get_cards_in_hand_by_tag(tag: String) -> Array:
-	var result: Array = []
-	for card in hand:
-		if card.has_tag(tag):
-			result.append(card)
-	return result
-
-## 统计手牌中带有指定标签的卡牌数量
-## [未调用] 统计手牌中指定标签数量。若已实现调用方，请删除此标记注释。
-func count_cards_in_hand_with_tag(tag: String) -> int:
-	var count = 0
-	for card in hand:
-		if card.has_tag(tag):
-			count += 1
-	return count
 
 ## 回合结束时弃置超出上限的手牌（回牌库底部）
 func end_turn_discard() -> void:

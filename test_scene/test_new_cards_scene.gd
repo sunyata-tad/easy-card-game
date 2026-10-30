@@ -111,25 +111,23 @@ func _test_heat_death() -> void:
 	_check(pm.current_hp == 45, "支付5生命后 HP=45（实际 %d）" % pm.current_hp)
 	_check(enemy.current_hp == 80, "造成20伤害后敌人 HP=80（实际 %d）" % enemy.current_hp)
 
-## 场景2：生死轮转 —— 支付20 + 交换抽牌堆与弃牌堆
+## 场景2：生死轮转 —— 支付20 + 洗牌
 func _test_life_cycle() -> void:
 	_setup([["格挡", 10], ["生死轮转", 10]])
 	await _wait(0.6)
-	_log("--- [场景2] 生死轮转：交换牌堆 ---")
+	_log("--- [场景2] 生死轮转：洗牌 ---")
 	var pm = bc.player_manager
-	# 先打 2 张格挡进弃牌堆
+	# 先打 2 张格挡回牌库
 	for i in 2:
 		var g = _find_in_hand("格挡")
 		if g:
 			await bc.play_card(g)
 	var draw_before = bc.card_system.get_draw_pile_count()
-	var discard_before = bc.card_system.get_discard_pile_count()
-	_log("交换前：抽牌堆=%d 弃牌堆=%d" % [draw_before, discard_before])
+	_log("洗牌前：牌库=%d" % draw_before)
 	var card = _ensure_in_hand("生死轮转")
 	await bc.play_card(card)
 	_check(pm.current_hp == 30, "支付20生命后 HP=30（实际 %d）" % pm.current_hp)
-	_check(bc.card_system.get_draw_pile_count() == discard_before, "交换后抽牌堆=原弃牌堆（%d）" % bc.card_system.get_draw_pile_count())
-	_check(bc.card_system.get_discard_pile_count() > discard_before, "交换后弃牌堆增加（含打出的生死轮转）")
+	_check(bc.card_system.get_draw_pile_count() == draw_before, "洗牌后牌库数量不变（%d）" % bc.card_system.get_draw_pile_count())
 
 ## 场景3：批命 —— 迷惑眩晕（敌人本回合无法行动）+ 消耗
 func _test_batch_ming() -> void:

@@ -652,7 +652,7 @@ func reset_position():
 	is_awaiting_target = false
 	is_playing_animation = false
 	is_selected = false
-	_is_queued = false
+
 	_clear_interacting()
 	
 	if press_tween and press_tween.is_valid():
@@ -660,20 +660,6 @@ func reset_position():
 	modulate = Color.WHITE
 	z_index = 0
 
-## B4: 设置/取消队列状态（新流程选牌阶段）
-## 队列的卡牌上移20px并加蓝色边框
-var _is_queued: bool = false
-func set_queued(queued: bool) -> void:
-	_is_queued = queued
-	if queued:
-		# 上移表示已队列
-		position = original_position + Vector2(0, -25)
-		modulate = Color(0.6, 0.8, 1.0, 1.0)  # 蓝色调
-		z_index = 5
-	else:
-		position = original_position
-		modulate = Color.WHITE
-		z_index = 0
 
 ## 仅清理交互状态标志，不重置位置/缩放（打出动画接管位置时使用）
 func clear_interaction_state():
@@ -718,15 +704,6 @@ func is_hovered_card() -> bool:
 func is_selected_card() -> bool:
 	return is_selected
 
-## [未调用] 进入目标选择模式。若已实现调用方，请删除此标记注释。
-func start_target_mode():
-	is_awaiting_target = true
-	is_selected = false
-	drag_start_pos = get_global_mouse_position()
-	z_index = 50
-	_set_interacting()
-	
-	target_mode_started.emit(card_data)
 
 func cancel_target_mode():
 	is_awaiting_target = false
