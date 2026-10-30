@@ -93,9 +93,17 @@ func _load_player_relics() -> void:
 
 func start_battle() -> void:
 	_update_initial_ui()
-
+	_init_enemy_card_systems()
 	_on_battle_init()
 	state_machine.change_state(StateMachine.BattleState.DRAW_PHASE)
+
+func _init_enemy_card_systems() -> void:
+	_enemy_card_systems.clear()
+	for enemy_idx in enemy_system.enemies.size():
+		var enemy = enemy_system.enemies[enemy_idx]
+		var enemy_cs = CardSystem.new()
+		enemy_cs.initialize_deck(_get_enemy_deck(enemy))
+		_enemy_card_systems[enemy_idx] = enemy_cs
 
 func _connect_ui_signals() -> void:
 	ui_controller.card_clicked.connect(_on_ui_card_clicked)
@@ -231,15 +239,17 @@ func on_turn_prepare_clicked() -> void:
 ## B4: 敌人选牌阶段——AI决定出牌，玩家可见
 func _on_enemy_select_phase() -> void:
 	_pending_plays.clear()
-	_enemy_card_systems.clear()
 	for enemy_idx in enemy_system.enemies.size():
 		var enemy = enemy_system.enemies[enemy_idx]
 		if enemy.is_dead:
 			continue
-		var enemy_cs = CardSystem.new()
-		enemy_cs.initialize_deck(_get_enemy_deck(enemy))
+		var enemy_cs = _enemy_card_systems.get(enemy_idx)
+		if enemy_cs == null:
+			enemy_cs = CardSystem.new()
+			enemy_cs.initialize_deck(_get_enemy_deck(enemy))
+			_enemy_card_systems[enemy_idx] = enemy_cs
+		enemy_cs.discard_hand()
 		enemy_cs.draw_cards(5)
-		_enemy_card_systems[enemy_idx] = enemy_cs
 		var EnemyAIClass = load("res://scripts/battle/enemy_ai.gd")
 		var plays = EnemyAIClass.decide_plays(enemy, enemy_cs, player_manager, enemy_system.enemies)
 		var enemy_speeds: Array = _enemy_slot_speeds.get(enemy_idx, [])
@@ -800,7 +810,7 @@ func _resolve_all_plays() -> void:
 				ui_controller.update_single_enemy(source)
 	_update_player_ui()
 	_pending_plays.clear()
-	_enemy_card_systems.clear()
+
 
 ## 排序比较函数：速度↓ → 玩家优先 → 槽位↑ → 敌人索引↑
 func _compare_plays(a: Dictionary, b: Dictionary) -> bool:
