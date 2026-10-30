@@ -96,12 +96,6 @@ func _unregister_buff_hook(buff_id: String) -> void:
 	hook_chain.unregister(HookRegistry.HOOK_CHECK_DISCARD, _hook_id(buff_id))
 	_source_annotations = _source_annotations.filter(func(ann): return ann.buff_id != buff_id)
 
-## 更新力量 buff 的钩子（层数变化时需要重建回调，因为回调闭包捕获了旧层数）
-func _update_strength_hook(new_stacks: int) -> void:
-	if hook_chain == null: return
-	hook_chain.unregister(HookRegistry.HOOK_CALC_ADD, _hook_id("strength"))
-	hook_chain.register(HookRegistry.HOOK_CALC_ADD, func(v, _c): return v + new_stacks, 10, _hook_id("strength"))
-
 ## 应用一个 buff 到当前单位
 ## 已有同类型 buff 时：DURATION_STACK_BUFFS 类型的叠加持续时间，其他类型叠加层数
 func apply_buff(buff: BuffData) -> void:
@@ -114,8 +108,7 @@ func apply_buff(buff: BuffData) -> void:
 			# 力量/敏捷类：叠加层数，取较长持续时间
 			existing.add_stacks(buff.stacks)
 			if buff.duration > 0 and existing.duration < buff.duration: existing.duration = buff.duration
-			# 层数变化后需要重建钩子（因为回调闭包捕获了旧的值）
-			if buff.id == "strength": _update_strength_hook(existing.stacks)
+			# 钩子闭包捕获 buff 对象引用，stacks 变化自动反映，无需重建钩子
 	else:
 		# 新的 buff：先深拷贝一份再存储，避免外部修改影响内部状态
 		var new_buff = buff.duplicate(); buffs.append(new_buff); _register_buff_hook(new_buff)

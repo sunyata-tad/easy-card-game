@@ -46,7 +46,16 @@ func _run_test() -> void:
 		"id": "strength", "name": "力量", "stacks": 3, "duration": -1
 	})
 	bc.player_manager.buff_manager.apply_buff(buff_res)
-	_log("添加strength buff: stacks=3")
+	_log("添加strength buff: stacks=3, 力量=%d" % bc.player_manager.get_strength())
+	# 再次添加 stacks=2，验证叠加后钩子是否正确反映
+	var buff_res2 = load("res://scripts/effects/buff_data.gd").new({
+		"id": "strength", "name": "力量", "stacks": 2, "duration": -1
+	})
+	bc.player_manager.buff_manager.apply_buff(buff_res2)
+	_log("叠加strength buff: stacks+=2, 力量=%d" % bc.player_manager.get_strength())
+	# 验证来源标注反映叠加后的层数
+	var test_sources = bc.player_manager.buff_manager.get_source_annotations(true, false, true)
+	_log("来源标注(叠加后): %s" % str(test_sources))
 	# 等待进入 TURN_PREPARE
 	_log("状态: %s" % bc.state_machine.get_state_name(bc.state_machine.current_state))
 	# 触发回合准备

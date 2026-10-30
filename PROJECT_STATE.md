@@ -257,7 +257,7 @@ if hp <= 0: hook_chain.trigger("before_death", ...)             # 可阻止死�
 | ignore_block | on_attack_start | 标记无视格挡 |
 | counter_stance | on_attack_hit | 记录反击伤害 |
 
-⚠️ 层数变化时必须重建 hook 回调（闭包捕获旧层数）：`_update_strength_hook`
+ℹ️ 钩子闭包捕获 buff 对象引用，层数变化自动反映，无需重建钩子
 
 #### Buff 创建（effect_resolver._create_buff_from_id）
 支持：strength, dexterity, weak, vulnerable, poison, regen（weak/vulnerable duration=2；poison on_turn_end 伤害；regen on_turn_start 治疗）
